@@ -1,0 +1,68 @@
+# 🎯 QueueMD: Full Implementation Plan (Phases 1 to 6)
+
+Main in teenon files (`PRD saas.md`, `SKILL (1).md`, `saas.md`) ke mutabik ek **Full Implementation Plan** bana raha hoon. Yeh project ek "Universal Healthcare Queue Management SaaS" hai jo phased-approach mein develop hoga. "Build Once, Scale Everywhere" humari primary philosophy hai.
+
+## User Review Required
+
+> [!IMPORTANT]
+> Yeh plan pure 6-Phase roadmap ko cover karta hai. Isme Clinic MVP se lekar Razorpay Payment aur Notifications tak sab include hai. Kripya ise review karein taki hum turant **Phase 1** par coding shuru kar sakein.
+
+---
+
+## Proposed Roadmap & Changes
+
+Project ko ek hi main folder `<workspace_root>/queuemd` ke andar banaya jayega jisme `client` aur `server` folders honge.
+
+### 📦 PHASE 1: Universal Foundation & Clinic MVP
+**Goal:** Ek solid config-driven base banana and Clinic queue workflow ko fully operational karna.
+- **Config Core:** `utils/facilityTypeConfig.js` banana jisme `facilityType` ke configurations (theme, fields, templates) honge.
+- **Database Architecture:** `Facility`, `User`, `Queue` models design karna with compound indexes (`{facilityId: 1, facilityType: 1, tokenNumber: 1}`).
+- **Backend APIs:** CRUD APIs (Add Patient, Get Queue, Next Patient) with basic Zod validation.
+- **Frontend (Clinic First):** React + Vite setup. Tailwind CSS styling. Zustand se `facilityStore` banana. 
+- **UI Components:** Add Patient Form, Queue List, Dashboard (Abhi sirf Clinic data ke sath).
+
+### 📦 PHASE 2: Real-Time Sync & Live Updates
+**Goal:** Queue mein ho rahe changes ko instantly sabhi connected devices par dikhana bina refresh kiye.
+- **Backend:** Socket.io setup karna.
+- **Isolation:** `facilityId_facilityType` ke format mein room banana taki ek clinic ka data dusre tak na jage.
+- **Events:** `action: "add"` aur `action: "next"` par frontend ko trigger bhejna.
+- **Frontend Listener:** Socket state useEffect mein listen karna aur `QueueList` ko real-time update karna.
+
+### 📦 PHASE 3: Multi-Facility Scalability Proof
+**Goal:** Single codebase se alag-alag type ki facilities (Pathlab, Dental, Physio) ko manage karna.
+- **Dynamic Fields:** Config mein aur types add karna, aur Frontend par unhi customFields (jaise `sampleId`, `toothNumber`) ke hisaab se dynamically Input Forms render karna.
+- **Dynamic Validation:** Backend me Zod schemas ko facility type ke according dynamically parse karna.
+- **UI Update:** `FacilitySelector` dropdown banana taki receptionist/admin facility switch kar sake.
+
+### 📦 PHASE 4: Auth & Role-Based Access Control (RBAC)
+**Goal:** Security tight karna aur facility-specific access control lagana.
+- **Auth Flow:** User Login aur Register APIs with JWT. Token payload mein `facilityType` aur `role` add karna.
+- **Middleware:** `auth.middleware.js` aur specifically `role.middleware.js` create karna (e.g. *Lab Tech Dental APIs access nahi kar sakta*).
+- **Frontend Security:** `ProtectedRoute.js` banana frontend pages ko lock karne ke liye, aur Axios interceptors add karna token bhejne ke liye.
+
+### 📦 PHASE 5: Redis & Notifications (BullMQ)
+**Goal:** Background job processing ke zariye "Smart Notifications" (SMS/WhatsApp) send karna.
+- **Queue Setup:** Upstash Redis ya local Redis use karke BullMQ configure karna.
+- **Worker Logic:** Backend mein `jobs/notification.worker.js` banana jo queue array se job pick kare aur SMS template (`facilityTypeConfig` se) fill karke trigger kare.
+- **Integration:** API me "Next" button click hote hi token user ki notification job ko queue mein daalna.
+
+### 📦 PHASE 6: Payment, Subscription & Monetization
+**Goal:** SaaS monetization. Razorpay ke integrated flow ke sath Free se Pro ka safar karna.
+- **Razorpay Setup:** Orders create aur verify karne ki APIs. `crypto.createHmac` se Webhook verify karna.
+- **Subscription Gate:** `requirePro` middleware banana advanced features ke liye.
+- **Frontend Payment Modal:** "Upgrade to Pro" feature highlighting (Price as per facility type/addons)
+- **Deployment Readiness:** Environment variables (`.env`) ka management, Winston se properly error logging banana.
+
+---
+
+## Open Questions
+
+> [!WARNING]
+> Kya aap chahte hain ki hum aaj sirf **Phase 1** aur uska folder structure shuru karein, ya aap frontend aur backend ek saath kisi specific module se shuru karna chahte hain? Main suggest karta hoon ki hum `server/` folder aur Config/Models (Phase 1 Backend) se pahla kadam lein.
+
+## Verification Plan
+
+Har phase ke complete hone par hum:
+1. REST APIs ko terminal ya Postman se verify karenge.
+2. MongoDB Compass/Terminal se Indexes ka execution time double-check karenge.
+3. Socket aur Frontend Integration ko browser me real-time me multiple tabs open karke verify karenge.

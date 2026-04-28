@@ -1,0 +1,128 @@
+import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
+
+const api = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptor to automatically attach JWT token to headers for protected routes
+api.interceptors.request.use(
+  (config) => {
+    // Calling getState() reads the current persistent token unconditionally
+    const { token } = useAuthStore.getState();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Interceptor to handle 401 Unauthorized globally to prevent ghost sessions
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const isLoginRequest = error.config.url.includes('/auth/login');
+      if (!isLoginRequest) {
+        useAuthStore.getState().logout();
+        window.location.href = '/login'; 
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// --- API Function Stubs --- 
+// Note: Isolation (facilityId, facilityType) is handled implicitly 
+// by the backend decoding the injected JWT Auth Headers! No manual payload needed!
+
+export const searchPatientsApi = async (query) => {
+  const response = await api.get(`/patients/search?q=${query}`);
+  return response.data.data;
+};
+
+export const loginApi = (credentials) => api.post('/auth/login', credentials);
+export const registerApi = (data) => api.post('/auth/register', data);
+
+export const getFacilitiesApi = (type) => api.get(type ? `/facility?type=${type}` : '/facility');
+export const createFacilityApi = (data) => api.post('/facility/create', data);
+
+// ✅ 1. Add Patient
+export const addPatientApi = async (payload) => {
+  const response = await api.post('/queue/add', payload);
+  return response.data;
+};
+
+// ✅ 2. Get Queue (Status driven)
+export const fetchQueueApi = async (status = 'waiting', facilityType = null) => {
+  const params = { status, limit: 50 };
+  if (facilityType) params.type = facilityType;
+  const response = await api.get('/queue', { params });
+  return response.data.queue; // Returns the array of patients
+};
+
+// ✅ 3. Next Patient (Calls the oldest waiting patient)
+export const nextPatientApi = async (facilityType = null) => {
+  const body = facilityType ? { facilityType } : {};
+  const response = await api.post('/queue/next', body);
+  return response.data;
+};
+
+// ✅ 4. Get Completed Count
+export const fetchCompletedCountApi = async (facilityType = null) => {
+  const params = facilityType ? { type: facilityType } : {};
+  const response = await api.get('/queue/stats/completed', { params });
+  return response.data.completedToday;
+};
+
+// ✅ 5. Mark Patient Completed
+export const markPatientCompletedApi = async (patientId, data = {}) => {
+  const response = await api.patch(`/queue/${patientId}/complete`, data);
+  return response.data;
+};
+
+// ✅ 6. Analytics Stats
+export const fetchAnalyticsStatsApi = async (facilityType = null) => {
+  const params = facilityType ? { type: facilityType } : {};
+  const response = await api.get('/analytics/stats', { params });
+  return response.data.data;
+};
+
+export const fetchCompletedTodayApi = async (page = 1, search = "", facilityType = null) => {
+  const params = { page, limit: 10, search };
+  if (facilityType) params.type = facilityType;
+  const response = await api.get('/analytics/completed-today', { params });
+  return response.data;
+};
+
+// ✅ 7. Patient Directory
+export const fetchPatientsApi = async (params = {}) => {
+  const response = await api.get('/patients', { params });
+  return response.data;
+};
+
+export const addPatientToDirectoryApi = async (payload) => {
+  const response = await api.post('/patients/add', payload);
+  return response.data;
+};
+
+export const togglePatientStatusApi = async (id) => {
+  const response = await api.post(`/patients/${id}/toggle-status`);
+  return response.data;
+};
+
+export const updatePatientApi = async (id, payload) => {
+  const response = await api.put(`/patients/${id}`, payload);
+  return response.data;
+};
+
+export const deletePatientApi = async (id) => {
+  const response = await api.delete(`/patients/${id}`);
+  return response.data;
+};
+
+export default api;
