@@ -6,11 +6,11 @@ const logger = require("../utils/logger");
 exports.getStats = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { 
-      page = 1, 
-      limit = 10, 
-      search = "", 
-      dateRange = "today" 
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      dateRange = "today"
     } = req.query;
 
     const startOfDay = new Date();
@@ -42,7 +42,7 @@ exports.getStats = async (req, res, next) => {
     if (search?.trim()) {
       const searchTrimmed = search.trim();
       const numericSearch = /^\d+$/.test(searchTrimmed) ? parseInt(searchTrimmed) : null;
-      
+
       searchFilter = {
         $or: [
           // Text Fields
@@ -50,25 +50,25 @@ exports.getStats = async (req, res, next) => {
           { phone: { $regex: searchTrimmed, $options: "i" } },
           { doctorName: { $regex: searchTrimmed, $options: "i" } },        // 🆕 Doctor
           { facilityType: { $regex: searchTrimmed, $options: "i" } },      // 🆕 Facility
-          
+
           // Token Number (only if numeric)
           ...(numericSearch ? [{ tokenNumber: numericSearch }] : []),
-          
+
           // 🆕 Date Search (DD/MM/YYYY format support)
-          { 
-            $expr: { 
-              $regexMatch: { 
-                input: { 
-                  $dateToString: { 
-                    format: "%d/%m/%Y", 
-                    date: "$completedAt", 
+          {
+            $expr: {
+              $regexMatch: {
+                input: {
+                  $dateToString: {
+                    format: "%d/%m/%Y",
+                    date: "$completedAt",
                     timezone: "+05:30" // IST
-                  } 
-                }, 
-                regex: searchTrimmed, 
-                options: "i" 
-              } 
-            } 
+                  }
+                },
+                regex: searchTrimmed,
+                options: "i"
+              }
+            }
           }
         ]
       };
