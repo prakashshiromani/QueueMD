@@ -39,12 +39,37 @@ exports.getStats = async (req, res, next) => {
 
     // ✅ SEARCH FILTER LOGIC (New)
     let searchFilter = {};
-    if (search) {
+    if (search?.trim()) {
+      const searchTrimmed = search.trim();
+      const numericSearch = /^\d+$/.test(searchTrimmed) ? parseInt(searchTrimmed) : null;
+      
       searchFilter = {
         $or: [
-          { patientName: { $regex: search, $options: "i" } },  // Name search
-          { phone: { $regex: search, $options: "i" } },         // Phone search
-          { tokenNumber: parseInt(search) || 0 }                // Token number search
+          // Text Fields
+          { patientName: { $regex: searchTrimmed, $options: "i" } },
+          { phone: { $regex: searchTrimmed, $options: "i" } },
+          { doctorName: { $regex: searchTrimmed, $options: "i" } },        // 🆕 Doctor
+          { facilityType: { $regex: searchTrimmed, $options: "i" } },      // 🆕 Facility
+          
+          // Token Number (only if numeric)
+          ...(numericSearch ? [{ tokenNumber: numericSearch }] : []),
+          
+          // 🆕 Date Search (DD/MM/YYYY format support)
+          { 
+            $expr: { 
+              $regexMatch: { 
+                input: { 
+                  $dateToString: { 
+                    format: "%d/%m/%Y", 
+                    date: "$completedAt", 
+                    timezone: "+05:30" // IST
+                  } 
+                }, 
+                regex: searchTrimmed, 
+                options: "i" 
+              } 
+            } 
+          }
         ]
       };
     }

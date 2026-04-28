@@ -227,7 +227,7 @@ export default function Analytics() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Patient Name, Phone, or Token..."
+            placeholder="Search by Patient Name, Phone, Token, Doctor, Facility, or Date (DD/MM)..."
             className="w-full bg-bg-secondary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
           {searchQuery && (
