@@ -49,3 +49,13 @@
 - axios — HTTP requests (frontend)
 - bullmq — Queue management
 - ioredis — Redis client for Node.js
+
+## SaaS Branding & UI
+- Facility Types: "Physio", "Dental", "General", etc.
+- Dynamic Icons: Meditation icon for Physio, Stethoscope for General.
+- Branding: QueueMD Universal SaaS.
+
+## Documentation Standards
+- Keep `design.md` updated with UI changes.
+- `PRD saas.md` reflects current business requirements.
+- `memory.md` tracks daily progress for the assistant.

@@ -28,4 +28,31 @@
 **Next Session Mein Karna Hai:**
 - Payment integration and premium feature setup.
 
+### Session 2 — April 30, 2026
+
+**Aaj ka Goal:**
+- Documentation ko latest UI aur Infra ke sath synchronize karna.
+- QueueMD SaaS branding (Physio/Meditation icons) ko finalize karna.
+
+**Kya Kiya:**
+- Saari documentation files (`design.md`, `PRD saas.md`, `PROJECT_DOCUMENTATION.md`, `saas.md`, `SKILL (1).md`) update ki.
+- "Physio" facility labeling aur meditation icons implement/document kiye.
+- Backend logs ko enhance kiya for better debugging.
+- Repository structures aur API specifications ko current state ke according sync kiya.
+
+**Code Jo Likha:**
+- Updated Markdown files in `docs/` and root.
+- Refined UI logic for facility icons and labels in React.
+
+**Bugs Jo Aaye:**
+- Bug: Documentation was outdated after recent code changes.
+- Fix: Massive documentation audit and update performed.
+
+**Kya Seekha:**
+- SaaS branding consistency (Icons/Labels).
+- Importance of keeping documentation in sync with live code.
+
+**Next Session Mein Karna Hai:**
+- Payment integration flows and role-based access control.
+
 ---

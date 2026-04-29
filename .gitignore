@@ -20,3 +20,6 @@ yarn-error.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Documentation
+queue-md-universal/docs/

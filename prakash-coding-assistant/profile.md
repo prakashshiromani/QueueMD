@@ -11,8 +11,9 @@
 - Known: Basic Python, Basic JS
 
 ## Current Status
-- Strong Areas:   MERN stack fundamentals, React UI, CRUD Operations.
-- Weak Areas:     Advanced Redis scaling, complex background job orchestration (working on it).
+- Strong Areas:   MERN stack fundamentals, React UI, CRUD Operations, Cloud Redis Integration (Upstash).
+- Recent Expertise: SaaS branding synchronization, Documentation management.
+- Weak Areas:     Advanced Redis scaling, complex background job orchestration (improving).
 - Current Project: QueueMD - Universal Healthcare Queue SaaS.
 
 ## Learning Goals
