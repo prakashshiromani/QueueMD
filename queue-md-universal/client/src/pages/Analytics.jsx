@@ -97,14 +97,14 @@ export default function Analytics() {
     const config = FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
     return (
       <span
-        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider"
         style={{
           backgroundColor: `${config.theme.primary}15`,
           color: config.theme.primary,
           border: `1px solid ${config.theme.primary}30`,
         }}
       >
-        {config.icon} {type}
+        {config.icon} {config.label}
       </span>
     );
   };

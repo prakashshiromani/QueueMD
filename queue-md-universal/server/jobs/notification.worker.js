@@ -33,6 +33,12 @@ const worker = new Worker('notificationQueue', async (job) => {
   removeOnFail: { count: 500 }
 });
 
+// ✅ Startup Log Messages
+logger.info('👷 Worker started for queue: notificationQueue');
+logger.info(`🔗 Connected to Redis: ${process.env.REDIS_HOST || 'Remote Upstash'}`);
+logger.info('📦 Concurrency: 5 jobs parallel');
+logger.info('✅ Worker ready to process notifications...');
+
 worker.on('completed', (job, result) => {
   logger.debug(`✅ Job ${job.id} completed: ${result.status}`);
 });

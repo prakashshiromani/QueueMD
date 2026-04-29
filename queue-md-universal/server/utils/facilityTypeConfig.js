@@ -41,8 +41,8 @@ const FACILITY_TYPES = {
     baseConsultTime: 15
   },
   physio: {
-    label: "Physiotherapy",
-    icon: "💪",
+    label: "Physio",
+    icon: "🧘",
     theme: { primary: "#10B981", secondary: "#34D399" },
     customFields: [
       { name: "sessionType", type: "select", options: ["Initial", "Follow-up", "Recovery"], required: true },
