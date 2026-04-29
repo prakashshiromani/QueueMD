@@ -6,7 +6,7 @@ const FACILITY_TYPES = {
     icon: "🏥",
     theme: { primary: "#2563EB", secondary: "#10B981" },
     customFields: [],
-    notificationTemplate: "Token #{token} abhi call hoga",
+    notificationTemplate: "Hello #{patientName}, aapka token #{token} abhi call hoga.",
     statusFlow: ["waiting", "in-progress", "completed"],
     roles: ["admin", "receptionist", "doctor", "patient"],
     tokenPrefix: "TKN",
@@ -20,7 +20,7 @@ const FACILITY_TYPES = {
       { name: "sampleId", type: "string", required: true, label: "Sample ID", placeholder: "SAM-001" },
       { name: "testType", type: "select", options: ["Blood", "Urine", "X-Ray", "MRI"], required: true, label: "Test Type" }
     ],
-    notificationTemplate: "Sample #{sampleId} ready hai",
+    notificationTemplate: "Hello #{patientName}, Sample #{sampleId} ready hai. Report collect karein.",
     statusFlow: ["waiting", "processing", "ready"],
     roles: ["admin", "lab_tech", "receptionist", "patient"],
     tokenPrefix: "SAM",
@@ -34,31 +34,29 @@ const FACILITY_TYPES = {
       { name: "procedure", type: "string", required: true, label: "Procedure" },
       { name: "toothNumber", type: "string", label: "Tooth Number" }
     ],
-    notificationTemplate: "Appointment #{token} start hone wala hai",
-    statusFlow: ["waiting", "in-chair", "completed"], // Added common dental flow
+    notificationTemplate: "Hello #{patientName}, Chair #{procedure} ke liye ready hai. Token: #{token}",
+    statusFlow: ["waiting", "in-chair", "completed"],
     roles: ["admin", "receptionist", "dentist", "patient"],
     tokenPrefix: "DNT",
     baseConsultTime: 15
   },
-  physiotherapy: {
-    label: "Physio",
-    icon: "🧘",
-    theme: { primary: "#10B981", secondary: "#059669" },
+  physio: {
+    label: "Physiotherapy",
+    icon: "💪",
+    theme: { primary: "#10B981", secondary: "#34D399" },
     customFields: [
-      { name: "areaOfConcern", type: "select", options: ["Back", "Neck", "Knee", "Shoulder", "Other"], required: true, label: "Area of Concern" },
-      { name: "sessionNumber", type: "string", label: "Session Number" }
+      { name: "sessionType", type: "select", options: ["Initial", "Follow-up", "Recovery"], required: true },
+      { name: "bodyPart", type: "string", label: "Focus Area" }
     ],
-    notificationTemplate: "Physio session for #{token} is starting",
-    statusFlow: ["waiting", "session", "completed"],
-    roles: ["admin", "physiotherapist", "receptionist", "patient"],
+    notificationTemplate: "Hello #{patientName}, aapki #{sessionType} session start ho rahi hai. Token: #{token}",
+    statusFlow: ["waiting", "in-session", "completed"],
+    roles: ["admin", "receptionist", "therapist", "patient"],
     tokenPrefix: "PHY",
     baseConsultTime: 25
   }
 };
 
-const getFacilityConfig = (type) => {
-  return FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
-};
+const getFacilityConfig = (type) => FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
 
 /**
  * Generates a dynamic Zod validation schema based on the facility type
@@ -89,6 +87,15 @@ const getValidationSchema = (type) => {
         customData: z.object({
           procedure: z.string().min(1, "Procedure is required"),
           toothNumber: z.string().optional()
+        })
+      });
+
+    case "physio":
+      return z.object({
+        ...baseSchema,
+        customData: z.object({
+          sessionType: z.enum(["Initial", "Follow-up", "Recovery"]),
+          bodyPart: z.string().optional()
         })
       });
 

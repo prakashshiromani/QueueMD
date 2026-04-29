@@ -7,6 +7,8 @@ const { z } = require("zod");
 const { calculateWaitPredictions } = require("../utils/waitTimeCalculator");
 const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
+const notificationQueue = require('../jobs/notification.queue');
+
 
 // ✅ ADD PATIENT - CORRECT ISOLATION
 exports.addPatient = async (req, res, next) => {
@@ -310,7 +312,33 @@ exports.nextPatient = async (req, res, next) => {
       });
     }
 
+    // 🔔 Phase 4: Push next 2 waiting patients to notification queue
+    try {
+      const upcoming = await Queue.find(
+        { facilityId, facilityType, status: "waiting" },
+        { patientName: 1, phone: 1, tokenNumber: 1, customData: 1 }
+      ).sort({ tokenNumber: 1 }).limit(2);
+
+      for (const patient of upcoming) {
+        await notificationQueue.add('notify_patient', {
+          facilityId,
+          facilityType,
+          patientName: patient.patientName,
+          tokenNumber: patient.tokenNumber,
+          phone: patient.phone,
+          customData: patient.customData || {}
+        }, {
+          priority: 1,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 }
+        });
+      }
+    } catch (err) {
+      logger.error(`Failed to add patients to notification queue: ${err.message}`);
+    }
+
     // ✅ Calculate Predictions
+
     const stats = await calculateWaitPredictions(Queue, facilityId, facilityType);
 
     // 🔥 Socket emit to department's room

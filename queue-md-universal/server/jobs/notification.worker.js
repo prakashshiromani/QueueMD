@@ -1,0 +1,51 @@
+require('dotenv').config({ path: __dirname + '/../.env' });
+const { Worker } = require('bullmq');
+const { connection } = require('../config/redis');
+const logger = require('../utils/logger');
+const { FACILITY_TYPES } = require('../utils/facilityTypeConfig');
+
+// Worker background me chalta rahega
+const worker = new Worker('notificationQueue', async (job) => {
+  const { facilityType, patientName, tokenNumber, phone, customData } = job.data;
+  
+  const config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
+  let message = config.notificationTemplate;
+  
+  // 🔧 Dynamic Placeholders Replace
+  message = message.replace('#{token}', tokenNumber || 'N/A')
+                   .replace('#{patientName}', patientName || 'Patient')
+                   .replace('#{sampleId}', customData?.sampleId || '')
+                   .replace('#{procedure}', customData?.procedure || '')
+                   .replace('#{sessionType}', customData?.sessionType || '');
+
+  // 🚀 Yahan actual SMS/WhatsApp API aayega (Twilio/MSG91/Meta)
+  // Abhi ke liye MCA demo me hum sirf log karenge (Production ready structure hai)
+  logger.info(`🔔 [${facilityType.toUpperCase()}] ${message} | Phone: ${phone || 'N/A'} | JobID: ${job.id}`);
+  
+  // Simulate API delay
+  await new Promise(res => setTimeout(res, 300));
+  
+  return { status: 'queued_for_sms', message };
+}, {
+  connection,
+  concurrency: 5, // Ek saath 5 notifications process karega
+  removeOnComplete: { count: 1000 }, // Memory leak prevent
+  removeOnFail: { count: 500 }
+});
+
+worker.on('completed', (job, result) => {
+  logger.debug(`✅ Job ${job.id} completed: ${result.status}`);
+});
+
+worker.on('failed', (job, err) => {
+  logger.error(`❌ Job ${job?.id} failed: ${err.message}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('🛑 Worker shutting down...');
+  await worker.close();
+  process.exit(0);
+});
+
+module.exports = worker;
