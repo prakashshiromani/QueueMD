@@ -11,6 +11,10 @@ exports.createAppointment = async (req, res, next) => {
     const { facilityId: authId, facilityType: authType } = req.user || {};
     const facilityId = authId || req.body.facilityId;
     const facilityType = authType || req.body.facilityType;
+
+    console.log("🔍 [DEBUG] req.user:", req.user);
+    console.log("🔍 [DEBUG] Final facilityId:", facilityId);
+    console.log("🔍 [DEBUG] Final facilityType:", facilityType);
     const { 
       patientName, phone, email, appointmentDate, 
       startTime, endTime, appointmentType, doctorName, notes 
