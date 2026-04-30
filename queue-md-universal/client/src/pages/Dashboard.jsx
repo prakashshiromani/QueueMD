@@ -45,8 +45,8 @@ export default function Dashboard() {
       queueRef.current = queueData || [];
       
       setStats({
-        waiting: queueData.length || 0,
-        avgWait: statsData.avgWaitTime || 0,
+        waiting: queueData?.length || 0,
+        avgWait: statsData?.avgWaitTime || 0,
         completed: completedCount || 0
       });
 
@@ -472,7 +472,7 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-xl animate-pulse">campaign</span>
                 {facilityType === 'dental' ? '🦷 Call Next Dental Patient' :
                  facilityType === 'pathlab' ? '🔬 Call Next Sample' :
-                 facilityType === 'physiotherapy' ? '🧘 Call Next Session' : 
+                 facilityType === 'physio' ? '🧘 Call Next Session' : 
                  `🏥 Call Next: ${queue[0]?.patientName || "Queue Empty"}`}
               </button>
             </div>

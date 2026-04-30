@@ -38,7 +38,7 @@ export const FACILITY_TYPES = {
     tokenPrefix: "DNT",
     baseConsultTime: 15
   },
-  physiotherapy: {
+  physio: {
     label: "Physio",
     icon: "🧘",
     theme: { primary: "#10B981", secondary: "#059669" },

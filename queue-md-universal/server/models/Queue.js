@@ -10,7 +10,7 @@ const queueSchema = new mongoose.Schema({
   },
   facilityType: {
     type: String,
-    enum: ["clinic", "hospital", "pathlab", "dental", "physiotherapy", "physio", "other"],
+    enum: ["clinic", "hospital", "pathlab", "dental", "physio", "other"],
     required: true,
     index: true
   },
@@ -26,6 +26,11 @@ const queueSchema = new mongoose.Schema({
   tokenNumber: {
     type: Number,
     required: true,
+    index: true
+  },
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
     index: true
   },
   customData: {
@@ -55,5 +60,8 @@ queueSchema.index({ facilityId: 1, facilityType: 1, tokenNumber: 1 });
 queueSchema.index({ facilityId: 1, facilityType: 1, status: 1 });
 // ✅ NEW: Index for faster duration queries
 queueSchema.index({ facilityId: 1, facilityType: 1, status: 1, completedAt: -1 });
+// ✅ NEW: Analytics Indexes
+queueSchema.index({ facilityId: 1, facilityType: 1, createdAt: 1 });
+queueSchema.index({ facilityId: 1, doctorName: 1, status: 1, completedAt: -1 });
 
 module.exports = mongoose.model("Queue", queueSchema);

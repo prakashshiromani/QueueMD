@@ -2,158 +2,426 @@ const mongoose = require("mongoose");
 const Queue = require("../models/Queue");
 const logger = require("../utils/logger");
 
-// ✅ GET ANALYTICS STATS - MERGED: Search + Date Range + Pagination
+// Helper: Parse date range from query parameter
+const parseDateRange = (range, customStart, customEnd) => {
+  const now = new Date();
+  let start = new Date();
+  let end = now;
+
+  switch (range) {
+    case 'today':
+      start.setHours(0, 0, 0, 0);
+      break;
+    
+    case 'yesterday':
+      start = new Date();
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end = new Date();
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      break;
+    
+    case '7d':
+    case 'week':
+      start = new Date();
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+      break;
+    
+    case '30d':
+    case 'month':
+      start = new Date();
+      start.setDate(start.getDate() - 30);
+      start.setHours(0, 0, 0, 0);
+      break;
+    
+    case 'custom':
+      if (customStart && customEnd) {
+        start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        start.setHours(0, 0, 0, 0);
+      }
+      break;
+    
+    default:
+      start.setHours(0, 0, 0, 0);
+  }
+
+  return { start, end };
+};
+
+// Original Helper (keeping for legacy chart queries if needed)
+const getISTRange = (range, startDate, endDate) => {
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const now = new Date();
+  
+  const getStartOfISTDay = (date) => {
+    const d = new Date(date.getTime() + istOffset);
+    d.setUTCHours(0, 0, 0, 0);
+    return new Date(d.getTime() - istOffset);
+  };
+
+  let start, end;
+
+  switch (range) {
+    case 'today':
+      start = getStartOfISTDay(now);
+      end = now;
+      break;
+    case 'yesterday':
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      start = getStartOfISTDay(yesterday);
+      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+      break;
+    case '7d':
+    case 'week':
+      start = new Date(getStartOfISTDay(now).getTime() - 7 * 24 * 60 * 60 * 1000);
+      end = now;
+      break;
+    case '30d':
+    case 'month':
+      start = new Date(getStartOfISTDay(now).getTime() - 30 * 24 * 60 * 60 * 1000);
+      end = now;
+      break;
+    case '6m':
+      start = new Date(getStartOfISTDay(now));
+      start.setMonth(start.getMonth() - 6);
+      end = now;
+      break;
+    case '1y':
+      start = new Date(getStartOfISTDay(now));
+      start.setFullYear(start.getFullYear() - 1);
+      end = now;
+      break;
+    case 'all':
+      start = new Date(0);
+      end = now;
+      break;
+    case 'custom':
+      if (startDate && endDate) {
+        start = getStartOfISTDay(new Date(startDate));
+        end = new Date(new Date(endDate).getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
+      } else {
+        start = getStartOfISTDay(now);
+        end = now;
+      }
+      break;
+    default:
+      start = getStartOfISTDay(now);
+      end = now;
+  }
+
+  return { start, end };
+};
+
+// ✅ GET STATS (Summary Cards + Log Table)
 exports.getStats = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const {
-      page = 1,
-      limit = 10,
-      search = "",
-      dateRange = "today"
-    } = req.query;
-
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
+    const { page = 1, limit = 10, search = "", range = "today", branchId, startDate, endDate } = req.query;
+    
+    const dates = getISTRange(range, startDate, endDate);
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // ✅ DATE RANGE FILTER LOGIC (Preserved)
-    let dateFilter = {};
-    if (dateRange === "today") {
-      dateFilter = { completedAt: { $gte: startOfDay } };
-    } else if (dateRange === "yesterday") {
-      const endOfDay = new Date(startOfDay);
-      startOfDay.setDate(startOfDay.getDate() - 1);
-      dateFilter = { completedAt: { $gte: startOfDay, $lt: endOfDay } };
-    } else if (dateRange === "week") {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter = { completedAt: { $gte: weekAgo } };
-    } else if (dateRange === "month") {
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      dateFilter = { completedAt: { $gte: monthAgo } };
+    // 1. Base Query (for summary cards)
+    const summaryMatch = {
+      facilityId: new mongoose.Types.ObjectId(facilityId),
+      status: "completed",
+      completedAt: { $gte: dates.start, $lte: dates.end }
+    };
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      summaryMatch.branchId = new mongoose.Types.ObjectId(branchId);
     }
-    // 'all' = no date filter
 
-    // ✅ SEARCH FILTER LOGIC (New)
-    let searchFilter = {};
+    // 2. Table Query (for log with search)
+    const tableMatch = { ...summaryMatch };
     if (search?.trim()) {
       const searchTrimmed = search.trim();
-      const numericSearch = /^\d+$/.test(searchTrimmed) ? parseInt(searchTrimmed) : null;
+      tableMatch.$or = [
+        { patientName: { $regex: searchTrimmed, $options: "i" } },
+        { phone: { $regex: searchTrimmed, $options: "i" } },
+        { tokenNumber: /^\d+$/.test(searchTrimmed) ? parseInt(searchTrimmed) : -1 },
+        { doctorName: { $regex: searchTrimmed, $options: "i" } },
+        { facilityType: { $regex: searchTrimmed, $options: "i" } } // Added facilityType search
+      ];
+    }
 
-      searchFilter = {
-        $or: [
-          // Text Fields
-          { patientName: { $regex: searchTrimmed, $options: "i" } },
-          { phone: { $regex: searchTrimmed, $options: "i" } },
-          { doctorName: { $regex: searchTrimmed, $options: "i" } },        // 🆕 Doctor
-          { facilityType: { $regex: searchTrimmed, $options: "i" } },      // 🆕 Facility
-
-          // Token Number (only if numeric)
-          ...(numericSearch ? [{ tokenNumber: numericSearch }] : []),
-
-          // 🆕 Date Search (DD/MM/YYYY format support)
-          {
-            $expr: {
-              $regexMatch: {
-                input: {
-                  $dateToString: {
-                    format: "%d/%m/%Y",
-                    date: "$completedAt",
-                    timezone: "+05:30" // IST
-                  }
-                },
-                regex: searchTrimmed,
-                options: "i"
-              }
-            }
+    // Parallel Execution
+    const [summary, patients, totalCount] = await Promise.all([
+      Queue.aggregate([
+        { $match: summaryMatch },
+        {
+          $group: {
+            _id: null,
+            totalPatients: { $sum: 1 },
+            avgWaitTime: { $avg: { $subtract: ["$calledAt", "$createdAt"] } },
+            avgConsultTime: { $avg: "$actualDuration" }
           }
-        ]
-      };
-    }
+        }
+      ]),
+      Queue.find(tableMatch).sort({ completedAt: -1 }).skip(skip).limit(parseInt(limit)),
+      Queue.countDocuments(tableMatch)
+    ]);
 
-    // ✅ COMBINED QUERY: facilityId + status + dateFilter + searchFilter
-    const completedQuery = {
-      facilityId,
-      status: "completed",
-      ...dateFilter,
-      ...searchFilter
-    };
-
-    // Total visits today (for stats card)
-    const totalToday = await Queue.countDocuments({
-      facilityId,
-      createdAt: { $gte: startOfDay }
-    });
-
-    // Completed count (with all filters)
-    const completedTodayCount = await Queue.countDocuments(completedQuery);
-
-    // Avg Wait Time calculation (all completed, regardless of search)
-    const completedRecords = await Queue.find({
-      facilityId,
-      status: "completed",
-      completedAt: { $gte: startOfDay } // Keep this for avg calculation
-    }).select('actualDuration createdAt calledAt completedAt');
-
-    let avgWaitTime = 0;
-    if (completedRecords.length > 0) {
-      const totalDuration = completedRecords.reduce((sum, rec) => sum + (rec.actualDuration || 0), 0);
-      avgWaitTime = Math.round(totalDuration / completedRecords.length);
-    }
-
-    // Efficiency
-    const efficiency = totalToday > 0
-      ? Math.round((completedTodayCount / totalToday) * 100)
-      : 0;
-
-    // ✅ PAGINATED RESULTS (with search + date filters)
-    const completedPatients = await Queue.find(completedQuery)
-      .sort({ completedAt: -1 }) // Latest first
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-
-    const total = completedTodayCount;
-    const totalPages = Math.ceil(total / parseInt(limit));
+    const stats = summary[0] || { totalPatients: 0, avgWaitTime: 0, avgConsultTime: 0 };
 
     res.json({
       success: true,
-      data: {
-        totalPatients: totalToday,
-        completed: completedTodayCount,
-        avgWaitTime,
-        efficiency,
-        patients: completedPatients.map(patient => ({
-          _id: patient._id,
-          tokenNumber: patient.tokenNumber,
-          patientName: patient.patientName,
-          phone: patient.phone,
-          facilityType: patient.facilityType,
-          doctorName: patient.doctorName || "N/A",
-          completedAt: patient.completedAt,
-          actualDuration: patient.actualDuration || 0,
-          status: "VERIFIED"
-        })),
-        pagination: {
-          total,
-          page: parseInt(page),
-          pages: totalPages,
-          hasNext: parseInt(page) < totalPages,
-          hasPrev: parseInt(page) > 1
-        }
+      stats: {
+        totalPatients: stats.totalPatients,
+        completedToday: stats.totalPatients, // Using range-filtered count
+        avgWaitTime: Math.round((stats.avgWaitTime || 0) / 60000), // convert ms to min
+        efficiency: Math.round(stats.avgConsultTime || 0)
+      },
+      patients,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page),
+        pages: Math.ceil(totalCount / limit)
       }
     });
-
   } catch (err) {
-    logger.error(`Analytics Stats Error: ${err.message}`);
+    logger.error(`getStats Error: ${err.message}`);
     next(err);
   }
 };
 
-// Backward compatibility wrapper
-exports.getCompletedToday = async (req, res, next) => {
-  return exports.getStats(req, res, next);
+// ✅ GET HOURLY TRAFFIC (Bar Chart)
+exports.getHourlyTraffic = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { range = "today", branchId } = req.query;
+    const dates = getISTRange(range, req.query.startDate, req.query.endDate);
+
+    const matchQuery = {
+      facilityId: new mongoose.Types.ObjectId(facilityId),
+      status: "completed",
+      completedAt: { $gte: dates.start, $lte: dates.end }
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+
+    console.log(`📊 [${req.path}] Final Match Query:`, JSON.stringify(matchQuery, null, 2));
+
+    const traffic = await Queue.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $hour: { date: "$completedAt", timezone: "+05:30" } },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const formattedData = Array.from({ length: 24 }).map((_, i) => ({
+      hour: `${i.toString().padStart(2, "0")}:00`,
+      count: traffic.find(t => t._id === i)?.count || 0
+    }));
+
+    res.json({ success: true, data: formattedData });
+  } catch (err) {
+    logger.error(`getHourlyTraffic Error: ${err.message}`);
+    next(err);
+  }
+};
+
+// ✅ GET DAILY TREND (Area Chart)
+exports.getDailyTrend = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { range = "7d", branchId } = req.query;
+    const dates = getISTRange(range, req.query.startDate, req.query.endDate);
+
+    console.log('📊 Daily Trend Query:', { 
+      facilityId, 
+      branchId,
+      range,
+      start: dates.start,
+      end: dates.end 
+    });
+
+    const matchQuery = {
+      facilityId: new mongoose.Types.ObjectId(facilityId),
+      status: "completed",
+      completedAt: { $gte: dates.start, $lte: dates.end }
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+
+    console.log(`📊 [${req.path}] Final Match Query:`, JSON.stringify(matchQuery, null, 2));
+
+    const trend = await Queue.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt", timezone: "+05:30" } },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    console.log('📊 Daily Data Result:', trend);
+
+    const formattedData = trend.map(t => {
+      const [year, month, day] = t._id.split("-");
+      const d = new Date(year, month - 1, day);
+      return {
+        date: `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`,
+        fullDate: t._id,
+        count: t.count
+      };
+    }).sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate));
+
+    res.json({ success: true, data: formattedData });
+  } catch (err) {
+    logger.error(`getDailyTrend Error: ${err.message}`);
+    next(err);
+  }
+};
+
+// ✅ GET FACILITY TYPE STATS (Donut Chart)
+exports.getFacilityTypeStats = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { range = "today", branchId, startDate, endDate } = req.query;
+
+    const dates = getISTRange(range, startDate, endDate);
+
+    const matchQuery = {
+      facilityId: new mongoose.Types.ObjectId(facilityId),
+      status: "completed",
+      completedAt: { $gte: dates.start, $lte: dates.end }
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+
+    const stats = await Queue.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: "$facilityType",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: stats.map(s => ({ name: s._id || 'Unknown', value: s.count })) 
+    });
+  } catch (err) {
+    logger.error(`getFacilityTypeStats Error: ${err.message}`);
+    next(err);
+  }
+};
+
+// ✅ GET TOP DOCTORS
+exports.getTopDoctors = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { range = "today", branchId, startDate, endDate } = req.query;
+
+    const dates = getISTRange(range, startDate, endDate);
+
+    const matchQuery = {
+      facilityId: new mongoose.Types.ObjectId(facilityId),
+      status: "completed",
+      completedAt: { $gte: dates.start, $lte: dates.end },
+      doctorName: { $exists: true, $ne: "" }
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+
+    const doctors = await Queue.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: "$doctorName",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: doctors.map(d => ({ name: d._id, count: d.count })) 
+    });
+  } catch (err) {
+    logger.error(`getTopDoctors Error: ${err.message}`);
+    next(err);
+  }
+};
+
+// ✅ GET COMPLETED CONSULTATIONS (Paginated Log)
+exports.getCompletedConsultations = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, q } = req.query;
+    
+    // Parse date range
+    const { start, end } = parseDateRange(range, startDate, endDate);
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build match query
+    const matchQuery = {
+      facilityId: new mongoose.Types.ObjectId(req.user.facilityId),
+      status: 'completed',
+      completedAt: { $gte: start, $lte: end }
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    
+    if (q && q.trim()) {
+      const searchTrimmed = q.trim();
+      matchQuery.$or = [
+        { patientName: { $regex: searchTrimmed, $options: 'i' } },
+        { phone: { $regex: searchTrimmed, $options: 'i' } },
+        { tokenNumber: /^\d+$/.test(searchTrimmed) ? parseInt(searchTrimmed) : -1 },
+        { doctorName: { $regex: searchTrimmed, $options: 'i' } },
+        { facilityType: { $regex: searchTrimmed, $options: 'i' } }
+      ];
+    }
+    
+    const [consultations, total] = await Promise.all([
+      Queue.find(matchQuery)
+        .sort({ completedAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      
+      Queue.countDocuments(matchQuery)
+    ]);
+    
+    res.json({
+      success: true,
+      consultations,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        showing: consultations.length
+      },
+      dateRange: { start, end, range }
+    });
+  } catch (err) {
+    logger.error(`getCompletedConsultations Error: ${err.message}`);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 };

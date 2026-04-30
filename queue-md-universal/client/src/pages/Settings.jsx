@@ -4,18 +4,19 @@ import Layout from '../components/Layout';
 import { 
   Building2, Building, Settings2, CreditCard, Upload, Trash2, Check, X, 
   Shield, Clock, Users, TrendingUp, ChevronDown, Save, RotateCcw, Bell, 
-  MessageSquare, Globe, CheckCircle2, Lock, Zap 
+  MessageSquare, Globe, CheckCircle2, Lock, Zap, Map, Plus, Edit2 
 } from 'lucide-react';
+import { useFacilityStore } from '../store/facilityStore';
+import api from '../services/api';
 
-// 🧠 ZUSTAND MOCK (Replace with actual store in production)
-// import { useFacilityStore } from '../store/facilityStore';
+// ✅ ZUSTAND STORE
 // const { facilityType, setFacilityType, updateFacility } = useFacilityStore();
 
 const FACILITY_TYPES = [
   { value: 'clinic', label: '🏥 Clinic' },
   { value: 'pathlab', label: '🔬 Pathlab' },
   { value: 'dental', label: '🦷 Dental Clinic' },
-  { value: 'physio', label: '💪 Physiotherapy' }
+  { value: 'physio', label: '💪 Physio' }
 ];
 
 // 🎨 Design System Constants (Matches design.md exactly)
@@ -31,6 +32,7 @@ const THEME = {
 };
 
 export default function SettingsPage() {
+  const { facilityId } = useFacilityStore();
   console.log('SettingsPage Component Rendering');
   // 🔄 Tab State
   const [activeTab, setActiveTab] = useState('management');
@@ -76,6 +78,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'management', label: 'Facility Management', icon: Building2 },
     { id: 'profile', label: 'Facility Profile', icon: Building },
+    { id: 'branches', label: 'Branches', icon: Map },
     { id: 'clinic', label: 'Clinic Settings', icon: Settings2 },
     { id: 'subscription', label: 'Subscription & Billing', icon: CreditCard }
   ];
@@ -87,6 +90,8 @@ export default function SettingsPage() {
         return <FacilityManagementTab facility={facility} />;
       case 'profile':
         return <FacilityProfileTab facility={facility} setFacility={setFacility} handleLogoUpload={handleLogoUpload} />;
+      case 'branches':
+        return <BranchesTab facilityId={facilityId} />;
       case 'clinic':
         return <ClinicSettingsTab facility={facility} setFacility={setFacility} />;
       case 'subscription':
@@ -165,6 +170,180 @@ export default function SettingsPage() {
 // =================================================================
 // 📦 SUB-COMPONENTS
 // =================================================================
+
+// =================================================================
+// 🏥 BRANCHES TAB COMPONENT
+// =================================================================
+
+function BranchesTab({ facilityId }) {
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newBranch, setNewBranch] = useState({ name: '', address: '' });
+  const [editingBranch, setEditingBranch] = useState(null);
+
+  const fetchBranches = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/facility/${facilityId}/branches`);
+      setBranches(response.data.data || []);
+    } catch (err) {
+      console.error("Fetch branches error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (facilityId) fetchBranches();
+  }, [facilityId]);
+
+  const handleAddBranch = async () => {
+    if (!newBranch.name) return alert('Branch name is required');
+    try {
+      await api.post(`/facility/${facilityId}/branch`, newBranch);
+      setIsAdding(false);
+      setNewBranch({ name: '', address: '' });
+      fetchBranches();
+    } catch (err) {
+      alert('Failed to add branch');
+    }
+  };
+
+  const handleToggleActive = async (branchId, currentStatus) => {
+    try {
+      await api.put(`/facility/${facilityId}/branch/${branchId}`, { isActive: !currentStatus });
+      fetchBranches();
+    } catch (err) {
+      alert('Failed to update status');
+    }
+  };
+
+  const handleUpdateBranch = async () => {
+    if (!editingBranch.name) return;
+    try {
+      await api.put(`/facility/${facilityId}/branch/${editingBranch._id}`, editingBranch);
+      setEditingBranch(null);
+      fetchBranches();
+    } catch (err) {
+      alert('Failed to update branch');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-[20px] font-black text-[#F8FAFC]">Branch Management</h2>
+          <p className="text-[13px] text-[#94A3B8]">Manage multiple locations for your facility.</p>
+        </div>
+        <button 
+          onClick={() => setIsAdding(true)}
+          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20"
+        >
+          <Plus className="w-4 h-4" /> Add Branch
+        </button>
+      </div>
+
+      {isAdding && (
+        <div className="bg-[#111418] p-5 rounded-2xl border border-blue-500/30 animate-in slide-in-from-top-4 duration-300">
+          <h3 className="text-[14px] font-black text-[#F8FAFC] mb-4 uppercase tracking-widest">Register New Branch</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <input 
+              placeholder="Branch Name (e.g. South Extension)"
+              value={newBranch.name}
+              onChange={(e) => setNewBranch({...newBranch, name: e.target.value})}
+              className="w-full h-[44px] bg-white/5 border border-white/10 rounded-xl px-4 text-white text-[14px] outline-none focus:border-blue-500"
+            />
+            <input 
+              placeholder="Full Address"
+              value={newBranch.address}
+              onChange={(e) => setNewBranch({...newBranch, address: e.target.value})}
+              className="w-full h-[44px] bg-white/5 border border-white/10 rounded-xl px-4 text-white text-[14px] outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleAddBranch} className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold text-[13px]">Save Branch</button>
+            <button onClick={() => setIsAdding(false)} className="px-6 py-2 rounded-lg bg-transparent text-[#94A3B8] font-bold text-[13px]">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2].map(i => <div key={i} className="h-20 bg-[#111418] animate-pulse rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {branches.length === 0 ? (
+            <div className="py-12 text-center bg-[#111418] rounded-2xl border border-dashed border-[#334155]">
+              <Map className="w-12 h-12 text-[#334155] mx-auto mb-3" />
+              <p className="text-[14px] text-[#94A3B8] font-bold">No branches registered yet</p>
+            </div>
+          ) : (
+            branches.map((branch) => (
+              <div key={branch._id} className="group relative flex items-center justify-between p-5 bg-[#111418] rounded-2xl border border-[#334155]/20 hover:border-blue-500/30 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${branch.isActive ? 'bg-blue-600/10 text-blue-500' : 'bg-red-500/10 text-red-500'}`}>
+                    <Map className="w-6 h-6" />
+                  </div>
+                  <div>
+                    {editingBranch?._id === branch._id ? (
+                      <input 
+                        value={editingBranch.name}
+                        onChange={(e) => setEditingBranch({...editingBranch, name: e.target.value})}
+                        className="bg-white/5 border-b border-blue-500 outline-none text-white font-bold text-[16px]"
+                      />
+                    ) : (
+                      <h4 className="text-[16px] font-black text-[#F8FAFC]">{branch.name}</h4>
+                    )}
+                    <p className="text-[12px] text-[#94A3B8] flex items-center gap-1">
+                      <Globe className="w-3 h-3" /> {branch.address || 'No address set'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => handleToggleActive(branch._id, branch.isActive)}
+                    className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${branch.isActive ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}
+                  >
+                    {branch.isActive ? 'Active' : 'Inactive'}
+                  </button>
+                  
+                  {editingBranch?._id === branch._id ? (
+                    <button onClick={handleUpdateBranch} className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center">
+                      <Check className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setEditingBranch(branch)}
+                      className="w-10 h-10 rounded-full bg-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Pro Badge Info */}
+      <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-start gap-4">
+        <Zap className="w-5 h-5 text-purple-400 shrink-0 mt-1" />
+        <div>
+          <h4 className="text-[13px] font-bold text-purple-400 uppercase tracking-widest">Pro Feature Tip</h4>
+          <p className="text-[12px] text-[#94A3B8]">
+            Multi-branch analytics aggregation and cross-branch patient history is available on the <strong>Pro Plan</strong>. 
+            Currently, you can manage up to 5 branches on the Free Tier.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FacilityManagementTab({ facility }) {
   return (

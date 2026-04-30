@@ -17,6 +17,11 @@ const facilitySchema = new mongoose.Schema({
   },
   address: String,
   contact: String,
+  branches: [{
+    name: { type: String, required: true, trim: true },
+    address: { type: String },
+    isActive: { type: Boolean, default: true }
+  }],
   customFields: {
     type: Map,
     of: Mixed

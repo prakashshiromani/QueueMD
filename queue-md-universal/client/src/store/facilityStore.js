@@ -6,7 +6,8 @@ export const useFacilityStore = create(
     (set) => ({
       facilityId: null,
       facilityName: null,
-      isDemoMode: false, // ✅ New: For UI testing & simulation
+      isDemoMode: false,
+      selectedBranch: null, // ✅ For branch-wise analytics filtering
       
       setFacility: (id, name, type) => set(() => ({
         facilityId: id,
@@ -18,6 +19,8 @@ export const useFacilityStore = create(
       setFacilityType: (type) => set(() => ({
         facilityType: type
       })),
+
+      setSelectedBranch: (branchId) => set(() => ({ selectedBranch: branchId })),
       
       toggleDemoMode: () => set((state) => ({ isDemoMode: !state.isDemoMode })),
       
@@ -25,6 +28,7 @@ export const useFacilityStore = create(
         facilityId: null,
         facilityName: null,
         facilityType: 'clinic',
+        selectedBranch: null,
         isDemoMode: false
       }))
     }),

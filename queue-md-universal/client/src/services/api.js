@@ -89,7 +89,7 @@ export const markPatientCompletedApi = async (patientId, data = {}) => {
 export const fetchAnalyticsStatsApi = async (facilityType = null) => {
   const params = facilityType ? { type: facilityType } : {};
   const response = await api.get('/analytics/stats', { params });
-  return response.data.data;
+  return response.data.stats || response.data.data || response.data;
 };
 
 export const fetchCompletedTodayApi = async (page = 1, search = "", facilityType = null) => {

@@ -26,3 +26,8 @@ queue-md-universal/docs/
 
 # Assistant Context
 prakash-coding-assistant/
+
+# Agents & Graphify Tools
+.agents/
+graphify/
+graphify-out/

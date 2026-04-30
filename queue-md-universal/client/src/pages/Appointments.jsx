@@ -17,7 +17,7 @@ const Appointments = () => {
     { id: 'STF-2015', name: 'Dr. Michael Chen' },
   ];
 
-  const categories = ['General', 'Dental', 'Pathology', 'Physiotherapy'];
+  const categories = ['General', 'Dental', 'Pathology', 'Physio'];
 
   const calendarDays = [
     { day: 1, type: 'past' }, { day: 2, type: 'past' }, { day: 3, type: 'past' }, { day: 4, type: 'current' },

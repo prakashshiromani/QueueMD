@@ -1,20 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import api from "../services/api";
 import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
 import Layout from "../components/Layout";
+import { socket } from "../services/socket";
+
+// ✅ New Chart Components
+import HourlyBarChart from "../components/charts/HourlyBarChart";
+import DailyTrendChart from "../components/charts/DailyTrendChart";
+import FacilityDonutChart from "../components/charts/FacilityDonutChart";
+import TopDoctorsCard from "../components/charts/TopDoctorsCard";
+import ChartSkeleton from "../components/charts/ChartSkeleton";
 
 export default function Analytics() {
   const { user } = useAuthStore();
-  const { facilityId } = useFacilityStore();
+  const { facilityId, selectedBranch, setSelectedBranch } = useFacilityStore();
 
   const [stats, setStats] = useState({
     totalPatients: 0,
     completed: 0,
     avgWaitTime: 0,
     efficiency: 0,
-    hourlyData: [],
   });
 
   const [patients, setPatients] = useState([]);
@@ -25,7 +32,16 @@ export default function Analytics() {
     hasNext: false,
     hasPrev: false,
   });
+
+  // ✅ New Chart States
+  const [hourlyData, setHourlyData] = useState([]);
+  const [dailyData, setDailyData] = useState([]);
+  const [facilityData, setFacilityData] = useState([]);
+  const [topDoctors, setTopDoctors] = useState([]);
+  const [branches, setBranches] = useState([]);
+
   const [loading, setLoading] = useState(false);
+  const [chartsLoading, setChartsLoading] = useState(false);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +49,8 @@ export default function Analytics() {
 
   // Date Range State
   const [dateRange, setDateRange] = useState("today");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   // Debounce Search (300ms delay)
   useEffect(() => {
@@ -42,46 +60,169 @@ export default function Analytics() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset to page 1 when search or dateRange changes
+  // Reset to page 1 when filters change
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [debouncedSearch, dateRange]);
+  }, [debouncedSearch, dateRange, selectedBranch, customStart, customEnd]);
 
-  const loadData = async (page = 1) => {
+  // ✅ Load Branches for Selector
+  const loadBranches = useCallback(async () => {
+    if (!facilityId) return;
+    try {
+      const response = await api.get(`/facility/${facilityId}/branches`);
+      setBranches(response.data.data || []);
+    } catch (err) {
+      console.error("Failed to load branches:", err);
+    }
+  }, [facilityId]);
+
+  // ✅ Load Consultation Log (Dedicated Endpoint)
+  const loadConsultations = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       const params = {
         page,
         limit: 10,
-        search: debouncedSearch,
-        dateRange,
+        q: debouncedSearch,
+        range: dateRange,
+        branchId: selectedBranch,
+        startDate: customStart,
+        endDate: customEnd
       };
-      const response = await api.get(`/analytics/stats`, { params });
-      setStats(response.data.data);
-      setPatients(response.data.data.patients || []);
-      setPagination(response.data.data.pagination);
+      
+      const response = await api.get("/analytics/completed-consultations", { params });
+      setPatients(response.data.consultations || []);
+      setPagination(response.data.pagination || { total: 0, page: 1, pages: 1 });
     } catch (error) {
-      console.error("Analytics load error:", error);
+      console.error("Load consultations error:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, dateRange, selectedBranch, customStart, customEnd]);
 
+  // ✅ Load Stats Summary Cards
+  const loadSummary = useCallback(async () => {
+    try {
+      const params = {
+        range: dateRange,
+        branchId: selectedBranch,
+        startDate: customStart,
+        endDate: customEnd
+      };
+      const response = await api.get("/analytics/stats", { params });
+      setStats(response.data?.stats || { totalPatients: 0, completedToday: 0, avgWaitTime: 0, efficiency: 0 });
+    } catch (error) {
+      console.error("Load summary error:", error);
+    }
+  }, [dateRange, selectedBranch, customStart, customEnd]);
+
+  // ✅ Load Chart Data
+  const loadCharts = useCallback(async () => {
+    if (!facilityId) return;
+    try {
+      setChartsLoading(true);
+      
+      // ✅ Clear previous chart data to prevent stale visuals
+      setHourlyData([]);
+      setDailyData([]);
+      setFacilityData([]);
+      setTopDoctors([]);
+
+      const params = { 
+        branchId: selectedBranch, 
+        range: dateRange,
+        startDate: customStart,
+        endDate: customEnd
+      };
+
+      console.log('📊 Fetching Charts with params:', params);
+
+      const [hourly, daily, facilityStats, doctors] = await Promise.all([
+        api.get("/analytics/hourly", { params }),
+        api.get("/analytics/daily-trend", { params }),
+        api.get("/analytics/facility-stats", { params }),
+        api.get("/analytics/top-doctors", { params })
+      ]);
+
+      // ✅ Extraction + Robust Transformation
+      const rawHourly = hourly.data?.data || hourly.data || [];
+      const hData = Array.isArray(rawHourly) ? rawHourly.map(item => ({
+        hour: item.hour || item._id,
+        value: item.count !== undefined ? item.count : (item.value || 0) // Standardize to 'value'
+      })) : [];
+
+      const rawDaily = daily.data?.data || daily.data || [];
+      const dData = Array.isArray(rawDaily) ? rawDaily.map(item => ({
+        date: item.date || item._id,
+        value: item.count !== undefined ? item.count : (item.value || 0) // Standardize to 'value'
+      })) : [];
+
+      const rawFacility = facilityStats.data?.data || facilityStats.data || [];
+      const fData = Array.isArray(rawFacility) ? rawFacility.map(item => ({
+        name: item.name || item._id,
+        value: item.value || item.count || 0 // Standardize to 'value'
+      })) : [];
+
+      const rawDoctors = doctors.data?.data || doctors.data || [];
+      const docData = Array.isArray(rawDoctors) ? rawDoctors.map(item => ({
+        name: item.name || item.doctorName || item._id,
+        value: item.count || 0 // Standardize to 'value'
+      })) : [];
+
+      console.log('✅ Final Transformed State:', {
+        hourly: hData.length,
+        daily: dData.length,
+        facility: fData.length,
+        doctors: docData.length
+      });
+
+      setHourlyData(hData);
+      setDailyData(dData);
+      setFacilityData(fData);
+      setTopDoctors(docData);
+    } catch (err) {
+      console.error("Failed to load charts:", err);
+    } finally {
+      setChartsLoading(false);
+    }
+  }, [facilityId, selectedBranch, dateRange, customStart, customEnd]);
+
+  // ✅ Trigger load on filter change
   useEffect(() => {
     if (facilityId) {
-      loadData(1);
+      console.log('📅 Filter changed, reloading all data...', { dateRange, selectedBranch });
+      loadSummary();
+      loadConsultations(1);
+      loadCharts();
+    }
+  }, [facilityId, loadSummary, loadConsultations, loadCharts]);
+
+  // ✅ Initial Load (Branches only)
+  useEffect(() => {
+    if (facilityId) {
+      loadBranches();
     }
   }, [facilityId]);
 
+  // ✅ Socket Auto-Refresh
   useEffect(() => {
-    if (facilityId) {
-      loadData(1);
-    }
-  }, [debouncedSearch, dateRange]);
+    if (!facilityId) return;
+    
+    socket.on("queue_update", (data) => {
+      // Security Check: Only refresh if same facility and type
+      if (data.facilityId === facilityId && data.facilityType === user?.facilityType) {
+        loadSummary();
+        loadConsultations(pagination.page);
+        loadCharts();
+      }
+    });
+
+    return () => socket.off("queue_update");
+  }, [facilityId, user?.facilityType, pagination.page]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
-      loadData(newPage);
+      loadConsultations(newPage);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -90,6 +231,9 @@ export default function Analytics() {
     setSearchQuery("");
     setDebouncedSearch("");
     setDateRange("today");
+    setSelectedBranch(null);
+    setCustomStart("");
+    setCustomEnd("");
     setPagination({ page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false });
   };
 
@@ -114,7 +258,10 @@ export default function Analytics() {
     yesterday: "Yesterday",
     week: "This Week",
     month: "This Month",
+    "6m": "6 Months",
+    "1y": "1 Year",
     all: "All Time",
+    custom: "Custom Range"
   };
 
   return (
@@ -131,7 +278,7 @@ export default function Analytics() {
             </p>
           </div>
           <button
-            onClick={() => loadData(pagination.page)}
+            onClick={() => { loadSummary(); loadConsultations(pagination.page); }}
             className="px-4 py-2 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-primary font-bold text-[14px] hover:bg-surface-variant transition flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -139,80 +286,171 @@ export default function Analytics() {
           </button>
         </div>
 
-        {/* Date Filter Pills — ABOVE Stats Cards (original layout) */}
-        <div className="flex gap-2 flex-wrap mb-6">
-          {[
-            { key: "today", label: "Today", icon: "📅" },
-            { key: "yesterday", label: "Yesterday", icon: "⏮" },
-            { key: "week", label: "This Week", icon: "📆" },
-            { key: "month", label: "This Month", icon: "📊" },
-            { key: "all", label: "All Time", icon: "🌟" },
-          ].map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => setDateRange(key)}
-              className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${dateRange === key
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "bg-bg-secondary border border-border-muted/50 text-text-secondary hover:text-text-primary"
-                }`}
+        {/* Filter Bar (Date + Branch) */}
+        <div className="bg-bg-secondary p-4 rounded-xl border border-border-muted/50 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+          {/* Date Filter Pills */}
+          <div className="flex gap-2 flex-wrap overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+            {[
+              { key: "today", label: "Today", icon: "📅" },
+              { key: "yesterday", label: "Yesterday", icon: "⏮" },
+              { key: "week", label: "7D", icon: "📆" },
+              { key: "month", label: "30D", icon: "📊" },
+              { key: "6m", label: "6 Months", icon: "📅" },
+              { key: "1y", label: "1 Year", icon: "📅" },
+              { key: "custom", label: "Custom", icon: "🛠" },
+            ].map(({ key, label, icon }) => (
+              <button
+                key={key}
+                onClick={() => setDateRange(key)}
+                className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${dateRange === key
+                    ? "bg-blue-600 text-white shadow-lg"
+                    : "bg-surface-variant text-text-secondary hover:text-text-primary border border-transparent hover:border-border-muted"
+                  }`}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Inputs (only if range is custom) */}
+          {dateRange === 'custom' && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+              <input 
+                type="date" 
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="bg-surface-variant border border-border-muted/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
+              />
+              <span className="text-text-secondary font-black">→</span>
+              <input 
+                type="date" 
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="bg-surface-variant border border-border-muted/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          {/* Branch Selector */}
+          <div className="relative w-full lg:w-64">
+            <select
+              value={selectedBranch || ""}
+              onChange={(e) => setSelectedBranch(e.target.value || null)}
+              className="w-full h-[44px] appearance-none bg-surface-variant border border-border-muted/50 rounded-xl px-4 pr-10 text-[14px] text-text-primary font-bold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-500 transition-all shadow-inner"
             >
-              {icon} {label}
-            </button>
-          ))}
+              <option value="">🌐 All Branches</option>
+              {branches.map(b => (
+                <option key={b._id} value={b._id} disabled={!b.isActive} className="bg-bg-secondary">
+                  {b.name} {!b.isActive ? '(Inactive)' : ''}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
+              expand_more
+            </span>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Total Visits */}
-          <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50">
+          <div className="bg-bg-secondary p-5 rounded-xl border-l-4 border-l-blue-500 border-y border-r border-border-muted/50 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[12px] font-bold text-text-secondary uppercase tracking-wider">
+              <div className="text-[12px] font-black text-text-secondary uppercase tracking-widest pl-1">
                 Total Visits
               </div>
-              <span className="text-[10px] font-black text-green-400 uppercase tracking-wider">
-                {dateRangeLabel[dateRange]}
+              <span className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-blue-500">group</span>
               </span>
             </div>
-            <div className="text-[32px] font-black text-text-primary">{stats.totalPatients}</div>
+            <div className="text-[32px] font-black text-text-primary tracking-tight">{stats?.totalPatients || 0}</div>
+            <div className="text-[10px] font-bold text-text-secondary mt-1 flex items-center gap-1 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+              {dateRangeLabel[dateRange]}
+            </div>
           </div>
 
           {/* Consultations */}
-          <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50">
+          <div className="bg-bg-secondary p-5 rounded-xl border-l-4 border-l-green-500 border-y border-r border-border-muted/50 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[12px] font-bold text-text-secondary uppercase tracking-wider">
-                Consultations
+              <div className="text-[12px] font-black text-text-secondary uppercase tracking-widest pl-1">
+                Completed
               </div>
-              <span className="text-[10px] font-black text-green-400 uppercase tracking-wider">
-                Done
+              <span className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-green-500">check_circle</span>
               </span>
             </div>
-            <div className="text-[32px] font-black text-text-primary">{stats.completed}</div>
+            <div className="text-[32px] font-black text-text-primary tracking-tight">{stats?.completedToday || 0}</div>
+            <div className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-wider">
+              {(((stats?.completedToday || 0) / (stats?.totalPatients || 1)) * 100).toFixed(1)}% Conversion
+            </div>
           </div>
 
           {/* Avg Wait Time */}
-          <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50">
+          <div className="bg-bg-secondary p-5 rounded-xl border-l-4 border-l-orange-500 border-y border-r border-border-muted/50 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[12px] font-bold text-text-secondary uppercase tracking-wider">
+              <div className="text-[12px] font-black text-text-secondary uppercase tracking-widest pl-1">
                 Avg Wait Time
               </div>
-              <span className="text-[10px] font-black text-orange-400 uppercase tracking-wider">
-                Minutes
+              <span className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-orange-500">avg_pace</span>
               </span>
             </div>
-            <div className="text-[32px] font-black text-text-primary">{stats.avgWaitTime}</div>
+            <div className="text-[32px] font-black text-text-primary tracking-tight">{stats?.avgWaitTime || 0}m</div>
+            <div className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-wider">
+              Peak: 11:00 AM
+            </div>
           </div>
 
           {/* Efficiency */}
-          <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50">
+          <div className="bg-bg-secondary p-5 rounded-xl border-l-4 border-l-purple-500 border-y border-r border-border-muted/50 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[12px] font-bold text-text-secondary uppercase tracking-wider">
+              <div className="text-[12px] font-black text-text-secondary uppercase tracking-widest pl-1">
                 Efficiency
               </div>
-              <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">
-                Rating
+              <span className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-purple-500">bolt</span>
               </span>
             </div>
-            <div className="text-[32px] font-black text-text-primary">{stats.efficiency}%</div>
+            <div className="text-[32px] font-black text-text-primary tracking-tight">{stats?.efficiency || 0}%</div>
+            <div className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-wider">
+              Operational Rating
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ Advanced Charts Grid */}
+        <div className="space-y-6 mb-8">
+          {/* Row 1: Hourly Traffic */}
+          <div className="grid grid-cols-1 gap-6">
+            <HourlyBarChart data={hourlyData} loading={chartsLoading} />
+          </div>
+
+          {/* Row 2: Trend + Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8">
+              <DailyTrendChart data={dailyData} loading={chartsLoading} />
+            </div>
+            <div className="lg:col-span-4">
+              <FacilityDonutChart data={facilityData} loading={chartsLoading} />
+            </div>
+          </div>
+
+          {/* Row 3: Top Doctors */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TopDoctorsCard data={topDoctors} loading={chartsLoading} />
+            <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50 flex flex-col justify-center items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[40px] text-blue-500">analytics</span>
+              </div>
+              <h3 className="text-[18px] font-black text-text-primary tracking-tight">AI Insights Coming Soon</h3>
+              <p className="text-[14px] text-text-secondary mt-2 max-w-xs">
+                Predictive wait times and resource optimization powered by QueueMD AI.
+              </p>
+              <button className="mt-4 px-6 py-2 rounded-xl bg-surface-variant text-text-secondary font-black text-[12px] uppercase tracking-widest cursor-not-allowed">
+                Phase 7 Feature
+              </button>
+            </div>
           </div>
         </div>
 
@@ -378,44 +616,54 @@ export default function Analytics() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="px-6 py-4 border-t border-border-muted/50 flex items-center justify-between">
-              <div className="text-[14px] text-text-secondary">
-                Showing{" "}
-                <span className="font-bold">{(pagination.page - 1) * 10 + 1}</span> to{" "}
-                <span className="font-bold">
-                  {Math.min(pagination.page * 10, pagination.total)}
-                </span>{" "}
-                of <span className="font-bold">{pagination.total}</span>
+          {/* ✅ Premium Registry Style Pagination */}
+          {pagination.total > 0 && (
+            <div className="px-6 py-5 border-t border-border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/30">
+              <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] flex items-center gap-2">
+                <span className="opacity-50">Registry Index:</span>
+                <span className="text-text-primary bg-surface-variant px-2 py-0.5 rounded">
+                  {(pagination.page - 1) * 10 + 1} — {Math.min(pagination.page * 10, pagination.total)}
+                </span>
+                <span className="opacity-50">/</span>
+                <span className="text-text-primary">{pagination.total}</span>
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrev}
-                  className="px-4 py-2 rounded-lg bg-bg-secondary border border-border-muted/50 text-text-primary font-bold text-[14px] disabled:opacity-50 hover:bg-surface-variant transition"
+                  disabled={pagination.page <= 1}
+                  className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
-                  Previous
+                  Prev
                 </button>
-                {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => handlePageChange(i + 1)}
-                    className={`px-4 py-2 rounded-lg font-bold text-[14px] transition ${pagination.page === i + 1
-                        ? "bg-blue-600 text-white shadow-lg"
-                        : "bg-bg-secondary border border-border-muted/50 text-text-primary hover:bg-surface-variant"
-                      }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                {pagination.pages > 5 && (
-                  <span className="px-2 text-text-secondary">...</span>
-                )}
+
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                    const pageNum = i + 1;
+                    const isActive = pagination.page === pageNum;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-8 h-8 rounded-xl text-[11px] font-black transition-all border ${
+                          isActive 
+                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                            : "bg-bg-secondary border-border-muted/50 text-text-primary hover:border-text-secondary"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  {pagination.pages > 5 && (
+                    <span className="px-1 text-text-secondary opacity-50 font-black">...</span>
+                  )}
+                </div>
+
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNext}
-                  className="px-4 py-2 rounded-lg bg-bg-secondary border border-border-muted/50 text-text-primary font-bold text-[14px] disabled:opacity-50 hover:bg-surface-variant transition"
+                  disabled={pagination.page >= pagination.pages}
+                  className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
                   Next
                 </button>
