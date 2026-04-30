@@ -26,7 +26,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (!validate()) return;
-    try { setLoading(true); await onSubmit({...form}); onClose(); }
+    try { setLoading(true); await onSubmit({...form, facilityType}); onClose(); }
     catch(err) { setErrors({submit:err.response?.data?.message||"Failed"}); }
     finally { setLoading(false); }
   };

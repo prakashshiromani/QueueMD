@@ -8,7 +8,9 @@ const logger = require("../utils/logger");
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
   try {
-    const { facilityId, facilityType } = req.user;
+    const { facilityId: authId, facilityType: authType } = req.user || {};
+    const facilityId = authId || req.body.facilityId;
+    const facilityType = authType || req.body.facilityType;
     const { 
       patientName, phone, email, appointmentDate, 
       startTime, endTime, appointmentType, doctorName, notes 
