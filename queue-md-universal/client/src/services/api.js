@@ -125,4 +125,30 @@ export const deletePatientApi = async (id) => {
   return response.data;
 };
 
+// ✅ 8. Appointments
+export const fetchAppointments = async (params) => {
+  const res = await api.get("/appointments", { params });
+  return res.data;
+};
+
+export const fetchTodaySchedule = async () => {
+  const res = await api.get("/appointments/today");
+  return res.data;
+};
+
+export const createAppointmentApi = async (data) => {
+  const res = await api.post("/appointments", data);
+  return res.data;
+};
+
+export const updateAppointmentStatusApi = async (id, data) => {
+  const res = await api.put(`/appointments/${id}/status`, data);
+  return res.data;
+};
+
+export const deleteAppointmentApi = async (id) => {
+  const res = await api.delete(`/appointments/${id}`);
+  return res.data;
+};
+
 export default api;

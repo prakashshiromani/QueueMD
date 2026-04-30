@@ -12,6 +12,9 @@ import DailyTrendChart from "../components/charts/DailyTrendChart";
 import FacilityDonutChart from "../components/charts/FacilityDonutChart";
 import TopDoctorsCard from "../components/charts/TopDoctorsCard";
 import ChartSkeleton from "../components/charts/ChartSkeleton";
+import AnimatePage from "../components/AnimatePage";
+import AIInsightsCard from "../components/charts/AIInsightsCard";
+import { SkeletonTable } from "../components/Skeletons";
 
 export default function Analytics() {
   const { user } = useAuthStore();
@@ -38,6 +41,7 @@ export default function Analytics() {
   const [dailyData, setDailyData] = useState([]);
   const [facilityData, setFacilityData] = useState([]);
   const [topDoctors, setTopDoctors] = useState([]);
+  const [aiInsights, setAiInsights] = useState(null);
   const [branches, setBranches] = useState([]);
 
   const [loading, setLoading] = useState(false);
@@ -137,11 +141,12 @@ export default function Analytics() {
 
       console.log('📊 Fetching Charts with params:', params);
 
-      const [hourly, daily, facilityStats, doctors] = await Promise.all([
+      const [hourly, daily, facilityStats, doctors, insights] = await Promise.all([
         api.get("/analytics/hourly", { params }),
         api.get("/analytics/daily-trend", { params }),
         api.get("/analytics/facility-stats", { params }),
-        api.get("/analytics/top-doctors", { params })
+        api.get("/analytics/top-doctors", { params }),
+        api.get("/analytics/ai-insights", { params })
       ]);
 
       // ✅ Extraction + Robust Transformation
@@ -180,6 +185,7 @@ export default function Analytics() {
       setDailyData(dData);
       setFacilityData(fData);
       setTopDoctors(docData);
+      setAiInsights(insights.data?.data || null);
     } catch (err) {
       console.error("Failed to load charts:", err);
     } finally {
@@ -266,7 +272,7 @@ export default function Analytics() {
 
   return (
     <Layout>
-      <div className="p-6">
+      <AnimatePage className="p-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
@@ -439,18 +445,7 @@ export default function Analytics() {
           {/* Row 3: Top Doctors */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopDoctorsCard data={topDoctors} loading={chartsLoading} />
-            <div className="bg-bg-secondary p-5 rounded-xl border border-border-muted/50 flex flex-col justify-center items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-[40px] text-blue-500">analytics</span>
-              </div>
-              <h3 className="text-[18px] font-black text-text-primary tracking-tight">AI Insights Coming Soon</h3>
-              <p className="text-[14px] text-text-secondary mt-2 max-w-xs">
-                Predictive wait times and resource optimization powered by QueueMD AI.
-              </p>
-              <button className="mt-4 px-6 py-2 rounded-xl bg-surface-variant text-text-secondary font-black text-[12px] uppercase tracking-widest cursor-not-allowed">
-                Phase 7 Feature
-              </button>
-            </div>
+            <AIInsightsCard data={aiInsights} loading={chartsLoading} />
           </div>
         </div>
 
@@ -485,193 +480,191 @@ export default function Analytics() {
         </div>
 
         {/* Consultation Log Table */}
-        <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden">
-          <div className="p-5 border-b border-border-muted/50 flex items-center justify-between">
-            <h2 className="text-lg font-black text-text-primary flex items-center gap-2">
-              <span className="material-symbols-outlined text-green-500">check_circle</span>
-              Consultation Log
-              <span className="flex items-center gap-1 text-[13px] font-bold text-text-secondary">
-                —
-                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                {dateRangeLabel[dateRange]}
+        {loading && patients.length === 0 ? (
+          <SkeletonTable />
+        ) : (
+          <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden">
+            <div className="p-5 border-b border-border-muted/50 flex items-center justify-between">
+              <h2 className="text-lg font-black text-text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-500">check_circle</span>
+                Consultation Log
+                <span className="flex items-center gap-1 text-[13px] font-bold text-text-secondary">
+                  —
+                  <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                  {dateRangeLabel[dateRange]}
+                </span>
+              </h2>
+              <span className="text-sm font-bold text-text-secondary bg-surface-variant px-3 py-1 rounded-full">
+                {pagination.total} TOTAL ENTRIES
               </span>
-            </h2>
-            <span className="text-sm font-bold text-text-secondary bg-surface-variant px-3 py-1 rounded-full">
-              {pagination.total} TOTAL ENTRIES
-            </span>
-          </div>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-variant">
-                <tr>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">TOKEN</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">PATIENT</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">DOCTOR</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">FACILITY</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">COMPLETED AT</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">WAIT TIME</th>
-                  <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">STATUS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-muted/30">
-                {loading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-surface-variant">
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-text-secondary">
-                      Loading...
-                    </td>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">TOKEN</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">PATIENT</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">DOCTOR</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">FACILITY</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">COMPLETED AT</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">WAIT TIME</th>
+                    <th className="px-6 py-4 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.1em]">STATUS</th>
                   </tr>
-                ) : patients.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-text-secondary">
-                      No data found
-                    </td>
-                  </tr>
-                ) : (
-                  patients.map((patient) => (
-                    <tr
-                      key={patient._id}
-                      className="group hover:bg-surface-variant/50 transition-all"
-                    >
-                      {/* Token */}
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-sm font-bold">
-                          #{String(patient.tokenNumber).padStart(3, "0")}
-                        </span>
-                      </td>
-
-                      {/* Patient */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600 font-black text-sm">
-                            {patient.patientName?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-[14px] font-bold text-text-primary">
-                              {patient.patientName}
-                            </div>
-                            <div className="text-[11px] text-text-secondary">
-                              {patient.phone || "N/A"}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Doctor */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[16px] text-text-secondary">
-                            stethoscope
-                          </span>
-                          <span className="text-[14px] text-text-primary font-medium">
-                            {patient.doctorName || patient.assignedDoctor || "—"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Facility Badge */}
-                      <td className="px-6 py-4">
-                        {getFacilityBadge(patient.facilityType)}
-                      </td>
-
-                      {/* Completed At */}
-                      <td className="px-6 py-4">
-                        <div className="text-[14px] font-bold text-text-primary">
-                          {new Date(patient.completedAt).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
-                        </div>
-                        <div className="text-[11px] text-text-secondary">
-                          {new Date(patient.completedAt).toLocaleDateString("en-GB")}
-                        </div>
-                      </td>
-
-                      {/* Wait Time */}
-                      <td className="px-6 py-4">
-                        <span
-                          className={`text-[14px] font-bold ${patient.actualDuration <= 10
-                              ? "text-green-400"
-                              : patient.actualDuration <= 20
-                                ? "text-yellow-400"
-                                : "text-orange-400"
-                            }`}
-                        >
-                          {patient.actualDuration} MIN
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-widest uppercase border text-green-400 bg-green-400/10 border-green-400/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          {patient.status}
-                        </span>
+                </thead>
+                <tbody className="divide-y divide-border-muted/30">
+                  {patients.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center text-text-secondary">
+                        No data found
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* ✅ Premium Registry Style Pagination */}
-          {pagination.total > 0 && (
-            <div className="px-6 py-5 border-t border-border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/30">
-              <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] flex items-center gap-2">
-                <span className="opacity-50">Registry Index:</span>
-                <span className="text-text-primary bg-surface-variant px-2 py-0.5 rounded">
-                  {(pagination.page - 1) * 10 + 1} — {Math.min(pagination.page * 10, pagination.total)}
-                </span>
-                <span className="opacity-50">/</span>
-                <span className="text-text-primary">{pagination.total}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page <= 1}
-                  className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
-                >
-                  Prev
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
-                    const pageNum = i + 1;
-                    const isActive = pagination.page === pageNum;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`w-8 h-8 rounded-xl text-[11px] font-black transition-all border ${
-                          isActive 
-                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                            : "bg-bg-secondary border-border-muted/50 text-text-primary hover:border-text-secondary"
-                        }`}
+                  ) : (
+                    patients.map((patient) => (
+                      <tr
+                        key={patient._id}
+                        className="group hover:bg-surface-variant/50 transition-all"
                       >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                  {pagination.pages > 5 && (
-                    <span className="px-1 text-text-secondary opacity-50 font-black">...</span>
+                        {/* Token */}
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-sm font-bold">
+                            #{String(patient.tokenNumber).padStart(3, "0")}
+                          </span>
+                        </td>
+
+                        {/* Patient */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600 font-black text-sm">
+                              {patient.patientName?.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-[14px] font-bold text-text-primary">
+                                {patient.patientName}
+                              </div>
+                              <div className="text-[11px] text-text-secondary">
+                                {patient.phone || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Doctor */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[16px] text-text-secondary">
+                              stethoscope
+                            </span>
+                            <span className="text-[14px] text-text-primary font-medium">
+                              {patient.doctorName || patient.assignedDoctor || "—"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Facility Badge */}
+                        <td className="px-6 py-4">
+                          {getFacilityBadge(patient.facilityType)}
+                        </td>
+
+                        {/* Completed At */}
+                        <td className="px-6 py-4">
+                          <div className="text-[14px] font-bold text-text-primary">
+                            {new Date(patient.completedAt).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </div>
+                          <div className="text-[11px] text-text-secondary">
+                            {new Date(patient.completedAt).toLocaleDateString("en-GB")}
+                          </div>
+                        </td>
+
+                        {/* Wait Time */}
+                        <td className="px-6 py-4">
+                          <span
+                            className={`text-[14px] font-bold ${patient.actualDuration <= 10
+                                ? "text-green-400"
+                                : patient.actualDuration <= 20
+                                  ? "text-yellow-400"
+                                  : "text-orange-400"
+                              }`}
+                          >
+                            {patient.actualDuration} MIN
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-widest uppercase border text-green-400 bg-green-400/10 border-green-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {patient.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
                   )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ✅ Premium Registry Style Pagination */}
+            {pagination.total > 0 && (
+              <div className="px-6 py-5 border-t border-border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/30">
+                <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="opacity-50">Registry Index:</span>
+                  <span className="text-text-primary bg-surface-variant px-2 py-0.5 rounded">
+                    {(pagination.page - 1) * 10 + 1} — {Math.min(pagination.page * 10, pagination.total)}
+                  </span>
+                  <span className="opacity-50">/</span>
+                  <span className="text-text-primary">{pagination.total}</span>
                 </div>
 
-                <button
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page >= pagination.pages}
-                  className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
-                >
-                  Next
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    Prev
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                      const pageNum = i + 1;
+                      const isActive = pagination.page === pageNum;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-xl text-[11px] font-black transition-all border ${
+                            isActive 
+                              ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                              : "bg-bg-secondary border-border-muted/50 text-text-primary hover:border-text-secondary"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    {pagination.pages > 5 && (
+                      <span className="px-1 text-text-secondary opacity-50 font-black">...</span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.pages}
+                    className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        )}
+      </AnimatePage>
     </Layout>
   );
 }

@@ -55,7 +55,12 @@ export default function HourlyBarChart({ data = [], loading }) {
               dy={10} 
             />
             <Tooltip cursor={{ fill: 'var(--surface-variant)', opacity: 0.4 }} content={<CustomTooltip />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            <Bar 
+              dataKey="value" 
+              radius={[4, 4, 0, 0]}
+              animationDuration={1000}
+              animationEasing="ease-out"
+            >
               {data.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 

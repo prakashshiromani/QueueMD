@@ -94,8 +94,10 @@ export default function DailyTrendChart({ data = [], loading }) {
               type="monotone" 
               dataKey="value" 
               stroke="var(--primary-container)" 
-              strokeWidth={3.5}
+              strokeWidth={3}
               fill="url(#dailyGradient)"
+              animationDuration={1000}
+              animationEasing="ease-in-out"
               activeDot={{ r: 6, strokeWidth: 0, className: 'animate-pulse' }}
             />
           </AreaChart>

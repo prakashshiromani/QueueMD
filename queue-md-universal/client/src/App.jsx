@@ -15,29 +15,9 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import CreateInvoice from './pages/CreateInvoice';
 import HelpCenter from './pages/HelpCenter';
-import { Toaster } from 'react-hot-toast';
-import './index.css';
-
 export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: '#1E293B',
-            color: '#F8FAFC',
-            border: '1px solid rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(10px)'
-          },
-          success: {
-            iconTheme: {
-              primary: '#10B981',
-              secondary: '#F8FAFC',
-            },
-          },
-        }}
-      />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

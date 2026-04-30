@@ -1,6 +1,6 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
@@ -55,14 +55,100 @@
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    transition: background-color 300ms, color 300ms;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
-/* THE TRULY UNIQUE CREATIVE SCROLLBAR - RIGHT SHIFTED */
+@layer utilities {
+  /* 🌈 Premium Glassmorphism */
+  .glass-premium {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 
+           shadow-[0_8px_32px_rgba(0,0,0,0.1)];
+  }
+
+  .glass-input {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 
+           shadow-inner focus:ring-2 focus:ring-blue-600/20 
+           focus:border-blue-600 transition-all;
+  }
+
+  /* ✨ Glow Effects */
+  .glow-blue {
+    @apply shadow-[0_0_30px_rgba(59,130,246,0.3)];
+  }
+  
+  .glow-green {
+    @apply shadow-[0_0_30px_rgba(16,185,129,0.3)];
+  }
+
+  /* 🎭 Hover Scale */
+  .hover-lift {
+    @apply transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  /* 📜 Custom Scrollbar - Premium */
+  .scrollbar-premium {
+    scrollbar-width: thin;
+    scrollbar-color: #3B82F6 #1E293B;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-left: 6px solid transparent;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #00f2fe, #764ba2);
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #764ba2, #00f2fe);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.6);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 🎪 Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* 🔔 Toast Customization */
+#root {
+  isolation: isolate;
+}
+
+/* Override global scrollbar for all elements */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3B82F6 transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 10px; /* Slightly thinner overall */
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -70,45 +156,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, #00f2fe, #764ba2);
   border-radius: 100px;
-  border: 3px solid transparent; 
-  background-clip: content-box;
-  box-shadow: 
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.4s ease;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 5px rgba(0, 242, 254, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    180deg,
-    #00f2fe 0%,
-    #4facfe 50%,
-    #764ba2 100%
-  ) !important;
-  border-left: 4px solid transparent !important; /* Expands slightly on hover */
-  border-right: 0px solid transparent !important;
-  background-clip: content-box !important;
-  box-shadow: 
-    0 0 15px rgba(0, 242, 254, 0.4) !important;
-}
-
-::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(
-    180deg,
-    #00f2fe 0%,
-    #4facfe 100%
-  ) !important;
-  border: 1px solid transparent !important;
-}
-
-/* Firefox Support - Matching the Unique Aesthetic */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(79, 172, 254, 0.3) transparent;
+  background: linear-gradient(180deg, #764ba2, #00f2fe);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
 }

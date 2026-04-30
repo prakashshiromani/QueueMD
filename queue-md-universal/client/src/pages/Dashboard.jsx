@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
@@ -6,6 +7,8 @@ import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
 import { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompletedApi, fetchCompletedCountApi } from "../services/api";
 import { socket } from "../services/socket";
 import toast from "react-hot-toast";
+import AnimatePage from "../components/AnimatePage";
+import { SkeletonQueue } from "../components/Skeletons";
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -190,7 +193,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto pb-32">
+      <AnimatePage className="p-6 space-y-6 max-w-7xl mx-auto pb-32">
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 shadow-sm">
@@ -270,7 +273,11 @@ export default function Dashboard() {
         {/* 📊 Premium Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Waiting Patients */}
-          <div className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-blue-500/30 transition-all group shadow-sm">
+          <motion.div 
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-blue-500/30 transition-all group shadow-sm"
+          >
             <div className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" style={{ backgroundColor: config.theme.primary }} />
             <div className="relative flex items-center justify-between">
               <div>
@@ -284,10 +291,14 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-2xl" style={{ color: config.theme.primary }}>groups</span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Avg Wait Time */}
-          <div className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-orange-500/30 transition-all group shadow-sm">
+          <motion.div 
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-orange-500/30 transition-all group shadow-sm"
+          >
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
             <div className="relative flex items-center justify-between">
               <div>
@@ -301,10 +312,14 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-2xl text-orange-500">schedule</span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Completed Today */}
-          <div className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-green-500/30 transition-all group shadow-sm">
+          <motion.div 
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-green-500/30 transition-all group shadow-sm"
+          >
             <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
             <div className="relative flex items-center justify-between">
               <div>
@@ -318,7 +333,7 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-2xl text-green-500">task_alt</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* 🔄 Main Queue Layout */}
@@ -361,7 +376,9 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handleComplete}
                     disabled={loading}
                     className="w-full h-[54px] rounded-xl text-white font-black text-[14px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-50"
@@ -369,12 +386,10 @@ export default function Dashboard() {
                       backgroundColor: config.theme.primary,
                       boxShadow: `0 4px 14px ${config.theme.primary}40`
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                    onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
                   >
                     <span className="material-symbols-outlined text-xl">verified</span>
                     Mark Complete
-                  </button>
+                  </motion.button>
                 </>
               ) : (
                 <div className="space-y-4">
@@ -404,10 +419,7 @@ export default function Dashboard() {
 
             <div className="flex-1 overflow-y-auto max-h-[450px] p-4 space-y-3 custom-scrollbar">
               {loading && queue.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-3">
-                  <span className="material-symbols-outlined animate-spin text-3xl" style={{ color: config.theme.primary }}>refresh</span>
-                  <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">Syncing queue...</p>
-                </div>
+                <SkeletonQueue />
               ) : queue.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center opacity-40">
                   <span className="material-symbols-outlined text-5xl mb-3">inventory_2</span>
@@ -458,7 +470,9 @@ export default function Dashboard() {
 
             {/* Call Next Floating Action */}
             <div className="p-5 border-t border-border-muted/50 bg-surface-variant/20">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleCallNext}
                 disabled={queue.length === 0 || loading}
                 className="w-full h-[56px] rounded-xl text-white font-black text-[15px] uppercase tracking-[0.1em] shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -466,15 +480,13 @@ export default function Dashboard() {
                     backgroundColor: config.theme.primary,
                     boxShadow: `0 4px 14px ${config.theme.primary}40`
                 }}
-                onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
               >
                 <span className="material-symbols-outlined text-xl animate-pulse">campaign</span>
                 {facilityType === 'dental' ? '🦷 Call Next Dental Patient' :
                  facilityType === 'pathlab' ? '🔬 Call Next Sample' :
                  facilityType === 'physio' ? '🧘 Call Next Session' : 
                  `🏥 Call Next: ${queue[0]?.patientName || "Queue Empty"}`}
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -500,7 +512,7 @@ export default function Dashboard() {
              </div>
           </div>
         </div>
-      </div>
+      </AnimatePage>
     </Layout>
   );
 }

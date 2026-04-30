@@ -25,6 +25,7 @@ const queueRoutes = require("./routes/queue.routes");
 const userRoutes = require("./routes/user.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 const patientRoutes = require("./routes/patient.routes");
+const appointmentRoutes = require("./routes/appointment.routes");
 
 const connectDB = require("./config/db");
 
@@ -71,6 +72,7 @@ app.use("/api/queue", queueRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/patients", patientRoutes);
+app.use("/api/appointments", appointmentRoutes);
 
 // Global Error Handling Middleware
 app.use(errorHandler);
