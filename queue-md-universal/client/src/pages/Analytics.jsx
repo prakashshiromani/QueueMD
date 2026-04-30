@@ -43,6 +43,7 @@ export default function Analytics() {
   const [topDoctors, setTopDoctors] = useState([]);
   const [aiInsights, setAiInsights] = useState(null);
   const [branches, setBranches] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [loading, setLoading] = useState(false);
   const [chartsLoading, setChartsLoading] = useState(false);
@@ -91,7 +92,8 @@ export default function Analytics() {
         range: dateRange,
         branchId: selectedBranch,
         startDate: customStart,
-        endDate: customEnd
+        endDate: customEnd,
+        status: statusFilter
       };
       
       const response = await api.get("/analytics/completed-consultations", { params });
@@ -102,7 +104,7 @@ export default function Analytics() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, dateRange, selectedBranch, customStart, customEnd]);
+  }, [debouncedSearch, dateRange, selectedBranch, customStart, customEnd, statusFilter]);
 
   // ✅ Load Stats Summary Cards
   const loadSummary = useCallback(async () => {
@@ -240,6 +242,7 @@ export default function Analytics() {
     setSelectedBranch(null);
     setCustomStart("");
     setCustomEnd("");
+    setStatusFilter("all");
     setPagination({ page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false });
   };
 
@@ -471,6 +474,16 @@ export default function Analytics() {
               </button>
             )}
           </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary font-bold hover:text-text-primary transition outline-none cursor-pointer"
+          >
+            <option value="all">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="no-show">No-Show</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
           <button
             onClick={handleResetFilters}
             className="px-5 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary font-bold hover:text-text-primary transition whitespace-nowrap"
@@ -566,17 +579,17 @@ export default function Analytics() {
                           {getFacilityBadge(patient.facilityType)}
                         </td>
 
-                        {/* Completed At */}
+                        {/* Time */}
                         <td className="px-6 py-4">
                           <div className="text-[14px] font-bold text-text-primary">
-                            {new Date(patient.completedAt).toLocaleTimeString("en-US", {
+                            {new Date(patient.completedAt || patient.createdAt).toLocaleTimeString("en-US", {
                               hour: "2-digit",
                               minute: "2-digit",
                               hour12: true,
                             })}
                           </div>
                           <div className="text-[11px] text-text-secondary">
-                            {new Date(patient.completedAt).toLocaleDateString("en-GB")}
+                            {new Date(patient.completedAt || patient.createdAt).toLocaleDateString("en-GB")}
                           </div>
                         </td>
 
@@ -596,7 +609,11 @@ export default function Analytics() {
 
                         {/* Status */}
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-widest uppercase border text-green-400 bg-green-400/10 border-green-400/20">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-widest uppercase border ${
+                            patient.status === 'completed' ? 'text-green-400 bg-green-400/10 border-green-400/20' :
+                            patient.status === 'no-show' ? 'text-red-400 bg-red-400/10 border-red-400/20' :
+                            'text-orange-400 bg-orange-400/10 border-orange-400/20'
+                          }`}>
                             <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                             {patient.status}
                           </span>

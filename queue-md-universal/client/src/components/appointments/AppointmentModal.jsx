@@ -3,7 +3,7 @@ import { useFacilityStore } from "../../store/facilityStore";
 
 export default function AppointmentModal({ isOpen, onClose, onSubmit, appointment, selectedDate }) {
   const { facilityType } = useFacilityStore();
-  const [form, setForm] = useState({ patientName:"", phone:"", email:"", appointmentDate:"", startTime:"", endTime:"", appointmentType:"general", doctorName:"", notes:"" });
+  const [form, setForm] = useState({ patientName:"", phone:"", email:"", appointmentDate:"", startTime:"", endTime:"", appointmentType:"clinic", doctorName:"", notes:"" });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -62,7 +62,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
               <div><label className={labelCls}>End *</label><input type="time" value={form.endTime} onChange={e=>setForm({...form,endTime:e.target.value})} className={inputCls} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={labelCls}>Type</label><select value={form.appointmentType} onChange={e=>setForm({...form,appointmentType:e.target.value})} className={inputCls}><option value="general">General</option><option value="dental">Dental</option><option value="pathology">Pathology</option><option value="physio">Physio</option></select></div>
+              <div><label className={labelCls}>Type</label><select value={form.appointmentType} onChange={e=>setForm({...form,appointmentType:e.target.value})} className={inputCls}><option value="clinic">Clinic</option><option value="dental">Dental</option><option value="pathlab">Pathlab</option><option value="physio">Physio</option></select></div>
               <div><label className={labelCls}>Doctor</label><input value={form.doctorName} onChange={e=>setForm({...form,doctorName:e.target.value})} className={inputCls} placeholder="Dr. Name" /></div>
             </div>
             <div><label className={labelCls}>Notes</label><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-600/20 resize-none shadow-inner" /></div>

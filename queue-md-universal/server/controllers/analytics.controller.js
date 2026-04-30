@@ -367,10 +367,10 @@ exports.getTopDoctors = async (req, res, next) => {
   }
 };
 
-// ✅ GET COMPLETED CONSULTATIONS (Paginated Log)
+// ✅ GET HISTORICAL CONSULTATIONS (Paginated Log)
 exports.getCompletedConsultations = async (req, res) => {
   try {
-    const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, q } = req.query;
+    const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, q, status } = req.query;
     
     // Parse date range
     const { start, end } = parseDateRange(range, startDate, endDate);
@@ -380,9 +380,16 @@ exports.getCompletedConsultations = async (req, res) => {
     // Build match query
     const matchQuery = {
       facilityId: new mongoose.Types.ObjectId(req.user.facilityId),
-      status: 'completed',
-      completedAt: { $gte: start, $lte: end }
+      createdAt: { $gte: start, $lte: end }
     };
+
+    if (status && status !== 'all') {
+      matchQuery.status = status;
+    } else {
+      // Default to showing everything except maybe 'waiting' or 'in-progress' if it's a "History" log
+      // But usually analytics log = completed + no-show + cancelled
+      matchQuery.status = { $in: ['completed', 'no-show', 'cancelled'] };
+    }
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
@@ -522,10 +529,11 @@ exports.getAIInsights = async (req, res, next) => {
     const noShowRate = total > 0 ? (noShows / total) * 100 : 0;
 
     if (noShowRate > 15) {
+      const estimatedLoss = noShows * 500; // Average ₹500 per consult
       insights.push({
         type: "no_show",
         title: "High No-Show Alert",
-        description: `Your no-show rate is ${Math.round(noShowRate)}%. Significant revenue leakage detected.`,
+        description: `Your no-show rate is ${Math.round(noShowRate)}%. Estimated ₹${estimatedLoss} revenue lost this period.`,
         impact: "high",
         action: "Enable SMS reminders"
       });
@@ -537,6 +545,7 @@ exports.getAIInsights = async (req, res, next) => {
         peakHour,
         avgPeakLoad,
         noShowRate: Math.round(noShowRate),
+        estimatedLoss: noShows * 500,
         insights
       }
     });
