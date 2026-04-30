@@ -120,6 +120,8 @@ exports.login = async (req, res, next) => {
     // Get Facility Name for frontend display
     const facility = await Facility.findById(user.facilityId);
 
+    console.log(`[LOGIN SUCCESS] User: ${user.email}, FacilityType: ${user.facilityType}`);
+
     // Generate JWT
     const token = jwt.sign(
       { 

@@ -26,7 +26,15 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (!validate()) return;
-    try { setLoading(true); await onSubmit({...form, facilityType}); onClose(); }
+    try { 
+      setLoading(true); 
+      // ✅ Explicitly facilityType add karo with fallback
+      await onSubmit({ 
+        ...form, 
+        facilityType: facilityType || "clinic" 
+      }); 
+      onClose(); 
+    }
     catch(err) { setErrors({submit:err.response?.data?.message||"Failed"}); }
     finally { setLoading(false); }
   };

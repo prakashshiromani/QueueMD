@@ -8,13 +8,23 @@ const logger = require("../utils/logger");
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
   try {
-    const { facilityId: authId, facilityType: authType } = req.user || {};
-    const facilityId = authId || req.body.facilityId;
-    const facilityType = authType || req.body.facilityType;
-
-    console.log("🔍 [DEBUG] req.user:", req.user);
+    // 🔥 Pehle token se lo, agar nahi hai toh body se
+    const { facilityId: tokenFacilityId, facilityType: tokenFacilityType } = req.user || {};
+    const { facilityId: bodyFacilityId, facilityType: bodyFacilityType } = req.body;
+    
+    const facilityId = tokenFacilityId || bodyFacilityId;
+    const facilityType = tokenFacilityType || bodyFacilityType; // ✅ Fallback
+    
+    // Debug log
     console.log("🔍 [DEBUG] Final facilityId:", facilityId);
     console.log("🔍 [DEBUG] Final facilityType:", facilityType);
+
+    if (!facilityType) {
+      return res.status(400).json({
+        success: false,
+        message: "facilityType is required (from token or body)"
+      });
+    }
     const { 
       patientName, phone, email, appointmentDate, 
       startTime, endTime, appointmentType, doctorName, notes 
