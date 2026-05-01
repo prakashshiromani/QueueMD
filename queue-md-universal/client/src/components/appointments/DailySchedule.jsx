@@ -60,7 +60,7 @@ export default function DailySchedule({ appointments, stats, onStatusChange, onE
                       {a.status==="confirmed" && <button onClick={()=>onStatusChange(a._id,"checked-in")} className="flex-1 px-3 py-1.5 rounded-lg bg-blue-600/10 text-blue-400 text-[11px] font-bold hover:bg-blue-600/20 transition active:scale-[0.98]">Check-in</button>}
                       {a.status==="checked-in" && <button onClick={()=>onStatusChange(a._id,"completed")} className="flex-1 px-3 py-1.5 rounded-lg bg-gray-600/10 text-gray-400 text-[11px] font-bold hover:bg-gray-600/20 transition active:scale-[0.98]">Complete</button>}
                       <button onClick={()=>onEdit(a)} className="px-3 py-1.5 rounded-lg bg-bg-primary border border-border-muted/50 text-text-secondary text-[11px] font-bold hover:text-text-primary transition">Edit</button>
-                      <button onClick={()=>onDelete(a._id)} className="px-3 py-1.5 rounded-lg bg-red-600/10 text-red-400 text-[11px] font-bold hover:bg-red-600/20 transition"><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                      <button onClick={()=>onDelete(a)} className="px-3 py-1.5 rounded-lg bg-red-600/10 text-red-400 text-[11px] font-bold hover:bg-red-600/20 transition"><span className="material-symbols-outlined text-[16px]">delete</span></button>
                     </div>
                   </div>
                 );

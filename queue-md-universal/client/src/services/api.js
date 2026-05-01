@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -158,6 +158,32 @@ export const updateAppointmentStatusApi = async (id, data) => {
 
 export const deleteAppointmentApi = async (id) => {
   const res = await api.delete(`/appointments/${id}`);
+  return res.data;
+};
+
+export const deletePatientEntirelyApi = async (patientId) => {
+  const res = await api.delete(`/appointments/patients/${patientId}`);
+  return res.data;
+};
+
+// ✅ 9. Lab Reports
+export const fetchLabReportsApi = async (params) => {
+  const res = await api.get("/lab/reports", { params });
+  return res.data;
+};
+
+export const fetchLabStatsApi = async (params) => {
+  const res = await api.get("/lab/stats", { params });
+  return res.data;
+};
+
+export const updateLabStatusApi = async (id, status) => {
+  const res = await api.put(`/lab/${id}/status`, { status });
+  return res.data;
+};
+
+export const createLabOrderApi = async (data) => {
+  const res = await api.post("/lab/create", data);
   return res.data;
 };
 

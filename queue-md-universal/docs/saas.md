@@ -1,29 +1,27 @@
-\# 🚀 QUEUE MD \- UNIVERSAL HEALTHCARE QUEUE SAAS  
-\#\# 📄 Complete Phase-Wise Roadmap (Updated \+ Hybrid Strategy)  
-\`\`\`  
-🎯 Version: 3.4 (Intelligent Analytics, Unified CRM, & Premium Hybrid UI)
-📅 Date: April 2026
+# 🚀 QUEUE MD - UNIVERSAL HEALTHCARE QUEUE SAAS  
+## 📄 Complete Phase-Wise Roadmap (Updated + Hybrid Strategy)  
+```  
+🎯 Version: 3.6 (Premium Hybrid UI & Enhanced Appointment Logic)
+📅 Date: May 2026
 👤 Prepared For: MCA Final Year Student (MERN Stack)
 🏷 Tagline: "Build Once, Scale Everywhere - Predictive Analytics & CRM Integrated"
-\`\`\`
+```
 
-\---
+---
 
-\#\# 🗂 TABLE OF CONTENTS  
-\`\`\`  
+## 🗂 TABLE OF CONTENTS  
+```  
 1️⃣ Strategic Overview (Hybrid Model)  
-2️⃣ Phase 1: Universal Foundation \+ Clinic MVP ✅  
-3️⃣ Phase 2: Real-Time \+ Auth (Clinic-First) ✅  
+2️⃣ Phase 1: Universal Foundation + Clinic MVP ✅  
+3️⃣ Phase 2: Real-Time + Auth (Clinic-First) ✅  
 4️⃣ Phase 3: Multi-Facility Scalability Proof ✅  
 5️⃣ Phase 4: Redis + Notifications (Advanced) ✅ Done
 6️⃣ Phase 5: Payment + Subscription (Razorpay) ✅ (Demo Logic Integrated)
-7️⃣ Phase 6: Intelligent Analytics & CRM (v3.3) ✅ NEW
-8️⃣ Phase 7: Premium UI & Algorithmic Wait Time Engine (v3.4) ✅ NEW
+7️⃣ Phase 6: Intelligent Analytics & CRM (v3.3) ✅
+8️⃣ Phase 7: Premium UI & Advanced Appointment Logic (v3.6) ✅
 9️⃣ All 15 Production Fixes - Cheatsheet  
 🔟 Complete Code Reference (Backend + Frontend)  
 1️⃣1️⃣ Testing + Security Checklist  
-\`\`\`
-
 \---
 
 \#\# 1️⃣ STRATEGIC OVERVIEW (Hybrid Model) 🎯

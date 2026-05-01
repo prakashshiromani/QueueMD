@@ -1,0 +1,287 @@
+const Queue = require('../models/Queue');
+const Patient = require('../models/Patient');
+const mongoose = require('mongoose');
+const { z } = require('zod');
+const logger = require('../utils/logger');
+const { emitQueueUpdate } = require('../sockets/queue.socket');
+
+// Validation schema for lab orders
+const labOrderSchema = z.object({
+  patientName: z.string().min(2),
+  phone: z.string().optional(),
+  customData: z.object({
+    sampleId: z.string().min(1, "Sample ID required"),
+    testType: z.enum(["Blood", "Urine", "X-Ray", "MRI", "CT Scan", "CBC", "Lipid Profile", "Thyroid Panel", "HbA1c"]),
+    reportStatus: z.enum(["pending", "processing", "ready", "delivered"]).optional()
+  })
+});
+
+// ✅ GET ALL LAB REPORTS (with pagination & filters)
+exports.getLabReports = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { 
+      status, 
+      page = 1, 
+      limit = 10, 
+      search,
+      date 
+    } = req.query;
+
+    // Build query
+    const query = {
+      facilityId,
+      facilityType: 'pathlab' // Lab reports only for pathlab
+    };
+
+    // Filter by status if provided
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Search by patient name or sample ID
+    if (search) {
+      query.$or = [
+        { patientName: { $regex: search, $options: 'i' } },
+        { 'customData.sampleId': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by date (today, this week, etc.)
+    if (date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (date === 'today') {
+        query.createdAt = { $gte: today };
+      } else if (date === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        query.createdAt = { $gte: weekAgo };
+      }
+    }
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const reports = await Queue.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Queue.countDocuments(query);
+
+    res.json({
+      success: true,
+      count: reports.length,
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+      reports
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ GET LAB STATS (for summary cards)
+exports.getLabStats = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { date = 'today' } = req.query;
+
+    // Build date filter
+    let dateFilter = {};
+    if (date === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dateFilter = { createdAt: { $gte: today } };
+    }
+
+    // Aggregate stats
+    const stats = await Queue.aggregate([
+      {
+        $match: {
+          facilityId: new mongoose.Types.ObjectId(facilityId),
+          facilityType: 'pathlab',
+          ...dateFilter
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format stats
+    const formattedStats = {
+      pending: 0,
+      processing: 0,
+      ready: 0,
+      delivered: 0,
+      total: 0
+    };
+
+    stats.forEach(stat => {
+      if (stat._id === 'waiting') formattedStats.pending = stat.count;
+      if (stat._id === 'in-progress') formattedStats.processing = stat.count;
+      if (stat._id === 'completed') formattedStats.ready = stat.count;
+      if (stat._id === 'delivered') formattedStats.delivered = stat.count;
+      formattedStats.total += stat.count;
+    });
+
+    res.json({
+      success: true,
+      stats: formattedStats
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ UPDATE LAB STATUS
+exports.updateLabStatus = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status transition
+    const validTransitions = {
+      waiting: ['in-progress', 'cancelled'],
+      'in-progress': ['completed', 'cancelled'],
+      completed: ['delivered']
+    };
+
+    const report = await Queue.findOne({
+      _id: id,
+      facilityId,
+      facilityType: 'pathlab'
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab report not found'
+      });
+    }
+
+    const currentStatus = report.status;
+    const allowedNextStatus = validTransitions[currentStatus] || [];
+
+    if (!allowedNextStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition from ${currentStatus} to ${status}`
+      });
+    }
+
+    // Update status
+    report.status = status;
+    if (status === 'completed') {
+      report.completedAt = new Date();
+    }
+    await report.save();
+
+    // Emit socket event
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'status_update',
+      report
+    });
+
+    logger.info(`Lab report ${report.customData?.get('sampleId')} status updated to ${status}`);
+
+    res.json({
+      success: true,
+      data: report,
+      message: 'Status updated successfully'
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ CREATE NEW LAB ORDER
+exports.createLabOrder = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { patientName, phone, customData } = req.body;
+
+    // Validate input
+    const validation = labOrderSchema.safeParse({
+      patientName,
+      phone,
+      customData
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: validation.error.errors
+      });
+    }
+
+    // Generate next token number
+    const lastToken = await Queue.findOne({
+      facilityId,
+      facilityType: 'pathlab'
+    }).sort({ tokenNumber: -1 });
+
+    const nextToken = (lastToken?.tokenNumber || 0) + 1;
+
+    // Create lab order
+    const labOrder = await Queue.create({
+      facilityId,
+      facilityType: 'pathlab',
+      patientName,
+      phone,
+      customData,
+      tokenNumber: nextToken,
+      status: 'waiting'
+    });
+
+    // Auto-create/update patient in CRM
+    await Patient.findOneAndUpdate(
+      { phone, facilityId },
+      {
+        $set: {
+          name: patientName,
+          phone,
+          facilityId,
+          facilityType: 'pathlab',
+          lastVisit: new Date(),
+          lastVisitType: 'LAB TEST'
+        },
+        $push: {
+          medicalHistory: {
+            condition: `Lab Test: ${customData.testType}`,
+            diagnosedAt: new Date()
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    // Emit socket event
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'add',
+      report: labOrder
+    });
+
+    logger.info(`New lab order created: ${customData.sampleId}`);
+
+    res.status(201).json({
+      success: true,
+      labOrder,
+      message: 'Lab order created successfully'
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};

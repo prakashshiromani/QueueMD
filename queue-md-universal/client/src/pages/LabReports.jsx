@@ -1,382 +1,453 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import { useLabStore } from '../store/labStore';
+import { useAuthStore } from '../store/authStore';
+import { socket } from '../services/socket';
+import { labApi } from '../services/labApi';
+import { Beaker, Search, Filter, Calendar, Plus, X, FlaskConical, Clock, User, Phone, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
-const LabReports = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+export default function LabReports() {
+  const { reports, stats, loading, filters, fetchReports, fetchStats, setFilters, updateReportRealtime, pagination } = useLabStore();
+  const [searchInput, setSearchInput] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form State
   const [formData, setFormData] = useState({
     patientName: '',
-    testType: '',
-    sampleId: '',
-    priority: 'Normal',
-    doctor: '',
-    date: '2023-10-24',
-    time: '09:00',
-    status: 'Pending'
+    phone: '',
+    testType: 'CBC',
+    sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`
   });
 
-  const doctors = [
-    { id: 'STF-1042', name: 'Dr. Sarah Jenkins' },
-    { id: 'STF-2015', name: 'Dr. Michael Chen' },
-  ];
+  // Initial Load
+  useEffect(() => {
+    fetchReports();
+    fetchStats();
+  }, []);
 
-  const testTypes = ['CBC', 'Lipid Profile', 'Thyroid Panel', 'HbA1c', 'Liver Function Test', 'Kidney Function Test'];
+  // Socket Listener for Real-time Updates
+  useEffect(() => {
+    const handleSocketUpdate = (data) => {
+      // Backend emits { action, report }
+      if (data.facilityType === 'pathlab' && data.report) {
+        updateReportRealtime(data.report);
+        if (data.action === 'add') {
+          toast.success(`New lab order: ${data.report.customData?.sampleId || 'Created'}`);
+        }
+      }
+    };
+    socket.on('queue_update', handleSocketUpdate);
+    return () => socket.off('queue_update', handleSocketUpdate);
+  }, []);
 
-  const stats = [
-    { label: 'Pending Samples', value: '24', icon: 'inventory_2', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'Processing', value: '18', icon: 'biotech', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { label: 'Results Ready', value: '42', icon: 'check_circle', color: 'text-green-500', bg: 'bg-green-500/10' },
-  ];
+  // Handle Search with Debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        setFilters({ search: searchInput, page: 1 });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const reports = [
-    {
-      id: 'SMP-8821',
-      name: 'John Smith',
-      initials: 'JS',
-      test: 'Complete Blood Count (CBC)',
-      dateTime: 'Oct 24, 2023 | 09:15 AM',
-      status: 'Ready',
-      statusColor: 'text-green-400 bg-green-400/10 border-green-400/20',
-      accentColor: 'bg-green-500'
-    },
-    {
-      id: 'SMP-8822',
-      name: 'Maria Johnson',
-      initials: 'MJ',
-      test: 'Lipid Profile',
-      dateTime: 'Oct 24, 2023 | 10:30 AM',
-      status: 'Processing',
-      statusColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-      accentColor: 'bg-blue-500'
-    },
-    {
-      id: 'SMP-8823',
-      name: 'Robert Davis',
-      initials: 'RD',
-      test: 'Thyroid Panel (TSH, FT4)',
-      dateTime: 'Oct 24, 2023 | 11:45 AM',
-      status: 'Pending',
-      statusColor: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-      accentColor: 'bg-yellow-500'
-    },
-    {
-      id: 'SMP-8824',
-      name: 'Emily Wilson',
-      initials: 'EW',
-      test: 'HbA1c',
-      dateTime: 'Oct 23, 2023 | 02:10 PM',
-      status: 'Ready',
-      statusColor: 'text-green-400 bg-green-400/10 border-green-400/20',
-      accentColor: 'bg-green-500'
+  const handleCreateOrder = async (e) => {
+    e.preventDefault();
+    if (!formData.patientName || !formData.sampleId) return toast.error("Patient Name & Sample ID required");
+    
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        patientName: formData.patientName,
+        phone: formData.phone,
+        customData: {
+          sampleId: formData.sampleId,
+          testType: formData.testType
+        }
+      };
+      await labApi.createOrder(payload);
+      setIsModalOpen(false);
+      setFormData({
+        patientName: '',
+        phone: '',
+        testType: 'CBC',
+        sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`
+      });
+      // No need to fetchReports manually, socket will handle it or store will unshift
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create lab order");
+    } finally {
+      setIsSubmitting(false);
     }
-  ];
+  };
+
+  const handleStatusUpdate = async (id, currentStatus) => {
+    const transitions = {
+      'waiting': 'in-progress',
+      'in-progress': 'completed',
+      'completed': 'delivered'
+    };
+    const nextStatus = transitions[currentStatus];
+    if (!nextStatus) return;
+
+    try {
+      await labApi.updateStatus(id, nextStatus);
+      toast.success(`Status updated to ${nextStatus}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Update failed");
+    }
+  };
+
+  // Status Badge Helper
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'waiting': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      case 'in-progress': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'completed': return 'text-green-400 bg-green-400/10 border-green-400/20';
+      case 'delivered': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
+      case 'cancelled': return 'text-red-400 bg-red-400/10 border-red-400/20';
+      default: return 'text-text-secondary bg-surface-variant border-border-muted/50';
+    }
+  };
 
   return (
     <Layout>
-      <div className="w-full space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="space-y-6 p-2 pb-[100px] max-w-7xl mx-auto w-full">
+        
+        {/* 1. Page Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-[32px] font-black text-text-primary tracking-tight">Lab Reports</h1>
-            <p className="text-[14px] text-text-secondary mt-1">Manage and track patient test results</p>
+            <h1 className="text-[28px] md:text-[32px] font-black text-text-primary flex items-center gap-3 tracking-tight">
+              <div className="p-2 bg-primary-container/10 rounded-xl">
+                <Beaker className="w-8 h-8 text-primary-container" />
+              </div>
+              Lab Reports
+            </h1>
+            <p className="text-text-secondary text-sm mt-1 ml-1">Manage and track patient test results</p>
           </div>
           <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-6 h-[46px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98]"
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 h-[46px] rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2"
           >
-            <span className="material-symbols-outlined text-[20px]">add</span>
-            New Lab Order
+            <Plus className="w-5 h-5" /> New Lab Order
           </button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {stats.map((stat, idx) => (
-            <div key={idx} className="bg-bg-secondary p-4 rounded-xl border border-border-muted/50 flex items-center justify-between group cursor-pointer hover:border-primary-container/30 transition-all">
-              <div>
-                <div className="text-[12px] font-bold text-text-secondary uppercase tracking-wider">{stat.label}</div>
-                <div className="text-[28px] font-black text-text-primary mt-0">{stat.value}</div>
+        {/* 2. Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Pending Samples', count: stats.pending, color: 'text-yellow-400', icon: '📋', bg: 'bg-yellow-400/10' },
+            { label: 'Processing', count: stats.processing, color: 'text-blue-400', icon: '🔬', bg: 'bg-blue-400/10' },
+            { label: 'Results Ready', count: stats.ready, color: 'text-green-400', icon: '✅', bg: 'bg-green-400/10' },
+            { label: 'Delivered', count: stats.delivered, color: 'text-purple-400', icon: '🚚', bg: 'bg-purple-400/10' }
+          ].map((item, i) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              key={i} 
+              className="bg-bg-secondary border border-border-muted/50 p-5 rounded-2xl hover:border-primary-container/30 transition-all group shadow-sm"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-text-secondary text-[11px] uppercase tracking-[0.15em] font-black">{item.label}</p>
+                  <h3 className={`text-3xl font-black mt-2 tracking-tight ${item.color}`}>{item.count}</h3>
+                </div>
+                <div className={`w-10 h-10 ${item.bg} rounded-xl flex items-center justify-center text-xl grayscale group-hover:grayscale-0 transition-all`}>
+                  {item.icon}
+                </div>
               </div>
-              <div className={`w-9 h-9 rounded-full ${stat.bg} flex items-center justify-center`}>
-                <span className={`material-symbols-outlined text-[20px] ${stat.color}`}>{stat.icon}</span>
-              </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-bg-secondary/80 p-4 rounded-xl border border-border-muted/50 flex flex-col lg:flex-row gap-4 items-center">
+        {/* 3. Filters & Search */}
+        <div className="bg-bg-secondary/80 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 flex flex-col lg:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">search</span>
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
             <input 
-              type="text"
-              placeholder="Search by Patient Name or Sample ID..."
-              className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-[14px] text-text-primary focus:outline-none focus:ring-1 focus:ring-primary-container shadow-inner"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              type="text" 
+              placeholder="Search by Patient Name or Sample ID..." 
+              className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all placeholder:text-text-secondary/50 shadow-inner"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
           
-          <div className="flex items-center gap-3 w-full lg:w-auto">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-text-secondary font-bold text-[13px] hover:text-text-primary hover:bg-white/10 transition-all flex-1 lg:min-w-[140px] shadow-sm">
-              <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-              Today
-              <span className="material-symbols-outlined text-[18px]">expand_more</span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-text-secondary font-bold text-[13px] hover:text-text-primary hover:bg-white/10 transition-all flex-1 lg:min-w-[140px] shadow-sm">
-              <span className="material-symbols-outlined text-[18px]">filter_list</span>
-              All Statuses
-              <span className="material-symbols-outlined text-[18px]">expand_more</span>
-            </button>
+          <div className="flex gap-3 w-full lg:w-auto">
+            <div className="relative flex-1 lg:flex-none">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+              <select 
+                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
+                value={filters.date}
+                onChange={(e) => setFilters({ date: e.target.value })}
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
+            
+            <div className="relative flex-1 lg:flex-none">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+              <select 
+                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
+                value={filters.status}
+                onChange={(e) => setFilters({ status: e.target.value })}
+              >
+                <option value="all">All Statuses</option>
+                <option value="waiting">Pending</option>
+                <option value="in-progress">Processing</option>
+                <option value="completed">Ready</option>
+                <option value="delivered">Delivered</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Reports Table */}
+        {/* 4. Data Table */}
         <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-border-muted bg-surface-variant/50">
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Sample ID</th>
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Patient Name</th>
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Test Type</th>
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Date & Time</th>
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Status</th>
-                  <th className="px-6 py-4 text-[12px] font-black text-text-secondary uppercase tracking-[0.1em]">Actions</th>
+                <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50">
+                  <th className="px-6 py-5">Sample ID</th>
+                  <th className="px-6 py-5">Patient Name</th>
+                  <th className="px-6 py-5">Test Type</th>
+                  <th className="px-6 py-5">Date & Time</th>
+                  <th className="px-6 py-5">Status</th>
+                  <th className="px-6 py-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted/30">
-                {reports.map((report) => (
-                  <tr key={report.id} className="hover:bg-[#1a1d21]/30 transition-colors group relative">
-                    <td className="px-6 py-5 relative">
-                      {/* Left Accent Border */}
-                      <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${report.accentColor}`}></div>
-                      <span className="text-[14px] font-bold text-text-primary tracking-tight">{report.id}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-[11px] font-black text-text-secondary border border-border-muted/30">
-                          {report.initials}
-                        </div>
-                        <span className="text-[15px] font-bold text-text-primary">{report.name}</span>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                        <p className="text-text-secondary text-sm font-medium">Fetching reports...</p>
                       </div>
                     </td>
-                    <td className="px-6 py-5">
-                      <div className="text-[14px] text-text-secondary font-medium">{report.test}</div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="text-[13px] text-text-primary font-bold">{report.dateTime.split(' | ')[0]}</div>
-                      <div className="text-[11px] text-text-secondary uppercase tracking-wider">{report.dateTime.split(' | ')[1]}</div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-widest border ${report.statusColor}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        {report.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <button className="p-2 text-text-secondary hover:text-text-primary transition-colors">
-                        <span className="material-symbols-outlined">more_vert</span>
-                      </button>
+                  </tr>
+                ) : reports.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 bg-bg-primary rounded-2xl flex items-center justify-center text-3xl">📭</div>
+                        <div>
+                          <p className="text-text-primary font-bold">No reports found</p>
+                          <p className="text-text-secondary text-sm mt-1">Try adjusting your filters or search query</p>
+                        </div>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  reports.map((report, idx) => (
+                    <motion.tr 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      key={report._id} 
+                      className="hover:bg-surface-variant/50 transition-colors group"
+                    >
+                      <td className="px-6 py-5">
+                        <span className="font-mono text-xs font-bold text-primary-container bg-primary-container/5 px-2 py-1 rounded border border-primary-container/10">
+                          {report.customData?.sampleId || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-[10px] font-black text-text-secondary border border-border-muted/50">
+                            {report.patientName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                          </div>
+                          <span className="text-sm text-text-primary font-bold tracking-tight">{report.patientName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-sm text-text-secondary font-medium">{report.customData?.testType || 'N/A'}</span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="text-sm text-text-primary font-bold">{new Date(report.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        <div className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">{new Date(report.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${getStatusStyle(report.status)}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current mr-2 animate-pulse"></span>
+                          {(report.status || 'unknown').toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <button 
+                          onClick={() => handleStatusUpdate(report._id, report.status)}
+                          className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50"
+                        >
+                          NEXT STEP
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
           
-          {/* Pagination */}
-          <div className="px-6 py-4 border-t border-border-muted/50 flex items-center justify-between bg-surface-variant/20">
-            <div className="text-[13px] text-text-secondary font-medium">
-              Showing <span className="text-text-primary font-bold">1 to 4</span> of <span className="text-text-primary font-bold">84</span> results
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="p-2 rounded-lg border border-border-muted/50 text-text-secondary hover:text-text-primary disabled:opacity-30" disabled>
-                <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+          {/* Pagination Footer */}
+          <div className="px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-[12px] text-text-secondary font-medium">
+              Showing <span className="text-text-primary font-bold">{reports.length}</span> of <span className="text-text-primary font-bold">{pagination.total}</span> reports
+            </span>
+            <div className="flex gap-2">
+              <button 
+                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
+                disabled={pagination.page === 1}
+                onClick={() => setFilters({ page: pagination.page - 1 })}
+              >
+                Previous
               </button>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3].map(n => (
-                  <button key={n} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold ${n === 1 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-text-secondary hover:bg-surface-variant'}`}>
-                    {n}
+              <div className="flex gap-1">
+                {[...Array(Math.ceil(pagination.total / pagination.limit) || 1)].map((_, i) => (
+                  <button 
+                    key={i}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
+                      pagination.page === i + 1 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                        : 'text-text-secondary hover:bg-bg-primary'
+                    }`}
+                    onClick={() => setFilters({ page: i + 1 })}
+                  >
+                    {i + 1}
                   </button>
                 ))}
-                <span className="text-text-secondary px-1">...</span>
               </div>
-              <button className="p-2 rounded-lg border border-border-muted/50 text-text-secondary hover:text-text-primary">
-                <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+              <button 
+                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
+                disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
+                onClick={() => setFilters({ page: pagination.page + 1 })}
+              >
+                Next
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Add Lab Order Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-[#0F172A]/80 backdrop-blur-sm"
-            onClick={() => setIsAddModalOpen(false)}
-          ></div>
-          
-          {/* Modal Content */}
-          <div className="relative w-full max-w-lg bg-bg-secondary border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                  <span className="material-symbols-outlined">biotech</span>
-                </div>
+      {/* New Lab Order Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-bg-primary/90 backdrop-blur-md"
+              onClick={() => setIsModalOpen(false)}
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-border-muted/30 flex justify-between items-center bg-bg-primary/30">
                 <div>
-                  <h2 className="text-[18px] font-bold text-text-primary leading-tight">New Lab Order</h2>
-                  <p className="text-[12px] text-text-secondary">Register a new sample for testing</p>
+                  <h2 className="text-2xl font-black text-text-primary tracking-tight">New Lab Order</h2>
+                  <p className="text-text-secondary text-xs mt-1">Register a new sample for clinical testing</p>
                 </div>
-              </div>
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            {/* Form Body */}
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Patient Name</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter patient full name"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md"
-                  value={formData.patientName}
-                  onChange={(e) => setFormData({...formData, patientName: e.target.value})}
-                />
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-10 h-10 rounded-xl bg-bg-primary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Test Type</label>
-                  <div className="relative">
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md cursor-pointer"
-                      value={formData.testType}
-                      onChange={(e) => setFormData({...formData, testType: e.target.value})}
-                    >
-                      <option value="" className="bg-bg-secondary text-text-secondary">Select test</option>
-                      {testTypes.map(test => (
-                        <option key={test} value={test} className="bg-bg-secondary text-text-primary">{test}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary/50">
-                      <span className="material-symbols-outlined text-[18px]">expand_more</span>
+              <form onSubmit={handleCreateOrder} className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Patient Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
+                      <input 
+                        required
+                        type="text" 
+                        placeholder="e.g. Rahul Sharma"
+                        className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
+                        value={formData.patientName}
+                        onChange={(e) => setFormData({...formData, patientName: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Phone Number (Optional)</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
+                      <input 
+                        type="tel" 
+                        placeholder="e.g. +91 9876543210"
+                        className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Test Category</label>
+                      <div className="relative">
+                        <Beaker className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
+                        <select 
+                          className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner appearance-none cursor-pointer"
+                          value={formData.testType}
+                          onChange={(e) => setFormData({...formData, testType: e.target.value})}
+                        >
+                          <option value="Blood">Blood Test</option>
+                          <option value="Urine">Urine Test</option>
+                          <option value="X-Ray">X-Ray</option>
+                          <option value="MRI">MRI Scan</option>
+                          <option value="CBC">CBC</option>
+                          <option value="HbA1c">HbA1c</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Sample ID</label>
+                      <div className="relative">
+                        <FlaskConical className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
+                        <input 
+                          required
+                          type="text" 
+                          className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner"
+                          value={formData.sampleId}
+                          onChange={(e) => setFormData({...formData, sampleId: e.target.value})}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Sample ID</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. SMP-9900"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md"
-                    value={formData.sampleId}
-                    onChange={(e) => setFormData({...formData, sampleId: e.target.value})}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Date</label>
-                  <input 
-                    type="date" 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md"
-                    value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Time</label>
-                  <input 
-                    type="time" 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md"
-                    value={formData.time}
-                    onChange={(e) => setFormData({...formData, time: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Refering Doctor</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md cursor-pointer"
-                    value={formData.doctor}
-                    onChange={(e) => setFormData({...formData, doctor: e.target.value})}
+                <div className="pt-4">
+                  <button 
+                    disabled={isSubmitting}
+                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3"
                   >
-                    <option value="" className="bg-bg-secondary text-text-secondary">Select a doctor</option>
-                    {doctors.map(doc => (
-                      <option key={doc.id} value={doc.name} className="bg-bg-secondary text-text-primary">{doc.name}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary/50">
-                    <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                  </div>
+                    {isSubmitting ? (
+                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <CheckCircle2 className="w-5 h-5" />
+                    )}
+                    {isSubmitting ? 'GENERATING...' : 'GENERATE LAB ORDER'}
+                  </button>
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Initial Status</label>
-                <div className="relative">
-                  <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all shadow-inner backdrop-blur-md cursor-pointer"
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="Pending" className="bg-bg-secondary text-text-primary">Pending</option>
-                    <option value="Processing" className="bg-bg-secondary text-text-primary">Processing</option>
-                    <option value="Ready" className="bg-bg-secondary text-text-primary">Ready</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary/50">
-                    <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Priority</label>
-                <div className="flex gap-2 pt-1">
-                  {['Normal', 'Urgent', 'Stat'].map(prio => (
-                    <button 
-                      key={prio}
-                      onClick={() => setFormData({...formData, priority: prio})}
-                      className={`px-6 py-2.5 rounded-xl text-[12px] font-bold border transition-all flex-1 ${
-                        formData.priority === prio 
-                          ? 'bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20' 
-                          : 'bg-white/5 border-white/10 text-text-secondary hover:text-text-primary hover:bg-white/10'
-                      }`}
-                    >
-                      {prio}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-white/10 bg-white/5">
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold text-[14px] py-3.5 rounded-xl transition-all shadow-lg shadow-purple-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[20px]">science</span>
-                GENERATE LAB ORDER
-              </button>
-            </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </Layout>
   );
-};
-
-export default LabReports;
+}

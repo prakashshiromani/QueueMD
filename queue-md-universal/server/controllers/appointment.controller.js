@@ -46,22 +46,25 @@ exports.createAppointment = async (req, res, next) => {
       });
     }
 
-    // 🔒 Check Slot Conflict (Better Error Message)
+    // 🔒 Check Slot Conflict (Overlap detection)
     const conflict = await Appointment.findOne({
       facilityId,
       facilityType,
       appointmentDate: new Date(appointmentDate),
-      startTime,
+      startTime: { $lt: endTime },  // existing start < new end
+      endTime: { $gt: startTime },  // existing end > new start
       status: { $nin: ["cancelled", "no-show"] }
     });
 
     if (conflict) {
       return res.status(409).json({
         success: false,
-        message: `Time slot ${startTime} is already booked for ${appointmentDate}. Please choose a different time.`,
+        message: `Time slot overlaps with existing appointment (${conflict.startTime} - ${conflict.endTime}) on ${appointmentDate}. Please choose a different time.`,
         conflict: {
           patientName: conflict.patientName,
-          tokenNumber: conflict.tokenNumber
+          tokenNumber: conflict.tokenNumber,
+          startTime: conflict.startTime,
+          endTime: conflict.endTime
         }
       });
     }
@@ -300,12 +303,13 @@ exports.updateAppointment = async (req, res, next) => {
       });
     }
 
-    // 🔒 Step 2: Conflict check (exclude current appointment)
+    // 🔒 Step 2: Conflict check (exclude current appointment + overlap detection)
     const conflict = await Appointment.findOne({
       facilityId,
       facilityType,
       appointmentDate: new Date(appointmentDate),
-      startTime,
+      startTime: { $lt: endTime },  // existing start < new end
+      endTime: { $gt: startTime },  // existing end > new start
       _id: { $ne: id }, // ✅ Exclude current
       status: { $nin: ["cancelled", "no-show"] }
     });
@@ -313,7 +317,13 @@ exports.updateAppointment = async (req, res, next) => {
     if (conflict) {
       return res.status(409).json({
         success: false,
-        message: "Slot already booked!"
+        message: `Time slot overlaps with existing appointment (${conflict.startTime} - ${conflict.endTime}) on ${appointmentDate}. Please choose a different time.`,
+        conflict: {
+          patientName: conflict.patientName,
+          tokenNumber: conflict.tokenNumber,
+          startTime: conflict.startTime,
+          endTime: conflict.endTime
+        }
       });
     }
 
@@ -482,6 +492,62 @@ exports.syncToDirectory = async (req, res, next) => {
 
   } catch (err) {
     console.error("❌ Sync Error:", err);
+    next(err);
+  }
+};
+// ✅ DELETE PATIENT & ALL ASSOCIATED RECORDS
+exports.deletePatient = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { facilityId, facilityType } = req.user;
+
+    console.log("=== DELETE PATIENT DEBUG ===");
+    console.log("req.params.patientId:", patientId);
+    console.log("req.user.facilityId:", facilityId);
+    console.log("req.user.facilityType:", facilityType);
+
+    // 1. Find and Delete Patient
+    const patient = await Patient.findOneAndDelete({
+      _id: patientId,
+      facilityId,
+      facilityType
+    });
+
+    if (!patient) {
+      console.log("❌ Patient not found with these criteria in Facility:", facilityId);
+      // Optional: Log if patient exists without filter to confirm isolation
+      const rawPatient = await Patient.findById(patientId);
+      if (rawPatient) {
+        console.log("⚠️ Patient exists but belongs to a different facility:", rawPatient.facilityId);
+      } else {
+        console.log("🚫 Patient ID does not exist in Database at all.");
+      }
+      return res.status(404).json({ success: false, message: "Patient not found" });
+    }
+    console.log("✅ Patient found and deleted:", patient.patientName);
+
+    // 2. Delete ALL Appointments associated with this Patient (Isolated by Facility)
+    await Appointment.deleteMany({ 
+      patientId: patientId,
+      facilityId,
+      facilityType
+    });
+
+    // 3. Delete from Queue if they are waiting
+    await Queue.deleteMany({ phone: patient.phone, facilityId, facilityType });
+
+    // 4. Emit Socket Event (Optional: to refresh lists)
+    emitAppointmentUpdate(facilityId, facilityType, {
+      action: "patient_deleted",
+      patientId
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Patient and all related records deleted successfully" 
+    });
+
+  } catch (err) {
     next(err);
   }
 };

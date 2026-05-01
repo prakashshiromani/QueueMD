@@ -2,14 +2,14 @@
 name: queuemd-universal-saas
 description: >
   Full implementation guide for QueueMD — a Universal Healthcare Queue Management SaaS
-  built with MERN stack. Latest: Version 3.4 (Intelligent Analytics, Unified CRM, & Premium Hybrid UI)
+  built with MERN stack. Latest: Version 3.6 (Premium Hybrid UI & Enhanced Appointment Logic)
   featuring predictive wait times, unified patient records, and multi-tenant isolation.
 ---
 
 # QueueMD — Universal Healthcare Queue SaaS
 
 ## 🎯 Core Philosophy
-- **Version**: 3.4 (Intelligent Analytics, Unified CRM, & Premium Hybrid UI)
+- **Version**: 3.6 (Premium Hybrid UI & Enhanced Appointment Logic)
 - **Tagline**: "Build Once, Scale Everywhere — Support Included, Global Ready"
 - **Strategy**: Universal Codebase + Phased Feature Rollout + Onboarding Optimization
 - **Architecture**: Config-driven, multi-tenant, facility-type isolated
@@ -38,6 +38,7 @@ Default: `"clinic"` — always the Phase 1 starting point.
 | 3.2 | **Intelligent Wait Time** (Rolling average analytics) | ✅ Done |
 | 3.3 | **Unified Patient Directory** (CRM-style management) | ✅ Done |
 | 3.4 | **UI Polish & Premium Interactions** (Glassmorphism + Polished Selects + Custom Popovers) | ✅ Done |
+| 3.5 | **Advanced Appointment Logic** (Auto-Time + Delete Sync + Sidebar Highlights) | ✅ Done |
 | 4 | Redis + BullMQ Notifications | ✅ Done |
 | 5 | Razorpay Payment + Subscription | 🛠 In Progress |
 | 6 | Deploy (Vercel + Render + Atlas) + MCA Defense | 🚀 Planned |
@@ -485,6 +486,8 @@ CRITICAL: The project is wrapped inside a main folder. You must `cd` into the co
 | 16 | Generic Phone Formats | Indian Localization (+91) applied globally |
 | 17 | Cluttered Dashboard | Analytics compaction for better data density |
 | 18 | Support missing | Integrated Global Help Center FAB |
+| 19 | Missing Appointment Deletion | Added direct grid delete + modal delete buttons |
+| 20 | Manual End-Time Entry | Auto-suggest +30m logic + validation added |
 
 ---
 

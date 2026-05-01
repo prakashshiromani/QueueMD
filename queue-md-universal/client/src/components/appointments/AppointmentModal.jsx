@@ -50,12 +50,18 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
       const end = new Date(now.getTime() + 30 * 60000);
       const endTime = `${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
 
-      setForm(prev => ({
-        ...prev, 
+      setForm({
+        patientName: "",
+        phone: "",
+        email: "",
         appointmentDate: selectedDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0],
         startTime,
-        endTime
-      }));
+        endTime,
+        appointmentType: "clinic",
+        doctorName: "",
+        notes: "",
+        customData: {}
+      });
     }
   }, [appointment, selectedDate, isOpen]);
 
@@ -359,11 +365,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
           {appointment && (
             <button
               type="button"
-              onClick={() => {
-                if(confirm("Are you sure you want to delete this appointment?")) {
-                  onDelete(appointment._id);
-                }
-              }}
+              onClick={() => onDelete(appointment)}
               className="px-4 h-[50px] rounded-xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-[14px] hover:bg-red-600/20 flex items-center gap-2 transition-all active:scale-[0.98] mr-auto"
             >
               <span className="material-symbols-outlined text-[18px]">delete</span>

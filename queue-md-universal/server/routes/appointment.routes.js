@@ -9,7 +9,8 @@ const {
   updateAppointment,
   syncToDirectory,
   updateStatus, 
-  deleteAppointment 
+  deleteAppointment,
+  deletePatient 
 } = require("../controllers/appointment.controller");
 
 //  All routes protected
@@ -21,6 +22,7 @@ router.get("/", getAppointments);
 router.get("/today", getTodaySchedule);
 router.put("/:id", updateAppointment);
 router.put("/:id/status", updateStatus);
+router.delete("/patients/:patientId", deletePatient);
 router.delete("/:id", deleteAppointment);
 
 module.exports = router;

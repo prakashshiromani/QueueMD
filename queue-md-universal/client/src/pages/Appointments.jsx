@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import Layout from "../components/Layout";
 import CalendarView from "../components/appointments/CalendarView";
+import DayView from "../components/appointments/DayView";
 import DailySchedule from "../components/appointments/DailySchedule";
 import AppointmentModal from "../components/appointments/AppointmentModal";
 import { socket } from "../services/socket";
@@ -13,6 +14,7 @@ import {
   updateAppointmentApi, 
   updateAppointmentStatusApi, 
   deleteAppointmentApi,
+  deletePatientEntirelyApi,
   syncAppointmentsToDirectoryApi 
 } from "../services/api";
 import { toast } from "react-hot-toast";
@@ -55,7 +57,14 @@ export default function Appointments() {
       if (data.action === "create") setAppointments(prev => [...prev, data.appointment]);
       else if (data.action === "update") setAppointments(prev => prev.map(a => a._id === data.appointment._id ? data.appointment : a));
       else if (data.action === "delete") setAppointments(prev => prev.filter(a => a._id !== data.appointmentId));
-      fetchTodaySchedule().then(d => { setTodaySchedule(d.appointments); setStats(d.stats); });
+      else if (data.action === "patient_deleted") loadData();
+      
+      fetchTodaySchedule().then(d => { 
+        if (d) {
+          setTodaySchedule(d.appointments); 
+          setStats(d.stats); 
+        }
+      });
     });
     return () => socket.off("appointment_update");
   }, [facilityId, facilityType]);
@@ -82,9 +91,47 @@ export default function Appointments() {
     await updateAppointmentStatusApi(id, { status });
   };
 
-  const handleDelete = async (id) => {
-    if (confirm("Delete appointment?")) {
-      await deleteAppointmentApi(id);
+  const handleDelete = async (appointment) => {
+    //  Choice 1: User se confirm karo
+    // OK = Delete Appointment
+    // Cancel = Delete Patient (We handle logic below)
+    const choice = window.confirm(
+      "Delete this Appointment?\n\n" +
+      "Click OK -> Delete Appointment Only\n" +
+      "Click Cancel -> Delete Patient Entirely"
+    );
+
+    if (choice === true) {
+      // ✅ Action: Delete Appointment Only
+      try {
+        await deleteAppointmentApi(appointment._id);
+        toast.success("Appointment deleted!");
+        loadData(); // Refresh
+      } catch (err) {
+        toast.error("Failed to delete appointment");
+      }
+    } 
+    else if (choice === false) {
+      //  Action: User wants to Delete Patient
+      const confirmPatientDelete = window.confirm(
+        "️ WARNING: Are you sure you want to DELETE THIS PATIENT?\n\n" +
+        "This will remove the patient from the Directory AND delete all their past appointments.\n" +
+        "This action cannot be undone."
+      );
+
+      if (confirmPatientDelete === true) {
+        if (!appointment.patientId) {
+          toast.error("Error: Patient ID not found for this appointment.");
+          return;
+        }
+        try {
+          await deletePatientEntirelyApi(appointment.patientId);
+          toast.success("Patient deleted successfully!");
+          loadData(); // Refresh
+        } catch (err) {
+          toast.error("Failed to delete patient");
+        }
+      }
     }
   };
 
@@ -133,10 +180,39 @@ export default function Appointments() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <CalendarView view={view} currentDate={currentDate} appointments={appointments} onDateClick={(d) => { setCurrentDate(d); setIsModalOpen(true); }} onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} onDelete={handleDelete} loading={loading} />
+          <div className={view === "day" ? "lg:col-span-3" : "lg:col-span-2"}>
+            {view === "day" ? (
+              <DayView 
+                date={currentDate} 
+                appointments={appointments} 
+                onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }}
+                onAdd={() => { setSelectedAppointment(null); setIsModalOpen(true); }}
+                loading={loading}
+              />
+            ) : (
+              <CalendarView 
+                view={view} 
+                currentDate={currentDate} 
+                appointments={appointments} 
+                onDateClick={(d) => { setCurrentDate(d); setView("day"); }} 
+                onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }}
+                onDelete={handleDelete}
+                onViewChange={setView}
+                loading={loading}
+              />
+            )}
           </div>
-          <DailySchedule appointments={todaySchedule} stats={stats} onStatusChange={handleStatus} onEdit={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} onDelete={handleDelete} loading={loading} />
+          
+          {view !== "day" && (
+            <DailySchedule 
+              appointments={todaySchedule} 
+              stats={stats} 
+              onStatusChange={handleStatus} 
+              onEdit={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} 
+              onDelete={handleDelete} 
+              loading={loading} 
+            />
+          )}
         </div>
 
         {isModalOpen && (

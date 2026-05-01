@@ -76,5 +76,7 @@ const appointmentSchema = new mongoose.Schema({
 // 🚀 Compound Indexes for Performance
 appointmentSchema.index({ facilityId: 1, facilityType: 1, appointmentDate: 1 });
 appointmentSchema.index({ facilityId: 1, facilityType: 1, status: 1, appointmentDate: 1 });
+// Index for overlap detection queries
+appointmentSchema.index({ facilityId: 1, facilityType: 1, appointmentDate: 1, startTime: 1, endTime: 1 });
 
 module.exports = mongoose.model("Appointment", appointmentSchema);

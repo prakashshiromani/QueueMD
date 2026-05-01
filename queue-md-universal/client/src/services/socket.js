@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
-// Ensure this matches your backend URL
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+// Use a relative URL to leverage the Vite proxy (defined in vite.config.js)
+const SOCKET_URL = "/"; 
 
 // Create a singleton instance
 export const socket = io(SOCKET_URL, {

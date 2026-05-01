@@ -39,7 +39,7 @@ const queueSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["waiting", "in-progress", "completed", "no-show", "cancelled"],
+    enum: ["waiting", "in-progress", "completed", "no-show", "cancelled", "delivered"],
     default: "waiting",
     index: true
   },
