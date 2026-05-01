@@ -9,20 +9,21 @@ export const socket = io(SOCKET_URL, {
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionAttempts: 5,
-  transports: ['websocket', 'polling']
+  transports: ["websocket", "polling"], // ✅ Order matters
+  withCredentials: true
 });
 
-// Debug logs for connection status
+// ✅ Connection event listeners
 socket.on("connect", () => {
-  console.log("✅ Socket Connected to Server:", socket.id);
+  console.log("✅ Socket connected:", socket.id);
 });
 
-socket.on("connect_error", (err) => {
-  console.error("❌ Socket Connection Error:", err.message);
+socket.on("connect_error", (error) => {
+  console.error("❌ Socket connection error:", error.message);
 });
 
-socket.on("disconnect", () => {
-  console.warn("⚠️ Socket Disconnected");
+socket.on("disconnect", (reason) => {
+  console.log("⚠️ Socket disconnected:", reason);
 });
 
 // Helper functions (for compatibility)

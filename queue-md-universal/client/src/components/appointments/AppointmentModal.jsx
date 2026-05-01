@@ -26,17 +26,39 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (!validate()) return;
+    
     try { 
       setLoading(true); 
-      // ✅ Explicitly facilityType add karo with fallback
-      await onSubmit({ 
+      
+      const payload = { 
         ...form, 
-        facilityType: facilityType || "clinic" 
-      }); 
+        facilityType: facilityType || "clinic"
+      };
+      
+      console.log("📤 Creating appointment:", payload);
+      
+      await onSubmit(payload); 
+      
+      // ✅ Success toast
+      import("react-hot-toast").then(toast => {
+        toast.default.success("Appointment created successfully!");
+      });
+      
       onClose(); 
+    } catch(err) { 
+      console.error("❌ Submit error:", err);
+      
+      const message = err.response?.data?.message || "Failed to create appointment";
+      
+      // ✅ Show specific error
+      import("react-hot-toast").then(toast => {
+        toast.default.error(message);
+      });
+      
+      setErrors({submit: message}); 
+    } finally { 
+      setLoading(false); 
     }
-    catch(err) { setErrors({submit:err.response?.data?.message||"Failed"}); }
-    finally { setLoading(false); }
   };
 
   if (!isOpen) return null;

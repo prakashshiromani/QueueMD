@@ -7,16 +7,16 @@ const initSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || "http://localhost:5173",
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       credentials: true
     },
-    transports: ['websocket', 'polling'],
+    transports: ["websocket", "polling"], // ✅ Both transports
     pingTimeout: 60000,
     pingInterval: 25000
   });
 
   io.on("connection", (socket) => {
-    console.log(`⚡ Socket Connected: ${socket.id}`);
+    console.log(`✅ Client connected: ${socket.id}`);
 
     // ✅ Room Join Logic
     socket.on("join_facility", ({ facilityId, facilityType }) => {
@@ -25,8 +25,8 @@ const initSocket = (server) => {
       console.log(`🏥 Socket ${socket.id} joined room: ${room}`);
     });
 
-    socket.on("disconnect", () => {
-      console.log(`❌ Socket Disconnected: ${socket.id}`);
+    socket.on("disconnect", (reason) => {
+      console.log(`❌ Client disconnected: ${socket.id} | Reason: ${reason}`);
     });
   });
 

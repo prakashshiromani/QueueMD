@@ -19,6 +19,13 @@ exports.auth = async (req, res, next) => {
       role: decoded.role
     };
 
+    // Debug log (remove in production)
+    console.log("🔐 Auth Middleware - User:", {
+      id: decoded.id,
+      facilityId: decoded.facilityId,
+      facilityType: decoded.facilityType
+    });
+
     next();
   } catch (err) {
     res.status(401).json({ success: false, message: "Token is not valid" });

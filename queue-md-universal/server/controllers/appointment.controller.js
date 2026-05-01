@@ -8,43 +8,69 @@ const logger = require("../utils/logger");
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
   try {
-    // 🔥 Pehle token se lo, agar nahi hai toh body se
-    const { facilityId: tokenFacilityId, facilityType: tokenFacilityType } = req.user || {};
-    const { facilityId: bodyFacilityId, facilityType: bodyFacilityType } = req.body;
+    // 🔥 Extract from token (ALWAYS trust token over body)
+    const { facilityId, facilityType } = req.user;
     
-    const facilityId = tokenFacilityId || bodyFacilityId;
-    const facilityType = tokenFacilityType || bodyFacilityType; // ✅ Fallback
-    
-    // Debug log
-    console.log("🔍 [DEBUG] Final facilityId:", facilityId);
-    console.log("🔍 [DEBUG] Final facilityType:", facilityType);
+    // Debug log (remove after testing)
+    console.log("🔍 Creating appointment for:", {
+      facilityId,
+      facilityType,
+      userId: req.user.id
+    });
 
+    const { 
+      patientName, 
+      phone, 
+      email, 
+      appointmentDate, 
+      startTime, 
+      endTime, 
+      appointmentType, 
+      doctorName, 
+      notes 
+    } = req.body;
+
+    // ✅ VALIDATION: Ensure facilityType exists
     if (!facilityType) {
       return res.status(400).json({
         success: false,
-        message: "facilityType is required (from token or body)"
+        message: "facilityType is missing from user token. Please login again."
       });
     }
-    const { 
-      patientName, phone, email, appointmentDate, 
-      startTime, endTime, appointmentType, doctorName, notes 
-    } = req.body;
 
-    // 🔒 Check Slot Conflict
+    // ✅ Validate required fields
+    if (!patientName || !appointmentDate || !startTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: patientName, appointmentDate, startTime"
+      });
+    }
+
+    // 🔒 Check Slot Conflict (Better Error Message)
     const conflict = await Appointment.findOne({
-      facilityId, facilityType,
+      facilityId,
+      facilityType,
       appointmentDate: new Date(appointmentDate),
       startTime,
       status: { $nin: ["cancelled", "no-show"] }
     });
 
     if (conflict) {
-      return res.status(409).json({ success: false, message: "Slot already booked!" });
+      return res.status(409).json({
+        success: false,
+        message: `Time slot ${startTime} is already booked for ${appointmentDate}. Please choose a different time.`,
+        conflict: {
+          patientName: conflict.patientName,
+          tokenNumber: conflict.tokenNumber
+        }
+      });
     }
 
-    // 🔢 Generate Token (APPT-001, APPT-002...)
-    const lastAppt = await Appointment.findOne({ facilityId, facilityType })
-      .sort({ createdAt: -1 }).select("tokenNumber");
+    // 🔢 Generate Token
+    const lastAppt = await Appointment.findOne({ 
+      facilityId, 
+      facilityType 
+    }).sort({ createdAt: -1 }).select("tokenNumber");
     
     let nextSeq = 1;
     if (lastAppt?.tokenNumber) {
@@ -53,37 +79,89 @@ exports.createAppointment = async (req, res, next) => {
     }
     const tokenNumber = `APPT-${String(nextSeq).padStart(3, '0')}`;
 
-    // 👤 Upsert Patient (Agar nahi hai toh banayein, hai toh update karein)
-    let patient = await Patient.findOne({ phone });
+    // 👤 Upsert Patient (FIXED ✅)
+    let patient = await Patient.findOne({ 
+      phone, 
+      facilityId,
+      facilityType // ✅ Added for strict isolation
+    });
+    
     if (!patient) {
-      patient = await Patient.create({ facilityId, name: patientName, phone, email });
+      // ✅ FIXED: Include facilityType in Patient.create
+      patient = await Patient.create({ 
+        facilityId, 
+        facilityType, // 🔥 THIS WAS MISSING!
+        name: patientName, 
+        phone, 
+        email,
+        gender: req.body.gender || undefined,
+        age: req.body.age || undefined
+      });
+      
+      console.log("✅ New patient created:", patient._id);
     } else {
-      // Update details if changed
+      // Update existing patient
       patient.name = patientName; 
-      patient.email = email;
+      patient.email = email || patient.email;
+      // Ensure facilityType is set if it was somehow missing
+      if (!patient.facilityType) patient.facilityType = facilityType;
       await patient.save();
+      
+      console.log("🔄 Existing patient updated:", patient._id);
     }
 
-    // ✅ Save Appointment
+    // ✅ Create Appointment
     const newAppointment = await Appointment.create({
-      facilityId, facilityType,
+      facilityId,
+      facilityType, // ✅ Already there
       patientId: patient._id,
-      patientName, phone, email,
-      appointmentDate, startTime, endTime,
-      appointmentType, doctorName, notes,
+      patientName,
+      phone,
+      email,
+      appointmentDate,
+      startTime,
+      endTime,
+      appointmentType,
+      doctorName,
+      notes,
       tokenNumber,
       createdBy: req.user.id
     });
 
-    //  Real-time Socket Emit
+    // 🔥 Real-time Socket Emit
+    const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
     emitAppointmentUpdate(facilityId, facilityType, {
       action: "create",
       appointment: newAppointment
     });
 
-    res.status(201).json({ success: true,  newAppointment });
+    logger.info(`Appointment created: ${tokenNumber} for ${patientName}`);
+
+    res.status(201).json({ 
+      success: true,  
+      appointment: newAppointment,
+      message: "Appointment created successfully"
+    });
 
   } catch (err) {
+    console.error("❌ Create Appointment Error:", err);
+    
+    // ✅ Better error messages
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: Object.values(err.errors).map(e => e.message)
+      });
+    }
+    
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Duplicate entry. This appointment already exists."
+      });
+    }
+    
     next(err);
   }
 };
