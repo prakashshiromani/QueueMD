@@ -141,6 +141,16 @@ export const createAppointmentApi = async (data) => {
   return res.data;
 };
 
+export const syncAppointmentsToDirectoryApi = async () => {
+  const res = await api.post("/appointments/sync-to-directory");
+  return res.data;
+};
+
+export const updateAppointmentApi = async (id, data) => {
+  const res = await api.put(`/appointments/${id}`, data);
+  return res.data;
+};
+
 export const updateAppointmentStatusApi = async (id, data) => {
   const res = await api.put(`/appointments/${id}/status`, data);
   return res.data;

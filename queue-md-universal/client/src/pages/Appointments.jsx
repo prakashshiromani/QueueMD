@@ -6,7 +6,16 @@ import CalendarView from "../components/appointments/CalendarView";
 import DailySchedule from "../components/appointments/DailySchedule";
 import AppointmentModal from "../components/appointments/AppointmentModal";
 import { socket } from "../services/socket";
-import { fetchAppointments, fetchTodaySchedule, createAppointmentApi, updateAppointmentStatusApi, deleteAppointmentApi } from "../services/api";
+import { 
+  fetchAppointments, 
+  fetchTodaySchedule, 
+  createAppointmentApi, 
+  updateAppointmentApi, 
+  updateAppointmentStatusApi, 
+  deleteAppointmentApi,
+  syncAppointmentsToDirectoryApi 
+} from "../services/api";
+import { toast } from "react-hot-toast";
 
 export default function Appointments() {
   const { facilityId, facilityType } = useFacilityStore();
@@ -53,10 +62,20 @@ export default function Appointments() {
 
   useEffect(() => { loadData(); }, [currentDate]);
 
-  const handleCreate = async (formData) => {
-    await createAppointmentApi(formData);
-    setIsModalOpen(false);
-    loadData();
+  const handleSubmit = async (formData) => {
+    try {
+      if (selectedAppointment) {
+        await updateAppointmentApi(selectedAppointment._id, formData);
+      } else {
+        await createAppointmentApi(formData);
+      }
+      setIsModalOpen(false);
+      setSelectedAppointment(null);
+      loadData();
+    } catch (err) {
+      console.error("Submit error:", err);
+      throw err; // Propagate to modal
+    }
   };
 
   const handleStatus = async (id, status) => {
@@ -66,6 +85,16 @@ export default function Appointments() {
   const handleDelete = async (id) => {
     if (confirm("Delete appointment?")) {
       await deleteAppointmentApi(id);
+    }
+  };
+
+  const handleSync = async () => {
+    try {
+      const res = await syncAppointmentsToDirectoryApi();
+      toast.success(res.message);
+      loadData();
+    } catch (err) {
+      toast.error("Sync failed: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -79,9 +108,14 @@ export default function Appointments() {
             </h1>
             <p className="text-[14px] text-text-secondary mt-2">Manage schedules & real-time updates</p>
           </div>
-          <button onClick={() => setIsModalOpen(true)} className="px-6 h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 active:scale-[0.98] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[20px]">add</span> New Appointment
-          </button>
+          <div className="flex gap-3">
+            <button onClick={handleSync} className="px-5 h-[44px] rounded-xl bg-purple-600/10 border border-purple-500/20 text-purple-400 font-bold text-[13px] hover:bg-purple-600/20 transition flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">sync</span> Sync Directory
+            </button>
+            <button onClick={() => setIsModalOpen(true)} className="px-6 h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 active:scale-[0.98] flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px]">add</span> New Appointment
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -106,7 +140,7 @@ export default function Appointments() {
         </div>
 
         {isModalOpen && (
-          <AppointmentModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedAppointment(null); }} onSubmit={handleCreate} appointment={selectedAppointment} selectedDate={currentDate} />
+          <AppointmentModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedAppointment(null); }} onSubmit={handleSubmit} appointment={selectedAppointment} selectedDate={currentDate} />
         )}
       </div>
     </Layout>

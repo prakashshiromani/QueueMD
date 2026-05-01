@@ -87,27 +87,29 @@ exports.createAppointment = async (req, res, next) => {
     });
     
     if (!patient) {
-      // ✅ FIXED: Include facilityType in Patient.create
+      // ✅ NEW PATIENT - Create in Directory
       patient = await Patient.create({ 
         facilityId, 
-        facilityType, // 🔥 THIS WAS MISSING!
+        facilityType,
         name: patientName, 
         phone, 
         email,
         gender: req.body.gender || undefined,
-        age: req.body.age || undefined
+        age: req.body.age || undefined,
+        lastVisit: new Date(appointmentDate) // ✅ Track last visit
       });
       
-      console.log("✅ New patient created:", patient._id);
+      console.log("✅ New patient created in directory:", patient._id);
     } else {
-      // Update existing patient
+      // ✅ EXISTING PATIENT - Update details
       patient.name = patientName; 
       patient.email = email || patient.email;
+      patient.lastVisit = new Date(appointmentDate); // ✅ Update last visit
       // Ensure facilityType is set if it was somehow missing
       if (!patient.facilityType) patient.facilityType = facilityType;
       await patient.save();
       
-      console.log("🔄 Existing patient updated:", patient._id);
+      console.log("🔄 Existing patient updated in directory:", patient._id);
     }
 
     // ✅ Create Appointment
@@ -265,7 +267,85 @@ exports.updateStatus = async (req, res, next) => {
   }
 };
 
-// ✅ 5. Delete Appointment
+// ✅ 5. Update Appointment (Edit Entry)
+exports.updateAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { facilityId, facilityType } = req.user;
+    const { 
+      patientName, 
+      phone, 
+      email, 
+      appointmentDate, 
+      startTime, 
+      endTime, 
+      appointmentType, 
+      doctorName, 
+      notes 
+    } = req.body;
+
+    // 🔒 Check for CONFLICT (but exclude current appointment)
+    const conflict = await Appointment.findOne({
+      facilityId,
+      facilityType,
+      appointmentDate: new Date(appointmentDate),
+      startTime,
+      _id: { $ne: id }, // ✅ CURRENT APPOINTMENT KO EXCLUDE KARO
+      status: { $nin: ["cancelled", "no-show"] }
+    });
+
+    if (conflict) {
+      return res.status(409).json({
+        success: false,
+        message: `Time slot ${startTime} is already booked for ${appointmentDate} by another patient.`
+      });
+    }
+
+    // ✅ Find and Update
+    const updatedAppointment = await Appointment.findOneAndUpdate(
+      { _id: id, facilityId, facilityType },
+      {
+        patientName,
+        phone,
+        email,
+        appointmentDate: new Date(appointmentDate),
+        startTime,
+        endTime,
+        appointmentType,
+        doctorName,
+        notes
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedAppointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+
+    // 🔥 Real-time Socket Emit
+    const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
+    emitAppointmentUpdate(facilityId, facilityType, {
+      action: "update",
+      appointment: updatedAppointment
+    });
+    logger.info(`Appointment updated: ${id}`);
+
+    res.json({
+      success: true,
+      appointment: updatedAppointment,
+      message: "Appointment updated successfully"
+    });
+
+  } catch (err) {
+    console.error("❌ Update Appointment Error:", err);
+    next(err);
+  }
+};
+
+// ✅ 6. Delete Appointment
 exports.deleteAppointment = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -277,6 +357,58 @@ exports.deleteAppointment = async (req, res, next) => {
     emitAppointmentUpdate(facilityId, facilityType, { action: "delete", appointmentId: id });
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ 7. Manual Sync (Emergency CRM Fix)
+exports.syncToDirectory = async (req, res, next) => {
+  try {
+    const { facilityId, facilityType } = req.user;
+    
+    // Get all appointments without patientId or with missing directory links
+    const appointments = await Appointment.find({
+      facilityId,
+      facilityType,
+      $or: [{ patientId: null }, { patientId: { $exists: false } }]
+    });
+
+    let synced = 0;
+
+    for (const apt of appointments) {
+      // Find or create patient
+      let patient = await Patient.findOne({ 
+        phone: apt.phone, 
+        facilityId,
+        facilityType
+      });
+
+      if (!patient) {
+        patient = await Patient.create({
+          facilityId,
+          facilityType,
+          name: apt.patientName,
+          phone: apt.phone,
+          email: apt.email,
+          lastVisit: apt.appointmentDate
+        });
+      }
+
+      // Link appointment to patient
+      apt.patientId = patient._id;
+      await apt.save();
+      
+      synced++;
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully synced ${synced} appointments to patient directory`,
+      synced
+    });
+
+  } catch (err) {
+    console.error("❌ Sync Error:", err);
     next(err);
   }
 };

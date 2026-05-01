@@ -41,7 +41,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
       
       // ✅ Success toast
       import("react-hot-toast").then(toast => {
-        toast.default.success("Appointment created successfully!");
+        toast.default.success(`Appointment ${appointment ? "updated" : "created"} successfully!`);
       });
       
       onClose(); 

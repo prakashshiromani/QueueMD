@@ -6,6 +6,8 @@ const {
   createAppointment, 
   getAppointments, 
   getTodaySchedule, 
+  updateAppointment,
+  syncToDirectory,
   updateStatus, 
   deleteAppointment 
 } = require("../controllers/appointment.controller");
@@ -14,8 +16,10 @@ const {
 router.use(auth);
 
 router.post("/", createAppointment);
+router.post("/sync-to-directory", syncToDirectory);
 router.get("/", getAppointments);
 router.get("/today", getTodaySchedule);
+router.put("/:id", updateAppointment);
 router.put("/:id/status", updateStatus);
 router.delete("/:id", deleteAppointment);
 
