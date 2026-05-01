@@ -12,6 +12,21 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
     else setForm(prev=>({...prev, appointmentDate:selectedDate?.toISOString().split("T")[0]||""}));
   }, [appointment, selectedDate]);
 
+  // ✅ Escape key and scroll lock
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, onClose]);
+
   const validate = () => {
     const e = {};
     if (!form.patientName.trim()) e.patientName="Required";
@@ -66,8 +81,14 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
   const labelCls = "block text-[11px] font-black text-text-secondary uppercase tracking-widest mb-1";
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose} // ✅ Close on backdrop click
+    >
+      <div 
+        className="bg-bg-secondary rounded-2xl border border-border-muted/50 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()} // ✅ Prevent close on content click
+      >
         <div className="p-6 border-b border-border-muted/50">
           <h2 className="text-[20px] font-black text-text-primary">{appointment?"Edit":"New"} Appointment</h2>
           <p className="text-[12px] text-text-secondary mt-1">{appointment?"Update details":"Schedule entry"}</p>
