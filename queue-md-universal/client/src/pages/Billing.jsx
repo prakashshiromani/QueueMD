@@ -15,7 +15,9 @@ import AnimatePage from '../components/AnimatePage';
 const StatsSkeleton = () => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {[1, 2, 3].map((i) => (
-      <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />
+      <div key={i} className="h-32 rounded-2xl animate-pulse glass relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+      </div>
     ))}
   </div>
 );
@@ -23,7 +25,9 @@ const StatsSkeleton = () => (
 const TableSkeleton = () => (
   <div className="space-y-3">
     {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />
+      <div key={i} className="h-16 rounded-xl animate-pulse glass relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+      </div>
     ))}
   </div>
 );
@@ -35,9 +39,13 @@ const EmptyState = () => (
     animate={{ opacity: 1, y: 0 }}
     className="flex flex-col items-center justify-center py-16 text-center"
   >
-    <div className="w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mb-4">
+    <motion.div 
+      animate={{ y: [0, -10, 0] }} 
+      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+      className="w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mb-4"
+    >
       <IndianRupee className="w-12 h-12 text-blue-400" />
-    </div>
+    </motion.div>
     <h3 className="text-xl font-semibold text-white mb-2">No Invoices Yet</h3>
     <p className="text-gray-400 max-w-sm">
       Start by creating your first invoice. Click the "Create Invoice" button to begin.
@@ -68,7 +76,8 @@ const StatCard = ({ title, value, subtext, icon: Icon, color, trend }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="relative overflow-hidden rounded-2xl p-6 backdrop-blur-xl bg-white/5 border border-white/10 shadow-xl hover:border-white/20 transition-all duration-300 group"
+    whileHover={{ scale: 1.02 }}
+    className="relative overflow-hidden rounded-2xl p-6 glass border border-white/10 shadow-xl hover:border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all duration-300 group"
   >
     <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full ${color} blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity`} />
     
@@ -137,12 +146,17 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess }) => {
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       >
+        {loading && (
+          <div className="loading-overlay rounded-2xl">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden"
+          className="relative w-full max-w-lg rounded-2xl glass-strong shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -196,7 +210,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess }) => {
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all appearance-none"
+                className="w-full px-4 py-2.5 glass border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all billing-select"
               >
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
@@ -240,10 +254,14 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess }) => {
 
 // Main Billing Page
 export default function Billing() {
-  const { invoices, stats, loading, fetchInvoices, fetchStats, currentPage, totalPages } = useBillingStore();
+  const { invoices, stats, loading, fetchInvoices, fetchStats, currentPage, totalPages, initSocket } = useBillingStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  useEffect(() => {
+    initSocket(); // Listen to real-time billing updates
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -295,7 +313,7 @@ export default function Billing() {
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8"
         >
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Billing & Invoices</h1>
+            <h1 className="text-3xl font-bold gradient-text mb-1 tracking-tight">Billing & Invoices</h1>
             <p className="text-gray-400">Manage patient payments and financial records</p>
           </div>
           
@@ -364,7 +382,7 @@ export default function Billing() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all appearance-none"
+            className="px-4 py-2.5 glass border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all billing-select"
           >
             <option value="">All Status</option>
             <option value="Paid">Paid</option>
@@ -377,7 +395,7 @@ export default function Billing() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
+          className="glass border border-white/10 rounded-2xl overflow-hidden"
         >
           <div className="p-6 border-b border-white/10">
             <h2 className="text-lg font-semibold text-white">Recent Invoices</h2>
@@ -389,7 +407,7 @@ export default function Billing() {
             ) : invoices.length === 0 ? (
               <EmptyState />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto scrollbar-premium">
                 <table className="w-full">
                   <thead>
                     <tr className="text-left border-b border-white/10">

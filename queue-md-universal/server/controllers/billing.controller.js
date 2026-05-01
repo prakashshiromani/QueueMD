@@ -2,6 +2,7 @@ const Invoice = require("../models/Invoice");
 const { z } = require("zod");
 const logger = require("../utils/logger"); // Tumhare utils se logger aayega
 const mongoose = require("mongoose");
+const { getIO } = require("../sockets/index");
 
 // ✅ Validation Schema (Zod)
 const invoiceSchema = z.object({
@@ -52,6 +53,12 @@ exports.createInvoice = async (req, res, next) => {
     });
 
     logger.info(`Invoice Created: ${newInvoice.invoiceNumber} for ${facilityType}`);
+
+    // 🔥 Emit Socket Event
+    getIO().to(`${facilityId}_${facilityType}`).emit("billing_update", { 
+      type: "NEW_INVOICE", 
+      invoice: newInvoice 
+    });
 
     res.status(201).json({
       success: true,
@@ -178,7 +185,7 @@ exports.getStats = async (req, res, next) => {
 // 4️⃣ UPDATE INVOICE STATUS
 exports.updateInvoiceStatus = async (req, res, next) => {
   try {
-    const { facilityId } = req.user;
+    const { facilityId, facilityType } = req.user;
     const { invoiceId } = req.params;
     const { status } = req.body;
 
@@ -197,6 +204,12 @@ exports.updateInvoiceStatus = async (req, res, next) => {
     }
 
     logger.info(`Invoice ${updatedInvoice.invoiceNumber} status updated to ${status}`);
+
+    // 🔥 Emit Socket Event
+    getIO().to(`${facilityId}_${facilityType}`).emit("billing_update", { 
+      type: "STATUS_UPDATE", 
+      invoice: updatedInvoice 
+    });
 
     res.json({
       success: true,

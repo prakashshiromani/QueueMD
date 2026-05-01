@@ -5,7 +5,7 @@ const SOCKET_URL = "/";
 
 // Create a singleton instance
 export const socket = io(SOCKET_URL, {
-  autoConnect: true,
+  autoConnect: false, // Hum manually connect karenge login ke baad
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionAttempts: 5,
@@ -27,10 +27,32 @@ socket.on("disconnect", (reason) => {
 });
 
 // Helper functions (for compatibility)
-export const connectSocket = () => { if (!socket.connected) socket.connect(); };
-export const disconnectSocket = () => { if (socket.connected) socket.disconnect(); };
-export const joinFacilityRoom = (facilityId, facilityType) => {
-  if (socket.connected) {
+// Helper functions
+export const connectSocket = (facilityId, facilityType) => {
+  if (!socket.connected) {
+    socket.connect();
+    
+    // 🔥 Remove previous listeners to prevent duplicate triggers
+    socket.off("connect");
+    
+    socket.on("connect", () => {
+      console.log("🔌 Socket Connected:", socket.id);
+      
+      // 🔥 CRITICAL: Join Facility-Specific Room
+      const room = `${facilityId}_${facilityType}`;
+      socket.emit("join_facility", { facilityId, facilityType });
+      console.log(`🏥 Joined Room: ${room}`);
+    });
+  } else if (facilityId && facilityType) {
+    // If already connected, just join the room
+    const room = `${facilityId}_${facilityType}`;
     socket.emit("join_facility", { facilityId, facilityType });
+    console.log(`🏥 Already connected. Joined Room: ${room}`);
+  }
+};
+
+export const disconnectSocket = () => {
+  if (socket.connected) {
+    socket.disconnect();
   }
 };

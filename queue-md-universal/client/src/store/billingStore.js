@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { fetchInvoices as fetchInvoicesApi, createInvoiceApi, updateInvoiceStatus as updateInvoiceStatusApi, fetchBillingStats } from '../services/api';
+import { socket } from '../services/socket';
 
 export const useBillingStore = create(
   persist(
@@ -25,6 +26,28 @@ export const useBillingStore = create(
       
       setError: (error) => set({ error }),
       
+      initSocket: () => {
+        socket.off('billing_update'); // Prevent multiple listeners
+        socket.on('billing_update', (data) => {
+          console.log('🔔 Real-time billing update:', data);
+          const { type, invoice } = data;
+          
+          if (type === 'NEW_INVOICE') {
+            set((state) => ({
+              invoices: [invoice, ...state.invoices]
+            }));
+            get().fetchStats();
+          } else if (type === 'STATUS_UPDATE') {
+            set((state) => ({
+              invoices: state.invoices.map((inv) =>
+                inv._id === invoice._id ? invoice : inv
+              )
+            }));
+            get().fetchStats();
+          }
+        });
+      },
+
       fetchInvoices: async (page = 1, filters = {}) => {
         set({ loading: true, error: null });
         try {

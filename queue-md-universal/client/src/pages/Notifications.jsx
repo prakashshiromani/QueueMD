@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import { useNotificationStore } from "../store/notificationStore";
+import { useAuthStore } from "../store/authStore";
+import { connectSocket, socket } from "../services/socket";
 import NotificationCard from "../components/notifications/NotificationCard";
 import Layout from "../components/Layout";
+import AnimatePage from "../components/AnimatePage";
 
 // ✅ Skeleton Loader Component
 const Skeleton = () => (
@@ -30,22 +33,51 @@ const EmptyState = () => (
 );
 
 export default function Notifications() {
-  const { notifications, loading, hasMore, markAllAsRead, unreadCount, setLoading } = useNotificationStore();
+  const { 
+    notifications, 
+    loading, 
+    hasMore, 
+    loadNotifications, 
+    markAllAsRead, 
+    addSocketNotification,
+    unreadCount 
+  } = useNotificationStore();
+  
+  const { user } = useAuthStore(); // Current logged in user
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // TODO: Yahan API call logic aayega (Step 3 me karenge)
-  // Filhal dummy data ya loading state dikhane ke liye ye use karein
+  useEffect(() => {
+    // 1. Data Load
+    loadNotifications();
+
+    // 2. Socket Connect (Agar user login hai)
+    if (user && user.facilityId && user.facilityType) {
+      connectSocket(user.facilityId, user.facilityType);
+
+      // 🔥 Listener Setup
+      socket.on("notification:new", (data) => {
+        addSocketNotification(data);
+      });
+    }
+
+    // Cleanup
+    return () => {
+      socket.off("notification:new");
+    };
+  }, [user, loadNotifications, addSocketNotification]); 
 
   const handleMarkAll = () => {
     markAllAsRead();
-    // API call yahan aayegi (Step 3)
   };
 
   return (
     <Layout>
-      <div className="w-full max-w-2xl mx-auto py-6">
+      <AnimatePage className="w-full max-w-2xl mx-auto py-6 relative">
+        {/* 🔥 Background Glow Effect */}
+        <div className="absolute top-0 left-0 w-full h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="relative flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
               Notifications
@@ -104,7 +136,7 @@ export default function Notifications() {
             </button>
           </div>
         )}
-      </div>
+      </AnimatePage>
     </Layout>
   );
 }

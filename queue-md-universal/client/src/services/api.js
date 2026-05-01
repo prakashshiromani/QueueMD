@@ -214,4 +214,17 @@ export const updateInvoiceStatus = async (invoiceId, status) => {
   return response.data.data;
 };
 
+// ✅ 11. Notification APIs
+export const getNotifications = async (page = 1, limit = 10) => {
+  return await api.get(`/notifications?page=${page}&limit=${limit}`);
+};
+
+export const markNotificationRead = async (id) => {
+  return await api.post(`/notifications/${id}/read`);
+};
+
+export const markAllNotificationsRead = async () => {
+  return await api.post(`/notifications/read-all`);
+};
+
 export default api;
