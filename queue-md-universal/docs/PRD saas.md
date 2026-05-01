@@ -1,6 +1,6 @@
 # 📄 PRD (Product Requirements Document) - UPDATED  
 ## 🏥 QueueMD - Universal Healthcare Queue Management SaaS  
-**Version:** 3.6 | **Date:** May 2026 | **Prepared For:** MCA Final Year Project
+**Version:** 3.7 | **Date:** May 2026 | **Prepared For:** MCA Final Year Project
 **Branding:** QueueMD™ | **Tagline:** *"Predictive Analytics, Unified Healthcare"*
 
 ---
@@ -51,7 +51,7 @@
 - Phase 4: Auth & RBAC System ✅
 - Phase 5: Redis + Notifications (BullMQ) ✅
 - Phase 6: Intelligent Analytics & Unified CRM ✅
-- Phase 7: Premium UX & Advanced Appointment Logic (v3.6) ✅
+- Phase 7: Lab Reports Management (v3.7) ✅
 - Phase 8: Payment & Subscription (Razorpay) 🛠️ (In Progress)
 
 ---
@@ -79,14 +79,32 @@
 
 ---
 
-## 6️⃣ Technical Requirements
+## 7️⃣ Module Specific: Lab Reports Management (v3.7)
+
+### 7.1 Lab Order Lifecycle
+- **Order Creation**: Dedicated form for registering patient samples with custom fields for Test Type and Sample ID.
+- **Status Progression**: Automated transition logic: Waiting → In-Progress → Completed → Delivered.
+- **Real-time Sync**: Every status update and new order creation is broadcasted via Socket.io to all pathlab terminals.
+
+### 7.2 Premium Dashboard UI
+- **Slate Blue Theme**: Replaced hardcoded legacy colors with professional `bg-bg-secondary` (#1E293B) and `bg-surface-variant`.
+- **Glassmorphism Stats**: Interactive cards for "Pending Samples", "Processing", "Results Ready", and "Delivered" with backdrop-blur effects.
+- **Debounced Search**: Optimized filtering system that searches across Patient Name and Sample ID with 500ms debounce.
+
+### 7.3 Data Integrity
+- **Sample ID Generation**: Auto-generating unique SAM-xxxx patterns for new lab orders.
+- **Pagination & Filtering**: Server-side pagination and date/status filtering for high-performance data retrieval.
+
+---
+
+## 8️⃣ Technical Requirements
 
 ### 🖥 Tech Stack
 - **Frontend**: React 18, Vite, Tailwind CSS (Core Logic in standard CSS), Zustand.
 - **Backend**: Node.js, Express, MongoDB (Compound Indexes), Socket.io, BullMQ, Redis.
-- **Documentation**: `design.md`, `saas.md`, `SKILL.md` (Version 3.6 Synchronized).
+- **Documentation**: `design.md`, `saas.md`, `SKILL.md` (Version 3.7 Synchronized).
 
-### 🗄 Database Schema (Appointment Update)
-- Added `calledAt`, `completedAt`, and `waitTime` for analytics.
-- Enhanced `customData` map for facility-specific fields.
-- Robust indexing on `facilityId`, `facilityType`, and `appointmentDate`.
+### 🗄 Database Schema (Lab Reports Update)
+- Added `labApi` service for dedicated lifecycle management.
+- Enhanced `Queue` model usage to support `customData.sampleId` and `customData.testType`.
+- Specific indexes for `facilityType: "pathlab"` status queries.

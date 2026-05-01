@@ -1,5 +1,5 @@
 # 🎨 QueueMD Design System & Architecture
-**Version:** 3.6 | **Release:** May 2026
+**Version:** 3.7 | **Release:** May 2026
 
 ---
 
@@ -22,3 +22,10 @@
     - **Active Appointments**: Highlights the **Latest 3** created entries with a blue border and "New" badge.
     - **Completed Today**: Displays finished tasks with reduced opacity and line-through text.
 - **Real-time Stats**: Robust calculation of Remaining vs. Completed tasks.
+
+### 11.1 Lab Reports Management (v3.7)
+- **Theme**: Premium Slate Blue palette (`#1E293B`) with secondary glassmorphism layers.
+- **Logic**: Sequential status progression (waiting → in-progress → completed → delivered).
+- **Search**: 500ms debounced search on `patientName` and `sampleId`.
+- **Order Modal**: Custom SAM-xxxx generator with Test Category dropdowns (Blood, Urine, etc.).
+- **Real-time**: Socket-based `queue_update` listener for Pathlab specific actions.

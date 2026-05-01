@@ -69,7 +69,7 @@ const Staff = () => {
         <div className="bg-bg-secondary/80 p-4 rounded-xl border border-border-muted/50 flex flex-col lg:flex-row gap-4 items-center shadow-sm">
           <div className="relative flex-1 w-full">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">search</span>
-            <input 
+            <input
               type="text"
               placeholder="Search by name, ID, or email..."
               className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-[14px] text-text-primary focus:outline-none focus:ring-1 focus:ring-primary-container shadow-inner"
@@ -77,7 +77,7 @@ const Staff = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <div className="flex items-center gap-3 w-full lg:w-auto">
             <button className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-text-secondary font-bold text-[13px] hover:text-text-primary hover:bg-white/10 transition-all flex-1 lg:min-w-[140px] shadow-sm">
               <div className="flex items-center gap-2">
@@ -118,10 +118,10 @@ const Staff = () => {
                     {member.profileImage ? (
                       <img src={member.profileImage} alt={member.name} className="w-full h-full object-cover" />
                     ) : (
-                      <img 
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} 
-                        alt={member.name} 
-                        className="w-full h-full object-cover rounded-xl" 
+                      <img
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`}
+                        alt={member.name}
+                        className="w-full h-full object-cover rounded-xl"
                       />
                     )}
                   </div>
@@ -143,14 +143,14 @@ const Staff = () => {
 
                 {/* Info Section */}
                 <div className="space-y-3 pt-2">
-                   <div className="flex items-center gap-3 text-text-secondary">
-                      <span className="material-symbols-outlined text-[18px]">alternate_email</span>
-                      <span className="text-[13px] truncate">{member.email}</span>
-                   </div>
-                   <div className="flex items-center gap-3 text-text-secondary">
-                      <span className="material-symbols-outlined text-[18px]">schedule</span>
-                      <span className="text-[13px]">{member.shift || 'Flexible Shift'}</span>
-                   </div>
+                  <div className="flex items-center gap-3 text-text-secondary">
+                    <span className="material-symbols-outlined text-[18px]">alternate_email</span>
+                    <span className="text-[13px] truncate">{member.email}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-text-secondary">
+                    <span className="material-symbols-outlined text-[18px]">schedule</span>
+                    <span className="text-[13px]">{member.shift || 'Flexible Shift'}</span>
+                  </div>
                 </div>
 
                 {/* Action Buttons */}

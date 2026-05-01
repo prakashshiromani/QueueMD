@@ -2,14 +2,14 @@
 name: queuemd-universal-saas
 description: >
   Full implementation guide for QueueMD — a Universal Healthcare Queue Management SaaS
-  built with MERN stack. Latest: Version 3.6 (Premium Hybrid UI & Enhanced Appointment Logic)
+  built with MERN stack. Latest: Version 3.7 (Premium Lab Reports & Integrated Order Lifecycle)
   featuring predictive wait times, unified patient records, and multi-tenant isolation.
 ---
 
 # QueueMD — Universal Healthcare Queue SaaS
 
 ## 🎯 Core Philosophy
-- **Version**: 3.6 (Premium Hybrid UI & Enhanced Appointment Logic)
+- **Version**: 3.7 (Premium Lab Reports & Integrated Order Lifecycle)
 - **Tagline**: "Build Once, Scale Everywhere — Support Included, Global Ready"
 - **Strategy**: Universal Codebase + Phased Feature Rollout + Onboarding Optimization
 - **Architecture**: Config-driven, multi-tenant, facility-type isolated
@@ -39,6 +39,7 @@ Default: `"clinic"` — always the Phase 1 starting point.
 | 3.3 | **Unified Patient Directory** (CRM-style management) | ✅ Done |
 | 3.4 | **UI Polish & Premium Interactions** (Glassmorphism + Polished Selects + Custom Popovers) | ✅ Done |
 | 3.5 | **Advanced Appointment Logic** (Auto-Time + Delete Sync + Sidebar Highlights) | ✅ Done |
+| 3.6 | **Lab Reports Module** (Integrated Order Lifecycle + Slate Blue UI) | ✅ Done |
 | 4 | Redis + BullMQ Notifications | ✅ Done |
 | 5 | Razorpay Payment + Subscription | 🛠 In Progress |
 | 6 | Deploy (Vercel + Render + Atlas) + MCA Defense | 🚀 Planned |

@@ -27,6 +27,8 @@ const analyticsRoutes = require("./routes/analytics.routes");
 const patientRoutes = require("./routes/patient.routes");
 const appointmentRoutes = require("./routes/appointment.routes");
 const labRoutes = require("./routes/lab.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const billingRoutes = require("./routes/billing.routes");
 
 const connectDB = require("./config/db");
 
@@ -75,6 +77,8 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/lab", labRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/billing", billingRoutes);
 
 // Global Error Handling Middleware
 app.use(errorHandler);

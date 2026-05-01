@@ -9,7 +9,7 @@ const AddStaff = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,7 +54,7 @@ const AddStaff = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate('/staff')}
               className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all active:scale-90"
             >
@@ -65,21 +65,21 @@ const AddStaff = () => {
               <p className="text-[14px] text-text-secondary mt-1 tracking-tight opacity-70">Register a new healthcare professional to the system.</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             {error && (
               <div className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] font-bold animate-in fade-in slide-in-from-top-2 mr-2">
                 {error}
               </div>
             )}
-            <button 
+            <button
               type="button"
               onClick={() => navigate('/staff')}
               className="px-6 h-[48px] rounded-xl text-[14px] font-black text-text-secondary hover:text-text-primary hover:bg-white/5 transition-all"
             >
               Cancel
             </button>
-            <button 
+            <button
               type="submit"
               form="add-staff-form"
               disabled={loading}
@@ -128,34 +128,34 @@ const AddStaff = () => {
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Full Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g. Dr. Sarah Jenkins"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Email Address</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       placeholder="sarah.j@queuemd.com"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Phone Number</label>
-                    <input 
-                      type="tel" 
+                    <input
+                      type="tel"
                       placeholder="+91 98765 43210"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -185,15 +185,14 @@ const AddStaff = () => {
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Select Role</label>
                     <div className="grid grid-cols-2 gap-3">
                       {roles.map((role) => (
-                        <button 
+                        <button
                           key={role.value}
                           type="button"
-                          onClick={() => setFormData({...formData, role: role.value})}
-                          className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
-                            formData.role === role.value 
-                              ? 'bg-purple-500/10 border-purple-500/50 text-purple-400' 
+                          onClick={() => setFormData({ ...formData, role: role.value })}
+                          className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${formData.role === role.value
+                              ? 'bg-purple-500/10 border-purple-500/50 text-purple-400'
                               : 'bg-white/5 border-white/10 text-text-secondary hover:bg-white/10 hover:text-text-primary'
-                          }`}
+                            }`}
                         >
                           <div className={`w-2.5 h-2.5 rounded-full ${formData.role === role.value ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'bg-white/10'}`}></div>
                           <span className="text-[13px] font-bold">{role.label.split(' / ')[0]}</span>
@@ -204,10 +203,10 @@ const AddStaff = () => {
 
                   <div className="space-y-2">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Department</label>
-                    <select 
+                    <select
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary appearance-none outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
                       value={formData.specialization}
-                      onChange={(e) => setFormData({...formData, specialization: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                     >
                       <option value="" className="bg-bg-secondary">Select Department</option>
                       <option value="Cardiology" className="bg-bg-secondary">Cardiology</option>
@@ -234,14 +233,13 @@ const AddStaff = () => {
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Working Days</label>
                     <div className="flex flex-wrap gap-2">
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                        <button 
+                        <button
                           key={day}
                           type="button"
-                          className={`w-[48px] h-[36px] rounded-full border text-[11px] font-black uppercase transition-all ${
-                            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(day)
+                          className={`w-[48px] h-[36px] rounded-full border text-[11px] font-black uppercase transition-all ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(day)
                               ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20'
                               : 'bg-white/5 border-white/10 text-text-secondary hover:text-text-primary'
-                          }`}
+                            }`}
                         >
                           {day}
                         </button>
@@ -253,12 +251,12 @@ const AddStaff = () => {
                     <div className="space-y-2">
                       <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Shift Start</label>
                       <div className="relative">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="09:00 AM"
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-emerald-500/50 outline-none"
                           value={formData.shift.split(' - ')[0]}
-                          onChange={(e) => setFormData({...formData, shift: `${e.target.value} - ${formData.shift.split(' - ')[1]}`})}
+                          onChange={(e) => setFormData({ ...formData, shift: `${e.target.value} - ${formData.shift.split(' - ')[1]}` })}
                         />
                         <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">schedule</span>
                       </div>
@@ -266,12 +264,12 @@ const AddStaff = () => {
                     <div className="space-y-2">
                       <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Shift End</label>
                       <div className="relative">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="05:00 PM"
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-emerald-500/50 outline-none"
                           value={formData.shift.split(' - ')[1]}
-                          onChange={(e) => setFormData({...formData, shift: `${formData.shift.split(' - ')[0]} - ${e.target.value}`})}
+                          onChange={(e) => setFormData({ ...formData, shift: `${formData.shift.split(' - ')[0]} - ${e.target.value}` })}
                         />
                         <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">schedule</span>
                       </div>
@@ -283,9 +281,9 @@ const AddStaff = () => {
                       <h4 className="text-[14px] font-black text-text-primary">System Access</h4>
                       <p className="text-[11px] text-text-secondary mt-0.5">Activate profile immediately</p>
                     </div>
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setFormData({...formData, isActive: !formData.isActive})}
+                      onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
                       className={`w-12 h-6 rounded-full transition-all relative ${formData.isActive ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-white/10'}`}
                     >
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.isActive ? 'left-7' : 'left-1'}`}></div>

@@ -37,7 +37,7 @@ export default function Register() {
       {/* Dynamic Background Elements */}
       <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-500/10 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
-      
+
       <div className="w-full max-w-[540px] relative z-10">
         {/* Logo / Brand Section */}
         <div className="text-center mb-10 group cursor-default">
@@ -57,7 +57,7 @@ export default function Register() {
         {/* Registration Card */}
         <div className="bg-bg-secondary/40 backdrop-blur-2xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-          
+
           <div className="mb-8">
             <h2 className="text-[24px] font-black text-text-primary tracking-tight">Create Your Facility</h2>
             <p className="text-[14px] text-text-secondary mt-1">Setup your professional healthcare environment</p>

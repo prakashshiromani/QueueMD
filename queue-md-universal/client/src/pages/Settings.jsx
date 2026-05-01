@@ -1,10 +1,10 @@
 console.log('Settings.jsx File Loaded at top level');
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { 
-  Building2, Building, Settings2, CreditCard, Upload, Trash2, Check, X, 
-  Shield, Clock, Users, TrendingUp, ChevronDown, Save, RotateCcw, Bell, 
-  MessageSquare, Globe, CheckCircle2, Lock, Zap, Map, Plus, Edit2 
+import {
+  Building2, Building, Settings2, CreditCard, Upload, Trash2, Check, X,
+  Shield, Clock, Users, TrendingUp, ChevronDown, Save, RotateCcw, Bell,
+  MessageSquare, Globe, CheckCircle2, Lock, Zap, Map, Plus, Edit2
 } from 'lucide-react';
 import { useFacilityStore } from '../store/facilityStore';
 import api from '../services/api';
@@ -37,7 +37,7 @@ export default function SettingsPage() {
   // 🔄 Tab State
   const [activeTab, setActiveTab] = useState('management');
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     console.log('SettingsPage Mounted');
   }, []);
@@ -116,7 +116,7 @@ export default function SettingsPage() {
 
         {/* 📐 Layout Grid */}
         <div className="flex flex-col lg:flex-row gap-6">
-          
+
           {/* 📌 Navigation Sidebar (Vertical Desktop / Horizontal Mobile) */}
           <nav className="lg:w-64 flex flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
             {tabs.map((tab) => (
@@ -124,8 +124,8 @@ export default function SettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-bold transition-all whitespace-nowrap lg:whitespace-normal
-                  ${activeTab === tab.id 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                  ${activeTab === tab.id
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                     : 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F8FAFC]'}`}
               >
                 <tab.icon className="w-5 h-5 flex-shrink-0" />
@@ -138,7 +138,7 @@ export default function SettingsPage() {
           <main className="flex-1 min-w-0">
             <div className="bg-[#1E293B]/50 backdrop-blur-sm border border-[#334155]/50 rounded-2xl p-6 md:p-8">
               {renderTabContent()}
-              
+
               {/* 💾 Global Save Bar */}
               <div className="mt-8 pt-6 border-t border-[#334155]/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <p className="text-[12px] text-[#94A3B8]">
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                   <button className="flex-1 sm:flex-none px-6 h-[44px] rounded-xl bg-[#1E293B] border border-[#334155]/50 text-[#F8FAFC] font-bold text-[14px] hover:bg-[#334155] active:scale-[0.98] transition-all">
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleSave}
                     disabled={loading}
                     className="flex-1 sm:flex-none px-6 h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
@@ -237,7 +237,7 @@ function BranchesTab({ facilityId }) {
           <h2 className="text-[20px] font-black text-[#F8FAFC]">Branch Management</h2>
           <p className="text-[13px] text-[#94A3B8]">Manage multiple locations for your facility.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsAdding(true)}
           className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[13px] flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20"
         >
@@ -249,16 +249,16 @@ function BranchesTab({ facilityId }) {
         <div className="bg-[#111418] p-5 rounded-2xl border border-blue-500/30 animate-in slide-in-from-top-4 duration-300">
           <h3 className="text-[14px] font-black text-[#F8FAFC] mb-4 uppercase tracking-widest">Register New Branch</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <input 
+            <input
               placeholder="Branch Name (e.g. South Extension)"
               value={newBranch.name}
-              onChange={(e) => setNewBranch({...newBranch, name: e.target.value})}
+              onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
               className="w-full h-[44px] bg-white/5 border border-white/10 rounded-xl px-4 text-white text-[14px] outline-none focus:border-blue-500"
             />
-            <input 
+            <input
               placeholder="Full Address"
               value={newBranch.address}
-              onChange={(e) => setNewBranch({...newBranch, address: e.target.value})}
+              onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
               className="w-full h-[44px] bg-white/5 border border-white/10 rounded-xl px-4 text-white text-[14px] outline-none focus:border-blue-500"
             />
           </div>
@@ -271,7 +271,7 @@ function BranchesTab({ facilityId }) {
 
       {loading ? (
         <div className="space-y-3">
-          {[1,2].map(i => <div key={i} className="h-20 bg-[#111418] animate-pulse rounded-xl" />)}
+          {[1, 2].map(i => <div key={i} className="h-20 bg-[#111418] animate-pulse rounded-xl" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -289,9 +289,9 @@ function BranchesTab({ facilityId }) {
                   </div>
                   <div>
                     {editingBranch?._id === branch._id ? (
-                      <input 
+                      <input
                         value={editingBranch.name}
-                        onChange={(e) => setEditingBranch({...editingBranch, name: e.target.value})}
+                        onChange={(e) => setEditingBranch({ ...editingBranch, name: e.target.value })}
                         className="bg-white/5 border-b border-blue-500 outline-none text-white font-bold text-[16px]"
                       />
                     ) : (
@@ -304,19 +304,19 @@ function BranchesTab({ facilityId }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => handleToggleActive(branch._id, branch.isActive)}
                     className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${branch.isActive ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}
                   >
                     {branch.isActive ? 'Active' : 'Inactive'}
                   </button>
-                  
+
                   {editingBranch?._id === branch._id ? (
                     <button onClick={handleUpdateBranch} className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center">
                       <Check className="w-5 h-5" />
                     </button>
                   ) : (
-                    <button 
+                    <button
                       onClick={() => setEditingBranch(branch)}
                       className="w-10 h-10 rounded-full bg-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors"
                     >
@@ -336,7 +336,7 @@ function BranchesTab({ facilityId }) {
         <div>
           <h4 className="text-[13px] font-bold text-purple-400 uppercase tracking-widest">Pro Feature Tip</h4>
           <p className="text-[12px] text-[#94A3B8]">
-            Multi-branch analytics aggregation and cross-branch patient history is available on the <strong>Pro Plan</strong>. 
+            Multi-branch analytics aggregation and cross-branch patient history is available on the <strong>Pro Plan</strong>.
             Currently, you can manage up to 5 branches on the Free Tier.
           </p>
         </div>
@@ -420,19 +420,19 @@ function FacilityProfileTab({ facility, setFacility, handleLogoUpload }) {
 
       {/* Form Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-        <InputField 
-          label="Facility Name" 
-          name="name" 
-          value={facility.name} 
-          placeholder="e.g. City General Clinic" 
+        <InputField
+          label="Facility Name"
+          name="name"
+          value={facility.name}
+          placeholder="e.g. City General Clinic"
         />
-        <InputField 
-          label="Facility ID" 
-          name="id" 
-          value={facility.id} 
-          readOnly 
+        <InputField
+          label="Facility ID"
+          name="id"
+          value={facility.id}
+          readOnly
         />
-        
+
         <div className="space-y-2">
           <label className="text-[12px] font-black text-[#94A3B8] uppercase tracking-widest pl-1">Facility Type</label>
           <div className="relative">
@@ -447,30 +447,30 @@ function FacilityProfileTab({ facility, setFacility, handleLogoUpload }) {
           </div>
         </div>
 
-        <InputField 
-          label="Support Email" 
-          name="email" 
-          value={facility.email} 
-          type="email" 
+        <InputField
+          label="Support Email"
+          name="email"
+          value={facility.email}
+          type="email"
           placeholder="e.g. support@cityclinic.com"
         />
-        <InputField 
-          label="Phone Number" 
-          name="contact" 
-          value={facility.contact} 
+        <InputField
+          label="Phone Number"
+          name="contact"
+          value={facility.contact}
           placeholder="e.g. +91 98765 43210"
         />
-        <InputField 
-          label="Working Hours" 
-          name="hours" 
-          value={facility.hours} 
+        <InputField
+          label="Working Hours"
+          name="hours"
+          value={facility.hours}
           placeholder="e.g. Mon - Sat, 09:00 AM - 08:00 PM"
         />
         <div className="md:col-span-2">
-          <InputField 
-            label="Full Address" 
-            name="address" 
-            value={facility.address} 
+          <InputField
+            label="Full Address"
+            name="address"
+            value={facility.address}
             placeholder="e.g. Sector 12, MG Road, New Delhi, 110001"
           />
         </div>
@@ -483,7 +483,7 @@ function ClinicSettingsTab({ facility, setFacility }) {
   const ToggleSwitch = ({ label, checked, onChange }) => (
     <div className="flex items-center justify-between p-4 rounded-xl bg-[#111418] border border-[#334155]/20">
       <span className="text-[14px] font-bold text-[#F8FAFC]">{label}</span>
-      <button 
+      <button
         onClick={() => onChange(!checked)}
         className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${checked ? 'bg-blue-600' : 'bg-[#334155]'}`}
       >
@@ -556,7 +556,7 @@ function ClinicSettingsTab({ facility, setFacility }) {
 
 function SubscriptionTab({ facility }) {
   const isPro = facility.subscriptionPlan === 'pro';
-  
+
   const FeatureItem = ({ text, included, proOnly }) => (
     <div className="flex items-center gap-3 text-[13px] font-bold">
       {included ? <Check className="w-4 h-4 text-green-400" /> : <X className="w-4 h-4 text-red-400" />}

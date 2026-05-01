@@ -53,7 +53,7 @@ const CreateInvoice = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => window.history.back()}
               className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all"
             >
@@ -86,20 +86,20 @@ const CreateInvoice = () => {
                   <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Patient Name</label>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">person</span>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Search patient..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={invoiceData.patientName}
-                      onChange={(e) => setInvoiceData({...invoiceData, patientName: e.target.value})}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, patientName: e.target.value })}
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Invoice #</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner font-mono"
                       value={invoiceData.invoiceNumber}
                       readOnly
@@ -107,11 +107,11 @@ const CreateInvoice = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Date</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={invoiceData.date}
-                      onChange={(e) => setInvoiceData({...invoiceData, date: e.target.value})}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, date: e.target.value })}
                     />
                   </div>
                 </div>
@@ -122,7 +122,7 @@ const CreateInvoice = () => {
             <div className="bg-bg-secondary/50 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl overflow-hidden">
               <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
                 <h3 className="text-[14px] font-bold text-text-primary uppercase tracking-wider">Line Items</h3>
-                <button 
+                <button
                   onClick={addItem}
                   className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-all text-[12px] font-bold"
                 >
@@ -145,8 +145,8 @@ const CreateInvoice = () => {
                     {invoiceData.items.map((item) => (
                       <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4">
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             placeholder="Consultation, Lab Test, etc."
                             className="w-full bg-transparent border-none p-0 text-[14px] text-text-primary placeholder:text-text-secondary/30 focus:ring-0 outline-none"
                             value={item.description}
@@ -154,16 +154,16 @@ const CreateInvoice = () => {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             className="w-full bg-transparent border-none p-0 text-[14px] text-text-primary focus:ring-0 outline-none"
                             value={item.quantity}
                             onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             className="w-full bg-transparent border-none p-0 text-[14px] text-text-primary focus:ring-0 outline-none"
                             value={item.price}
                             onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
@@ -173,7 +173,7 @@ const CreateInvoice = () => {
                           ${(item.quantity * item.price).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <button 
+                          <button
                             onClick={() => removeItem(item.id)}
                             className="text-text-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                           >
@@ -204,11 +204,11 @@ const CreateInvoice = () => {
                 </div>
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="opacity-70">Discount</span>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     className="w-20 bg-white/10 border-none rounded py-0.5 px-2 text-[14px] text-white text-right outline-none focus:ring-1 focus:ring-white/30"
                     value={invoiceData.discount}
-                    onChange={(e) => setInvoiceData({...invoiceData, discount: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, discount: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div className="h-[1px] bg-white/20 my-2"></div>
@@ -226,14 +226,13 @@ const CreateInvoice = () => {
                   <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Payment Status</label>
                   <div className="flex gap-2">
                     {['Paid', 'Pending', 'Partial'].map(status => (
-                      <button 
+                      <button
                         key={status}
-                        onClick={() => setInvoiceData({...invoiceData, status: status})}
-                        className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${
-                          invoiceData.status === status 
-                            ? 'bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20' 
+                        onClick={() => setInvoiceData({ ...invoiceData, status: status })}
+                        className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold border transition-all ${invoiceData.status === status
+                            ? 'bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20'
                             : 'bg-white/5 border-white/10 text-text-secondary hover:text-text-primary'
-                        }`}
+                          }`}
                       >
                         {status}
                       </button>
@@ -244,10 +243,10 @@ const CreateInvoice = () => {
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Payment Method</label>
                   <div className="relative">
-                    <select 
+                    <select
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary appearance-none focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner backdrop-blur-md cursor-pointer"
                       value={invoiceData.paymentMethod}
-                      onChange={(e) => setInvoiceData({...invoiceData, paymentMethod: e.target.value})}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, paymentMethod: e.target.value })}
                     >
                       <option value="Cash" className="bg-bg-secondary">Cash Payment</option>
                       <option value="Card" className="bg-bg-secondary">Credit / Debit Card</option>

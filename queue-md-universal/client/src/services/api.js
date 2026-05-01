@@ -187,4 +187,31 @@ export const createLabOrderApi = async (data) => {
   return res.data;
 };
 
+// ✅ 10. Billing APIs
+export const fetchBillingStats = async () => {
+  const response = await api.get('/billing/stats');
+  return response.data.data;
+};
+
+export const fetchInvoices = async (page = 1, filters = {}) => {
+  const params = {
+    page,
+    limit: 10,
+    ...filters
+  };
+  
+  const response = await api.get('/billing/list', { params });
+  return response.data;
+};
+
+export const createInvoiceApi = async (invoiceData) => {
+  const response = await api.post('/billing/create', invoiceData);
+  return response.data.data;
+};
+
+export const updateInvoiceStatus = async (invoiceId, status) => {
+  const response = await api.patch(`/billing/${invoiceId}/status`, { status });
+  return response.data.data;
+};
+
 export default api;

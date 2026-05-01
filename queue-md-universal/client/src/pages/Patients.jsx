@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 export default function Patients() {
   const { facilityId, facilityType } = useFacilityStore();
-  
+
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,13 +60,13 @@ export default function Patients() {
 
   useEffect(() => {
     fetchPatients();
-    }, [currentPage, searchQuery, selectedFacility, facilityId]);
+  }, [currentPage, searchQuery, selectedFacility, facilityId]);
 
   // ✅ Add patient to queue
   const handleAddToQueue = async (patient) => {
     try {
       setActionLoading(prev => ({ ...prev, [patient._id]: true }));
-      
+
       // ✅ CRITICAL FIX: Patient ki ACTUAL facilityType bhejo, na ki UI ki selected type.
       const payload = {
         patientId: patient._id,
@@ -79,7 +79,7 @@ export default function Patients() {
 
       const res = await addPatientApi(payload);
       toast.success(`Token #${res.data.tokenNumber} generated for ${patient.name}!`);
-      
+
     } catch (error) {
       const msg = error.response?.data?.message || "Failed to add to queue";
       toast.error(msg);
@@ -109,9 +109,9 @@ export default function Patients() {
   const handleToggleStatus = async (patientId) => {
     try {
       // 1. Optimistic Update
-      setPatients(prev => prev.map(p => 
-        p._id === patientId 
-          ? { ...p, status: p.status?.toLowerCase() === "active" ? "Inactive" : "Active" } 
+      setPatients(prev => prev.map(p =>
+        p._id === patientId
+          ? { ...p, status: p.status?.toLowerCase() === "active" ? "Inactive" : "Active" }
           : p
       ));
 
@@ -178,9 +178,9 @@ export default function Patients() {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-GB", {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
     });
   };
 
@@ -211,7 +211,7 @@ export default function Patients() {
     const config = statusConfig[s] || statusConfig.active;
 
     return (
-      <button 
+      <button
         onClick={() => handleToggleStatus(patientId)}
         className={`group/status inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border transition-all active:scale-95 ${config.color} ${config.bg} ${config.border} hover:border-current hover:shadow-sm`}
         title={`Click to mark as ${s === 'active' ? 'Inactive' : 'Active'}`}
@@ -226,14 +226,14 @@ export default function Patients() {
   // Facility badge component
   const FacilityBadge = ({ type }) => {
     const config = FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
-    
+
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border"
-            style={{ 
-              backgroundColor: `${config.theme.primary}15`,
-              color: config.theme.primary,
-              borderColor: `${config.theme.primary}30`
-            }}>
+        style={{
+          backgroundColor: `${config.theme.primary}15`,
+          color: config.theme.primary,
+          borderColor: `${config.theme.primary}30`
+        }}>
         <span className="material-symbols-outlined text-[14px]">{config.icon}</span>
         {config.label}
       </span>
@@ -258,7 +258,7 @@ export default function Patients() {
               <span className="material-symbols-outlined text-[20px]">download</span>
               Export CSV
             </button>
-            <button 
+            <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white font-bold text-[13px] shadow-lg active:scale-[0.98] transition"
               style={{
@@ -301,11 +301,10 @@ export default function Patients() {
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               <button
                 onClick={() => setSelectedFacility("all")}
-                className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${
-                  selectedFacility === "all"
+                className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${selectedFacility === "all"
                     ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
                     : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
-                }`}
+                  }`}
               >
                 All Facilities
               </button>
@@ -313,11 +312,10 @@ export default function Patients() {
                 <button
                   key={type}
                   onClick={() => setSelectedFacility(type)}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-2 border ${
-                    selectedFacility === type
+                  className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-2 border ${selectedFacility === type
                       ? "text-white"
                       : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
-                  }`}
+                    }`}
                   style={selectedFacility === type ? {
                     backgroundColor: config.theme.primary,
                     borderColor: config.theme.primary,
@@ -375,9 +373,9 @@ export default function Patients() {
                     <tr key={patient._id} className="group hover:bg-surface-variant/40 transition-all border-l-4 border-l-transparent hover:border-l-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div 
+                          <div
                             className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[13px] border"
-                            style={{ 
+                            style={{
                               backgroundColor: `${FACILITY_TYPES[patient.facilityType]?.theme.primary}10`,
                               color: FACILITY_TYPES[patient.facilityType]?.theme.primary,
                               borderColor: `${FACILITY_TYPES[patient.facilityType]?.theme.primary}30`
@@ -430,9 +428,9 @@ export default function Patients() {
                             className="px-4 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 font-black text-[11px] tracking-widest uppercase transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
                           >
                             {actionLoading[patient._id] ? (
-                                <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+                              <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
                             ) : (
-                                <span className="material-symbols-outlined text-[16px]">bolt</span>
+                              <span className="material-symbols-outlined text-[16px]">bolt</span>
                             )}
                             ADD TO QUEUE
                           </button>
@@ -488,21 +486,20 @@ export default function Patients() {
                 >
                   Prev
                 </button>
-                
+
                 <div className="flex items-center gap-1.5">
-                    {Array.from({ length: Math.min(Math.ceil(totalPatients / patientsPerPage), 5) }, (_, i) => (
+                  {Array.from({ length: Math.min(Math.ceil(totalPatients / patientsPerPage), 5) }, (_, i) => (
                     <button
-                        key={i + 1}
-                        onClick={() => setCurrentPage(i + 1)}
-                        className={`w-9 h-9 rounded-xl font-black text-[11px] transition-all flex items-center justify-center border shadow-sm ${
-                        currentPage === i + 1
-                            ? "bg-blue-600 text-white border-blue-600 scale-110"
-                            : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-blue-500/50"
+                      key={i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-9 h-9 rounded-xl font-black text-[11px] transition-all flex items-center justify-center border shadow-sm ${currentPage === i + 1
+                          ? "bg-blue-600 text-white border-blue-600 scale-110"
+                          : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-blue-500/50"
                         }`}
                     >
-                        {i + 1}
+                      {i + 1}
                     </button>
-                    ))}
+                  ))}
                 </div>
 
                 <button

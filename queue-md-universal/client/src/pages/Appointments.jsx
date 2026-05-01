@@ -7,15 +7,15 @@ import DayView from "../components/appointments/DayView";
 import DailySchedule from "../components/appointments/DailySchedule";
 import AppointmentModal from "../components/appointments/AppointmentModal";
 import { socket } from "../services/socket";
-import { 
-  fetchAppointments, 
-  fetchTodaySchedule, 
-  createAppointmentApi, 
-  updateAppointmentApi, 
-  updateAppointmentStatusApi, 
+import {
+  fetchAppointments,
+  fetchTodaySchedule,
+  createAppointmentApi,
+  updateAppointmentApi,
+  updateAppointmentStatusApi,
   deleteAppointmentApi,
   deletePatientEntirelyApi,
-  syncAppointmentsToDirectoryApi 
+  syncAppointmentsToDirectoryApi
 } from "../services/api";
 import { toast } from "react-hot-toast";
 
@@ -58,11 +58,11 @@ export default function Appointments() {
       else if (data.action === "update") setAppointments(prev => prev.map(a => a._id === data.appointment._id ? data.appointment : a));
       else if (data.action === "delete") setAppointments(prev => prev.filter(a => a._id !== data.appointmentId));
       else if (data.action === "patient_deleted") loadData();
-      
-      fetchTodaySchedule().then(d => { 
+
+      fetchTodaySchedule().then(d => {
         if (d) {
-          setTodaySchedule(d.appointments); 
-          setStats(d.stats); 
+          setTodaySchedule(d.appointments);
+          setStats(d.stats);
         }
       });
     });
@@ -110,7 +110,7 @@ export default function Appointments() {
       } catch (err) {
         toast.error("Failed to delete appointment");
       }
-    } 
+    }
     else if (choice === false) {
       //  Action: User wants to Delete Patient
       const confirmPatientDelete = window.confirm(
@@ -172,9 +172,9 @@ export default function Appointments() {
             ))}
           </div>
           <div className="flex items-center gap-2 bg-bg-secondary px-4 py-2 rounded-lg border border-border-muted/50">
-            <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()-1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_left</span></button>
+            <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_left</span></button>
             <span className="text-[14px] font-bold text-text-primary min-w-[120px] text-center">{currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
-            <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()+1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_right</span></button>
+            <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_right</span></button>
           </div>
           <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 rounded-lg border border-border-muted/50 text-[13px] font-bold text-text-secondary hover:bg-surface-variant">Today</button>
         </div>
@@ -182,19 +182,19 @@ export default function Appointments() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={view === "day" ? "lg:col-span-3" : "lg:col-span-2"}>
             {view === "day" ? (
-              <DayView 
-                date={currentDate} 
-                appointments={appointments} 
+              <DayView
+                date={currentDate}
+                appointments={appointments}
                 onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }}
                 onAdd={() => { setSelectedAppointment(null); setIsModalOpen(true); }}
                 loading={loading}
               />
             ) : (
-              <CalendarView 
-                view={view} 
-                currentDate={currentDate} 
-                appointments={appointments} 
-                onDateClick={(d) => { setCurrentDate(d); setView("day"); }} 
+              <CalendarView
+                view={view}
+                currentDate={currentDate}
+                appointments={appointments}
+                onDateClick={(d) => { setCurrentDate(d); setView("day"); }}
                 onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }}
                 onDelete={handleDelete}
                 onViewChange={setView}
@@ -202,15 +202,15 @@ export default function Appointments() {
               />
             )}
           </div>
-          
+
           {view !== "day" && (
-            <DailySchedule 
-              appointments={todaySchedule} 
-              stats={stats} 
-              onStatusChange={handleStatus} 
-              onEdit={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} 
-              onDelete={handleDelete} 
-              loading={loading} 
+            <DailySchedule
+              appointments={todaySchedule}
+              stats={stats}
+              onStatusChange={handleStatus}
+              onEdit={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }}
+              onDelete={handleDelete}
+              loading={loading}
             />
           )}
         </div>

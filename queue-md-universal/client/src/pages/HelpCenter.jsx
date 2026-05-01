@@ -73,11 +73,11 @@ const HelpCenter = () => {
           <div className="text-center space-y-6 pt-8">
             <h1 className="text-[36px] md:text-[44px] font-black text-text-primary tracking-tight leading-none">How can we help you today?</h1>
             <p className="text-[16px] text-text-secondary max-w-2xl mx-auto opacity-70">Search our knowledge base for quick answers, guides, and troubleshooting steps.</p>
-            
+
             <div className="relative max-w-2xl mx-auto group">
               <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary opacity-50 group-focus-within:opacity-100 transition-opacity">search</span>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Search for articles, features, or error codes..."
                 className="w-full h-16 bg-bg-secondary/50 backdrop-blur-md border border-white/10 rounded-2xl pl-14 pr-32 text-[15px] text-text-primary outline-none focus:ring-2 focus:ring-blue-500/50 transition-all shadow-xl"
               />
@@ -113,26 +113,26 @@ const HelpCenter = () => {
 
           {/* Popular Articles */}
           <div className="space-y-6">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-blue-400">trending_up</span>
-                  <h2 className="text-[18px] font-black text-text-primary uppercase tracking-widest">Popular Articles</h2>
-                </div>
-                <button className="text-blue-400 text-[13px] font-bold flex items-center gap-1 hover:underline">
-                  View all <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-blue-400">trending_up</span>
+                <h2 className="text-[18px] font-black text-text-primary uppercase tracking-widest">Popular Articles</h2>
+              </div>
+              <button className="text-blue-400 text-[13px] font-bold flex items-center gap-1 hover:underline">
+                View all <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </button>
+            </div>
+            <div className="bg-bg-secondary/50 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden divide-y divide-white/5">
+              {popularArticles.map((article, i) => (
+                <button key={i} className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/5 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-text-secondary opacity-50">description</span>
+                    <span className="text-[14px] font-bold text-text-primary group-hover:text-blue-400 transition-colors">{article}</span>
+                  </div>
+                  <span className="material-symbols-outlined text-text-secondary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">chevron_right</span>
                 </button>
-             </div>
-             <div className="bg-bg-secondary/50 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden divide-y divide-white/5">
-                {popularArticles.map((article, i) => (
-                  <button key={i} className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/5 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <span className="material-symbols-outlined text-text-secondary opacity-50">description</span>
-                      <span className="text-[14px] font-bold text-text-primary group-hover:text-blue-400 transition-colors">{article}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-text-secondary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">chevron_right</span>
-                  </button>
-                ))}
-             </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -160,12 +160,12 @@ const HelpCenter = () => {
           </div>
 
           <div className="bg-bg-secondary/50 backdrop-blur-md border border-white/10 rounded-2xl p-6 space-y-4">
-             <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                <span className="text-[13px] font-bold text-text-primary">All Systems Operational</span>
-             </div>
-             <p className="text-[11px] text-text-secondary opacity-60">Last updated 2 mins ago</p>
-             <button className="text-blue-400 text-[11px] font-black uppercase tracking-widest hover:underline">Status Page</button>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+              <span className="text-[13px] font-bold text-text-primary">All Systems Operational</span>
+            </div>
+            <p className="text-[11px] text-text-secondary opacity-60">Last updated 2 mins ago</p>
+            <button className="text-blue-400 text-[11px] font-black uppercase tracking-widest hover:underline">Status Page</button>
           </div>
         </div>
       </div>

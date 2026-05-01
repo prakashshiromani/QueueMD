@@ -56,7 +56,7 @@ export default function LabReports() {
   const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (!formData.patientName || !formData.sampleId) return toast.error("Patient Name & Sample ID required");
-    
+
     setIsSubmitting(true);
     try {
       const payload = {
@@ -115,7 +115,7 @@ export default function LabReports() {
   return (
     <Layout>
       <div className="space-y-6 p-2 pb-[100px] max-w-7xl mx-auto w-full">
-        
+
         {/* 1. Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -127,7 +127,7 @@ export default function LabReports() {
             </h1>
             <p className="text-text-secondary text-sm mt-1 ml-1">Manage and track patient test results</p>
           </div>
-          <button 
+          <button
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 h-[46px] rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2"
           >
@@ -143,11 +143,11 @@ export default function LabReports() {
             { label: 'Results Ready', count: stats.ready, color: 'text-green-400', icon: '✅', bg: 'bg-green-400/10' },
             { label: 'Delivered', count: stats.delivered, color: 'text-purple-400', icon: '🚚', bg: 'bg-purple-400/10' }
           ].map((item, i) => (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              key={i} 
+              key={i}
               className="bg-bg-secondary border border-border-muted/50 p-5 rounded-2xl hover:border-primary-container/30 transition-all group shadow-sm"
             >
               <div className="flex justify-between items-start">
@@ -167,19 +167,19 @@ export default function LabReports() {
         <div className="bg-bg-secondary/80 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 flex flex-col lg:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
-            <input 
-              type="text" 
-              placeholder="Search by Patient Name or Sample ID..." 
+            <input
+              type="text"
+              placeholder="Search by Patient Name or Sample ID..."
               className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all placeholder:text-text-secondary/50 shadow-inner"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-3 w-full lg:w-auto">
             <div className="relative flex-1 lg:flex-none">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-              <select 
+              <select
                 className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
                 value={filters.date}
                 onChange={(e) => setFilters({ date: e.target.value })}
@@ -189,10 +189,10 @@ export default function LabReports() {
                 <option value="all">All Time</option>
               </select>
             </div>
-            
+
             <div className="relative flex-1 lg:flex-none">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-              <select 
+              <select
                 className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
                 value={filters.status}
                 onChange={(e) => setFilters({ status: e.target.value })}
@@ -245,11 +245,11 @@ export default function LabReports() {
                   </tr>
                 ) : (
                   reports.map((report, idx) => (
-                    <motion.tr 
+                    <motion.tr
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
-                      key={report._id} 
+                      key={report._id}
                       className="hover:bg-surface-variant/50 transition-colors group"
                     >
                       <td className="px-6 py-5">
@@ -270,7 +270,7 @@ export default function LabReports() {
                       </td>
                       <td className="px-6 py-5">
                         <div className="text-sm text-text-primary font-bold">{new Date(report.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                        <div className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">{new Date(report.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        <div className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">{new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
                       <td className="px-6 py-5">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${getStatusStyle(report.status)}`}>
@@ -279,7 +279,7 @@ export default function LabReports() {
                         </span>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <button 
+                        <button
                           onClick={() => handleStatusUpdate(report._id, report.status)}
                           className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50"
                         >
@@ -292,14 +292,14 @@ export default function LabReports() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination Footer */}
           <div className="px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[12px] text-text-secondary font-medium">
               Showing <span className="text-text-primary font-bold">{reports.length}</span> of <span className="text-text-primary font-bold">{pagination.total}</span> reports
             </span>
             <div className="flex gap-2">
-              <button 
+              <button
                 className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
                 disabled={pagination.page === 1}
                 onClick={() => setFilters({ page: pagination.page - 1 })}
@@ -308,20 +308,19 @@ export default function LabReports() {
               </button>
               <div className="flex gap-1">
                 {[...Array(Math.ceil(pagination.total / pagination.limit) || 1)].map((_, i) => (
-                  <button 
+                  <button
                     key={i}
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
-                      pagination.page === i + 1 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${pagination.page === i + 1
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                         : 'text-text-secondary hover:bg-bg-primary'
-                    }`}
+                      }`}
                     onClick={() => setFilters({ page: i + 1 })}
                   >
                     {i + 1}
                   </button>
                 ))}
               </div>
-              <button 
+              <button
                 className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
                 disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
                 onClick={() => setFilters({ page: pagination.page + 1 })}
@@ -337,15 +336,15 @@ export default function LabReports() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-bg-primary/90 backdrop-blur-md"
               onClick={() => setIsModalOpen(false)}
             />
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -356,7 +355,7 @@ export default function LabReports() {
                   <h2 className="text-2xl font-black text-text-primary tracking-tight">New Lab Order</h2>
                   <p className="text-text-secondary text-xs mt-1">Register a new sample for clinical testing</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setIsModalOpen(false)}
                   className="w-10 h-10 rounded-xl bg-bg-primary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
                 >
@@ -370,13 +369,13 @@ export default function LabReports() {
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Patient Full Name</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                      <input 
+                      <input
                         required
-                        type="text" 
+                        type="text"
                         placeholder="e.g. Rahul Sharma"
                         className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
                         value={formData.patientName}
-                        onChange={(e) => setFormData({...formData, patientName: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
                       />
                     </div>
                   </div>
@@ -385,12 +384,12 @@ export default function LabReports() {
                     <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Phone Number (Optional)</label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         placeholder="e.g. +91 9876543210"
                         className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       />
                     </div>
                   </div>
@@ -400,10 +399,10 @@ export default function LabReports() {
                       <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Test Category</label>
                       <div className="relative">
                         <Beaker className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                        <select 
+                        <select
                           className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner appearance-none cursor-pointer"
                           value={formData.testType}
-                          onChange={(e) => setFormData({...formData, testType: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
                         >
                           <option value="Blood">Blood Test</option>
                           <option value="Urine">Urine Test</option>
@@ -418,12 +417,12 @@ export default function LabReports() {
                       <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Sample ID</label>
                       <div className="relative">
                         <FlaskConical className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                        <input 
+                        <input
                           required
-                          type="text" 
+                          type="text"
                           className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner"
                           value={formData.sampleId}
-                          onChange={(e) => setFormData({...formData, sampleId: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, sampleId: e.target.value })}
                         />
                       </div>
                     </div>
@@ -431,7 +430,7 @@ export default function LabReports() {
                 </div>
 
                 <div className="pt-4">
-                  <button 
+                  <button
                     disabled={isSubmitting}
                     className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3"
                   >
