@@ -15,7 +15,7 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
   }, [currentDate, appointments]);
 
   const getColor = (type) => ({
-    general: "bg-blue-500", dental: "bg-pink-500", pathology: "bg-purple-500", physio: "bg-green-500"
+    clinic: "bg-blue-500", dental: "bg-pink-500", pathlab: "bg-purple-500", physio: "bg-green-500"
   }[type?.toLowerCase()] || "bg-blue-500");
 
   if (loading) return <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 p-8 animate-pulse"><div className="h-8 bg-surface-variant rounded mb-4"></div><div className="grid grid-cols-7 gap-2">{[...Array(35)].map((_,i)=><div key={i} className="h-24 bg-surface-variant rounded"></div>)}</div></div>;
@@ -41,7 +41,7 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
         })}
       </div>
       <div className="p-4 border-t border-border-muted/50 flex flex-wrap gap-4">
-        {[{l:"General",c:"bg-blue-500"},{l:"Dental",c:"bg-pink-500"},{l:"Pathology",c:"bg-purple-500"},{l:"Physio",c:"bg-green-500"}].map(x=><div key={x.l} className="flex items-center gap-2"><div className={`w-3 h-3 rounded ${x.c}`}></div><span className="text-[11px] text-text-secondary">{x.l}</span></div>)}
+        {[{l:"Clinic",c:"bg-blue-500"},{l:"Dental",c:"bg-pink-500"},{l:"Pathlab",c:"bg-purple-500"},{l:"Physio",c:"bg-green-500"}].map(x=><div key={x.l} className="flex items-center gap-2"><div className={`w-3 h-3 rounded ${x.c}`}></div><span className="text-[11px] text-text-secondary">{x.l}</span></div>)}
       </div>
     </div>
   );

@@ -196,25 +196,34 @@ exports.getAppointments = async (req, res, next) => {
 exports.getTodaySchedule = async (req, res, next) => {
   try {
     const { facilityId, facilityType } = req.user;
+    
+    // 🔥 Robust Date Range (Start of Day to End of Day)
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // ✅ Fetch ALL appointments for today (no status filter)
     const appointments = await Appointment.find({
-      facilityId, facilityType,
-      appointmentDate: { $gte: today, $lt: tomorrow },
-      status: { $nin: ["cancelled", "completed"] }
-    }).sort({ startTime: 1 });
+      facilityId,
+      facilityType,
+      appointmentDate: { $gte: today, $lt: tomorrow }
+    }).sort({ startTime: 1, createdAt: -1 });
 
-    // Stats Calculation
+    // 🔥 Accurate Stats Calculation
     const stats = {
       total: appointments.length,
-      checkedIn: appointments.filter(a => a.status === "checked-in").length,
-      remaining: appointments.filter(a => a.status !== "checked-in").length
+      completed: appointments.filter(a => a.status === "completed").length,
+      cancelled: appointments.filter(a => a.status === "cancelled").length,
+      remaining: appointments.filter(a => a.status !== "completed" && a.status !== "cancelled").length,
+      checkedIn: appointments.filter(a => a.status === "checked-in").length
     };
 
-    res.json({ success: true,  appointments, stats });
+    res.json({ 
+      success: true, 
+      appointments, 
+      stats 
+    });
   } catch (err) {
     next(err);
   }
@@ -273,42 +282,49 @@ exports.updateAppointment = async (req, res, next) => {
     const { id } = req.params;
     const { facilityId, facilityType } = req.user;
     const { 
-      patientName, 
-      phone, 
-      email, 
-      appointmentDate, 
-      startTime, 
-      endTime, 
-      appointmentType, 
-      doctorName, 
-      notes 
+      patientName, phone, email, appointmentDate, 
+      startTime, endTime, appointmentType, doctorName, notes 
     } = req.body;
 
-    // 🔒 Check for CONFLICT (but exclude current appointment)
+    // 🔍 Step 1: Fetch existing appointment (for patientId + old phone)
+    const existingAppointment = await Appointment.findOne({ 
+      _id: id, 
+      facilityId, 
+      facilityType 
+    });
+
+    if (!existingAppointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+
+    // 🔒 Step 2: Conflict check (exclude current appointment)
     const conflict = await Appointment.findOne({
       facilityId,
       facilityType,
       appointmentDate: new Date(appointmentDate),
       startTime,
-      _id: { $ne: id }, // ✅ CURRENT APPOINTMENT KO EXCLUDE KARO
+      _id: { $ne: id }, // ✅ Exclude current
       status: { $nin: ["cancelled", "no-show"] }
     });
 
     if (conflict) {
       return res.status(409).json({
         success: false,
-        message: `Time slot ${startTime} is already booked for ${appointmentDate} by another patient.`
+        message: "Slot already booked!"
       });
     }
 
-    // ✅ Find and Update
+    // ✅ Step 3: Update Appointment document
     const updatedAppointment = await Appointment.findOneAndUpdate(
       { _id: id, facilityId, facilityType },
       {
         patientName,
         phone,
         email,
-        appointmentDate: new Date(appointmentDate),
+        appointmentDate,
         startTime,
         endTime,
         appointmentType,
@@ -318,20 +334,77 @@ exports.updateAppointment = async (req, res, next) => {
       { new: true, runValidators: true }
     );
 
-    if (!updatedAppointment) {
-      return res.status(404).json({
-        success: false,
-        message: "Appointment not found"
+    // 🔥 Step 4: PATIENT DIRECTORY SYNC (THE FIX)
+    if (existingAppointment.patientId) {
+      // ✅ Case A: Patient already linked - update all relevant fields
+      await Patient.findByIdAndUpdate(
+        existingAppointment.patientId,
+        {
+          name: patientName,
+          email: email || undefined,
+          lastVisit: new Date(appointmentDate),
+          facilityType: appointmentType,              // 🔥 Badge update ke liye
+          lastVisitType: appointmentType.toUpperCase(), // 🔥 Text update ke liye
+          ...(doctorName && { doctorName })
+        },
+        { runValidators: true }
+      );
+      
+    } else {
+      // ✅ Case B: No patientId - find or create patient
+      let patient = await Patient.findOne({ 
+        phone, 
+        facilityId, 
+        facilityType 
       });
+
+      if (!patient) {
+        patient = await Patient.create({
+          facilityId,
+          facilityType: appointmentType,              // 🔥 New patient me bhi
+          name: patientName,
+          phone,
+          email,
+          lastVisit: new Date(appointmentDate),
+          lastVisitType: appointmentType.toUpperCase(), // 🔥
+          ...(doctorName && { doctorName })
+        });
+      } else {
+        patient.name = patientName;
+        patient.email = email || patient.email;
+        patient.lastVisit = new Date(appointmentDate);
+        patient.facilityType = appointmentType;              // 🔥
+        patient.lastVisitType = appointmentType.toUpperCase(); // 🔥
+        if (doctorName) patient.doctorName = doctorName;
+        await patient.save();
+      }
+
+      // Link appointment to patient
+      updatedAppointment.patientId = patient._id;
+      await updatedAppointment.save();
     }
 
-    // 🔥 Real-time Socket Emit
-    const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
+    // 🔥 Step 5: Handle Phone Change Edge Case
+    if (existingAppointment.phone !== phone && existingAppointment.phone) {
+      // Phone changed - unlink from old patient if no other appointments
+      const otherAppointments = await Appointment.countDocuments({
+        patientId: existingAppointment.patientId,
+        _id: { $ne: id }
+      });
+
+      if (otherAppointments === 0) {
+        // Optional: Mark old patient as inactive or keep as-is
+        // For now, we keep it (safer)
+      }
+    }
+
+    // 📡 Step 6: Real-time Socket Emit
     emitAppointmentUpdate(facilityId, facilityType, {
       action: "update",
       appointment: updatedAppointment
     });
-    logger.info(`Appointment updated: ${id}`);
+
+    logger.info(`Appointment updated: ${id} by ${req.user.id}`);
 
     res.json({
       success: true,
