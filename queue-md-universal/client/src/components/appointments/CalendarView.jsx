@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-export default function CalendarView({ view, currentDate, appointments, onDateClick, onAppointmentClick, loading }) {
+export default function CalendarView({ view, currentDate, appointments, onDateClick, onAppointmentClick, onDelete, loading }) {
   const days = useMemo(() => {
     const y = currentDate.getFullYear(), m = currentDate.getMonth();
     const first = new Date(y, m, 1);
@@ -33,7 +33,27 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
             <div key={i} onClick={() => onDateClick(d.date)} className={`h-24 border-b border-r border-border-muted/30 p-2 hover:bg-surface-variant/50 transition cursor-pointer ${isToday ? "bg-blue-600/5" : ""}`}>
               <div className={`text-[12px] font-bold mb-1 w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white" : "text-text-primary"}`}>{d.day}</div>
               <div className="space-y-1 overflow-y-auto max-h-[60px] scrollbar-hide">
-                {d.appts.slice(0,3).map(a=><div key={a._id} onClick={(e)=>{e.stopPropagation();onAppointmentClick(a)}} className={`${getColor(a.appointmentType)} text-white text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:brightness-110`}>{a.startTime} - {a.patientName}</div>)}
+                {d.appts.slice(0,3).map(a=>(
+                  <div 
+                    key={a._id} 
+                    onClick={(e)=>{e.stopPropagation();onAppointmentClick(a)}} 
+                    className={`${getColor(a.appointmentType)} text-white text-[10px] px-2 py-1 rounded truncate cursor-pointer hover:brightness-110 flex justify-between items-center group/item transition-all hover:scale-[1.02]`}
+                  >
+                    <span className="truncate">{a.startTime} - {a.patientName}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if(confirm("Delete this appointment?")) {
+                          onDelete(a._id);
+                        }
+                      }}
+                      className="opacity-0 group-hover/item:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all ml-1 flex items-center"
+                      title="Delete"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">delete</span>
+                    </button>
+                  </div>
+                ))}
                 {d.appts.length>3 && <div className="text-[9px] text-text-secondary pl-1">+{d.appts.length-3} more</div>}
               </div>
             </div>

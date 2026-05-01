@@ -3,7 +3,7 @@ import { useFacilityStore } from "../../store/facilityStore";
 import { FACILITY_TYPES } from "../../utils/facilityTypeConfig";
 import toast from "react-hot-toast";
 
-export default function AppointmentModal({ isOpen, onClose, onSubmit, appointment, selectedDate }) {
+export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, appointment, selectedDate }) {
   const { facilityType: globalFacilityType } = useFacilityStore();
   
   const [form, setForm] = useState({ 
@@ -354,11 +354,27 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-6 py-5 border-t border-border-muted/50 bg-bg-secondary flex gap-3">
+        <div className="shrink-0 px-6 py-5 border-t border-border-muted/50 bg-bg-secondary flex items-center gap-3">
+          {/* 🗑️ DELETE BUTTON (Sirf Edit mode me dikhega) */}
+          {appointment && (
+            <button
+              type="button"
+              onClick={() => {
+                if(confirm("Are you sure you want to delete this appointment?")) {
+                  onDelete(appointment._id);
+                }
+              }}
+              className="px-4 h-[50px] rounded-xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-[14px] hover:bg-red-600/20 flex items-center gap-2 transition-all active:scale-[0.98] mr-auto"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+              Delete
+            </button>
+          )}
+
           <button 
             type="button" 
             onClick={onClose} 
-            className="flex-1 h-[50px] rounded-xl bg-bg-primary border border-border-muted/50 text-[14px] font-bold text-text-secondary hover:text-text-primary hover:bg-surface-variant transition-all active:scale-[0.98]"
+            className="w-[100px] h-[50px] rounded-xl bg-bg-primary border border-border-muted/50 text-[14px] font-bold text-text-secondary hover:text-text-primary hover:bg-surface-variant transition-all active:scale-[0.98]"
           >
             Cancel
           </button>
@@ -366,7 +382,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, appointmen
             type="submit" 
             form="appointment-form"
             disabled={loading} 
-            className="flex-[2] h-[50px] rounded-xl text-white font-bold text-[14px] shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 h-[50px] rounded-xl text-white font-bold text-[14px] shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ 
               backgroundColor: config.theme.primary,
               boxShadow: `0 4px 14px ${config.theme.primary}40`

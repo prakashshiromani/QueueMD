@@ -134,13 +134,13 @@ export default function Appointments() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <CalendarView view={view} currentDate={currentDate} appointments={appointments} onDateClick={(d) => { setCurrentDate(d); setIsModalOpen(true); }} onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} loading={loading} />
+            <CalendarView view={view} currentDate={currentDate} appointments={appointments} onDateClick={(d) => { setCurrentDate(d); setIsModalOpen(true); }} onAppointmentClick={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} onDelete={handleDelete} loading={loading} />
           </div>
           <DailySchedule appointments={todaySchedule} stats={stats} onStatusChange={handleStatus} onEdit={(a) => { setSelectedAppointment(a); setIsModalOpen(true); }} onDelete={handleDelete} loading={loading} />
         </div>
 
         {isModalOpen && (
-          <AppointmentModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedAppointment(null); }} onSubmit={handleSubmit} appointment={selectedAppointment} selectedDate={currentDate} />
+          <AppointmentModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedAppointment(null); }} onSubmit={handleSubmit} onDelete={handleDelete} appointment={selectedAppointment} selectedDate={currentDate} />
         )}
       </div>
     </Layout>
