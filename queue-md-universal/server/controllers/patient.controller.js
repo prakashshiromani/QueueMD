@@ -1,5 +1,7 @@
 const Patient = require("../models/Patient");
+const Notification = require("../models/Notification");
 const logger = require("../utils/logger");
+const { emitNotification } = require("../sockets/notification.socket");
 
 exports.searchPatients = async (req, res, next) => {
   try {
@@ -51,6 +53,24 @@ exports.addPatientToDirectory = async (req, res, next) => {
       lastVisit: new Date(),
       lastVisitType: (bodyFacilityType || facilityType || "clinic").toUpperCase()
     });
+
+    // 🔥 NEW: Send Notification for Patient Registration
+    try {
+      const notifType = bodyFacilityType || facilityType || "clinic";
+      const newNotif = await Notification.create({
+        facilityId,
+        facilityType: notifType,
+        type: "system",
+        title: "New Patient Registered",
+        message: `${finalName} has been added to the directory.`,
+        isRead: false,
+        metadata: { patientId: patient._id, patientName: finalName }
+      });
+      // 🔥 Real-time push to centralized notification room
+      emitNotification(facilityId, newNotif);
+    } catch (notifErr) {
+      logger.error(`Notification error during registration: ${notifErr.message}`);
+    }
 
     res.status(201).json({ success: true, data: patient });
   } catch (err) {

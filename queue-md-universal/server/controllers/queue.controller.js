@@ -1,8 +1,10 @@
 // server/controllers/queue.controller.js
 const Queue = require("../models/Queue");
+const Notification = require("../models/Notification");
 const { getFacilityConfig } = require("../utils/facilityTypeConfig");
 const { emitQueueUpdate, emitAnalyticsUpdate } = require("../sockets/queue.socket");
 const logger = require("../utils/logger");
+const { emitNotification } = require("../sockets/notification.socket");
 const { z } = require("zod");
 const { calculateWaitPredictions } = require("../utils/waitTimeCalculator");
 const Analytics = require("../models/Analytics");
@@ -100,6 +102,20 @@ exports.addPatient = async (req, res, next) => {
       action: "add",
       patient: newQueueEntry
     });
+
+    // 🔥 NEW: Notification Create karo
+    const newNotif = await Notification.create({
+      facilityId,
+      facilityType: queueFacilityType,
+      type: "appointment", // Ya "queue_update"
+      title: "New Appointment",
+      message: `${patientName} (Token #${nextToken}) has been added to the queue.`,
+      isRead: false,
+      metadata: { tokenNumber: nextToken, patientName }
+    });
+
+    // 🔥 Real-time push to centralized notification room
+    emitNotification(facilityId, newNotif);
 
     console.log(`✅ Patient added: ${patientName}, Token: ${nextToken}, Department: ${queueFacilityType}`);
 
@@ -347,6 +363,20 @@ exports.nextPatient = async (req, res, next) => {
       patient: nextPatient,
       stats
     });
+
+    // 🔥 NEW: Notification Create karo
+    const newNotif = await Notification.create({
+      facilityId,
+      facilityType,
+      type: "appointment",
+      title: "Token Called",
+      message: `Token #${nextPatient.tokenNumber} (${nextPatient.patientName}) is now being attended.`,
+      isRead: false,
+      metadata: { tokenNumber: nextPatient.tokenNumber, patientName: nextPatient.patientName }
+    });
+
+    // 🔥 Real-time push to centralized notification room
+    emitNotification(facilityId, newNotif);
 
     console.log(`✅ Next patient: ${nextPatient.patientName}, Token: ${nextPatient.tokenNumber}, Dept: ${facilityType}`);
 

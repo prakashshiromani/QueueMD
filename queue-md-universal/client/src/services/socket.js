@@ -38,16 +38,20 @@ export const connectSocket = (facilityId, facilityType) => {
     socket.on("connect", () => {
       console.log("🔌 Socket Connected:", socket.id);
       
-      // 🔥 CRITICAL: Join Facility-Specific Room
-      const room = `${facilityId}_${facilityType}`;
+      // 🔥 Queue Room (Department Isolation)
       socket.emit("join_facility", { facilityId, facilityType });
-      console.log(`🏥 Joined Room: ${room}`);
+      
+      // 🔥 NEW: Notification Room (Centralized View)
+      socket.emit("join_notifications", { facilityId });
+      
+      console.log(`🏥 Joined Room: ${facilityId}_${facilityType}`);
+      console.log(`🔔 Joined Notification Room: ${facilityId}_notifications`);
     });
   } else if (facilityId && facilityType) {
-    // If already connected, just join the room
-    const room = `${facilityId}_${facilityType}`;
+    // If already connected, join both rooms
     socket.emit("join_facility", { facilityId, facilityType });
-    console.log(`🏥 Already connected. Joined Room: ${room}`);
+    socket.emit("join_notifications", { facilityId });
+    console.log(`🏥 Already connected. Joined Queue & Notification Rooms`);
   }
 };
 

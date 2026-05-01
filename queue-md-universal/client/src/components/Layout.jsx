@@ -4,12 +4,14 @@ import { disconnectSocket } from '../services/socket';
 import { Link, useLocation } from 'react-router-dom';
 import { useFacilityStore } from '../store/facilityStore';
 import { getFacilityConfig } from '../utils/facilityTypeConfig';
+import { useToast } from '../utils/useToast';
 
 const Layout = ({ children, scaled = true }) => {
   const { user, logout } = useAuthStore();
   const { facilityType } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
   const location = useLocation();
+  const { addToast, ToastContainer } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
@@ -25,6 +27,14 @@ const Layout = ({ children, scaled = true }) => {
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
   };
+
+  useEffect(() => {
+    const handleToast = (e) => {
+      addToast(e.detail.message, e.detail.type);
+    };
+    window.addEventListener("notification_toast", handleToast);
+    return () => window.removeEventListener("notification_toast", handleToast);
+  }, [addToast]);
 
   const handleLogout = () => {
     disconnectSocket();
@@ -151,6 +161,8 @@ const Layout = ({ children, scaled = true }) => {
           </div>
         </div>
       </div>
+      {/* 🔥 Global Premium Toast System */}
+      <ToastContainer />
     </div>
   );
 };

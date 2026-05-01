@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { connectSocket, joinFacilityRoom } from '../services/socket';
+import { connectSocket } from '../services/socket';
 import { useFacilityStore } from '../store/facilityStore';
 
 export default function Login() {
@@ -28,8 +28,7 @@ export default function Login() {
       login(userData, token);
       setFacility(userData.facilityId, userData.facilityName || '', userData.facilityType);
 
-      connectSocket();
-      joinFacilityRoom(userData.facilityId, userData.facilityType);
+      connectSocket(userData.facilityId, userData.facilityType);
 
       navigate('/dashboard');
     } catch (err) {

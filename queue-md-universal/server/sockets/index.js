@@ -25,6 +25,13 @@ const initSocket = (server) => {
       console.log(`🏥 Socket ${socket.id} joined room: ${room}`);
     });
 
+    // 🔥 NEW: Notification Room (Centralized View)
+    socket.on("join_notifications", ({ facilityId }) => {
+      const room = `${facilityId}_notifications`;
+      socket.join(room);
+      console.log(`🔔 Socket ${socket.id} joined notification room: ${room}`);
+    });
+
     socket.on("disconnect", (reason) => {
       console.log(`❌ Client disconnected: ${socket.id} | Reason: ${reason}`);
     });

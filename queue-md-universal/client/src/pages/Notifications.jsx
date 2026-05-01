@@ -10,7 +10,7 @@ import AnimatePage from "../components/AnimatePage";
 
 // ✅ Skeleton Loader Component
 const Skeleton = () => (
-  <div className="h-20 bg-slate-800/30 rounded-xl animate-pulse mb-4 border border-white/5" />
+  <div className="h-24 bg-slate-800/30 rounded-2xl animate-pulse mb-4 border border-white/5" />
 );
 
 // ✅ Empty State Component
@@ -38,29 +38,28 @@ export default function Notifications() {
     loading, 
     hasMore, 
     loadNotifications, 
+    loadNextPage,
     markAllAsRead, 
     addSocketNotification,
     unreadCount 
   } = useNotificationStore();
   
-  const { user } = useAuthStore(); // Current logged in user
-  const [loadingMore, setLoadingMore] = useState(false);
+  const { user } = useAuthStore(); 
 
   useEffect(() => {
-    // 1. Data Load
+    // 1. Initial Data Load
     loadNotifications();
 
-    // 2. Socket Connect (Agar user login hai)
-    if (user && user.facilityId && user.facilityType) {
+    // 2. Socket Connect & Listener Setup
+    if (user?.facilityId && user?.facilityType) {
       connectSocket(user.facilityId, user.facilityType);
 
-      // 🔥 Listener Setup
+      // 🔥 Real-time Listener (Centralized Facility Room)
       socket.on("notification:new", (data) => {
         addSocketNotification(data);
       });
     }
 
-    // Cleanup
     return () => {
       socket.off("notification:new");
     };
@@ -72,33 +71,33 @@ export default function Notifications() {
 
   return (
     <Layout>
-      <AnimatePage className="w-full max-w-2xl mx-auto py-6 relative">
+      <AnimatePage className="w-full max-w-4xl mx-auto py-8 relative">
         {/* 🔥 Background Glow Effect */}
         <div className="absolute top-0 left-0 w-full h-96 bg-blue-600/10 blur-[120px] pointer-events-none" />
 
         {/* Header */}
-        <div className="relative flex justify-between items-center mb-8">
+        <div className="relative flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
               Notifications
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Stay updated with your facility activity.
+            <p className="text-slate-400 text-base mt-1.5">
+              Centralized alerts across all your facility departments.
             </p>
           </div>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAll}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-sm font-medium transition-all border border-blue-500/30"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-xl text-sm font-semibold transition-all border border-blue-500/30 shadow-lg"
             >
-              <CheckCheck className="w-4 h-4" />
+              <CheckCheck className="w-5 h-5" />
               Mark all read
             </button>
           )}
         </div>
 
         {/* List */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           {notifications.length === 0 && !loading ? (
             <EmptyState />
           ) : (
@@ -111,7 +110,7 @@ export default function Notifications() {
 
               {/* Loading Skeletons */}
               {loading && (
-                <div className="space-y-4 mt-4">
+                <div className="space-y-5 mt-5">
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -121,18 +120,27 @@ export default function Notifications() {
           )}
         </div>
 
-        {/* Load Older Button */}
+        {/* 🔥 Load Older Button (Phase 4 Functional) */}
         {hasMore && notifications.length > 0 && (
-          <div className="mt-8 text-center">
+          <div className="mt-12 text-center">
             <button
-              disabled={loadingMore}
-              className="px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-all border border-white/10 disabled:opacity-50 text-white"
-              onClick={() => {
-                setLoadingMore(true);
-                setTimeout(() => setLoadingMore(false), 1000); // API Logic yahan aayega (Step 3)
-              }}
+              disabled={loading}
+              className="group relative px-10 py-4 bg-slate-800/50 hover:bg-slate-700/60 text-white rounded-2xl text-base font-semibold transition-all border border-white/10 disabled:opacity-50 overflow-hidden shadow-2xl"
+              onClick={() => loadNextPage()}
             >
-              {loadingMore ? <Loader2 className="w-4 h-4 animate-spin mx-auto text-blue-400" /> : "Load Older Notifications"}
+              {/* Hover Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              <span className="relative flex items-center justify-center gap-3">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                    <span>Loading alerts...</span>
+                  </>
+                ) : (
+                  "Load Older Notifications"
+                )}
+              </span>
             </button>
           </div>
         )}
