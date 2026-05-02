@@ -1,10 +1,11 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const { getIO } = require("../sockets/index");
 
 exports.createStaff = async (req, res, next) => {
   try {
-    const { name, email, password, role, specialization, phone, shift, isActive } = req.body;
+    const { name, email, password, role, specialization, phone, shift, isActive, profileImage } = req.body;
     const adminFacilityId = req.user.facilityId;
     const adminFacilityType = req.user.facilityType;
 
@@ -63,6 +64,82 @@ exports.getStaff = async (req, res, next) => {
       count: staff.length,
       data: staff
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateStaff = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role, isActive } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { name, email, role, isActive },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Staff member not found" });
+    }
+
+    // 📡 Real-time Sync
+    const io = getIO();
+    io.to(`${req.user.facilityId}_${req.user.facilityType}`).emit("staff_update", {
+      action: "update",
+      userId: user._id,
+      updatedData: user
+    });
+
+    res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteStaff = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Staff member not found" });
+    }
+
+    // 📡 Real-time Sync
+    const io = getIO();
+    io.to(`${req.user.facilityId}_${req.user.facilityType}`).emit("staff_update", {
+      action: "delete",
+      userId: id
+    });
+
+    res.status(200).json({ success: true, message: "Staff member deleted" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.toggleStaffStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    const user = await User.findByIdAndUpdate(id, { isActive }, { new: true }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Staff member not found" });
+    }
+
+    // 📡 Real-time Sync
+    const io = getIO();
+    io.to(`${req.user.facilityId}_${req.user.facilityType}`).emit("staff_update", {
+      action: "update",
+      userId: user._id,
+      updatedData: user
+    });
+
+    res.status(200).json({ success: true, data: user });
   } catch (err) {
     next(err);
   }

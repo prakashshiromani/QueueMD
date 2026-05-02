@@ -180,23 +180,17 @@
   scrollbar-color: #3B82F6 transparent;
 }
 
-/* 🔥 Custom Scrollbar with Gradient Glow */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+/* ✨ Custom Scrollbar Glow - Premium */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.3); border-radius: 6px; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6 0%, #8b5cf6 100%); /* Blue to Purple */
-  border-radius: 999px;
-  border: 2px solid #0f172a; /* Dark border to make it look floating */
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #60a5fa 0%, #a78bfa 100%);
+  background: linear-gradient(to bottom, #60a5fa, #a78bfa);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
 }
 
 /* Smooth Animations */
