@@ -208,7 +208,7 @@ exports.getHourlyTraffic = async (req, res, next) => {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
     }
 
-    console.log(`📊 [${req.path}] Final Match Query:`, JSON.stringify(matchQuery, null, 2));
+    logger.debug(`📊 [${req.path}] Final Match Query: ${JSON.stringify(matchQuery)}`);
 
     const traffic = await Queue.aggregate([
       { $match: matchQuery },
@@ -239,13 +239,13 @@ exports.getDailyTrend = async (req, res, next) => {
     const { range = "7d", branchId } = req.query;
     const dates = getISTRange(range, req.query.startDate, req.query.endDate);
 
-    console.log('📊 Daily Trend Query:', { 
+    logger.debug('📊 Daily Trend Query: ' + JSON.stringify({ 
       facilityId, 
       branchId,
       range,
       start: dates.start,
       end: dates.end 
-    });
+    }));
 
     const matchQuery = {
       facilityId: new mongoose.Types.ObjectId(facilityId),
@@ -257,7 +257,7 @@ exports.getDailyTrend = async (req, res, next) => {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
     }
 
-    console.log(`📊 [${req.path}] Final Match Query:`, JSON.stringify(matchQuery, null, 2));
+    logger.debug(`📊 [${req.path}] Final Match Query: ${JSON.stringify(matchQuery)}`);
 
     const trend = await Queue.aggregate([
       { $match: matchQuery },
@@ -269,7 +269,7 @@ exports.getDailyTrend = async (req, res, next) => {
       }
     ]);
 
-    console.log('📊 Daily Data Result:', trend);
+    logger.debug('📊 Daily Data Result: ' + JSON.stringify(trend));
 
     const formattedData = trend.map(t => {
       const [year, month, day] = t._id.split("-");

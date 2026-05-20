@@ -1,5 +1,6 @@
 // server/controllers/auth.controller.js
 const User = require("../models/User");
+const logger = require("../utils/logger");
 const Facility = require("../models/Facility");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -102,7 +103,7 @@ exports.login = async (req, res, next) => {
     }
 
     const { email, password } = validation.data;
-    console.log(`[LOGIN ATTEMPT] Email: ${email}`);
+    logger.info(`Login attempt for email: ${email}`);
 
     // Find User (+password because we hid it in model)
     const user = await User.findOne({ email }).select("+password");
@@ -120,7 +121,7 @@ exports.login = async (req, res, next) => {
     // Get Facility Name for frontend display
     const facility = await Facility.findById(user.facilityId);
 
-    console.log(`[LOGIN SUCCESS] User: ${user.email}, FacilityType: ${user.facilityType}`);
+    logger.info(`Login success for user: ${user.email}, FacilityType: ${user.facilityType}`);
 
     // Generate JWT
     const token = jwt.sign(

@@ -101,6 +101,10 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ MongoDB Connected");
 
+    // Start Subscription Expiry Cron Job
+    const { startSubscriptionExpiryCron } = require("./jobs/subscriptionExpiryCron");
+    startSubscriptionExpiryCron();
+
     // 2. Initialize Socket.IO
     console.log("🔌 Initializing Socket.IO...");
     initSocket(server);

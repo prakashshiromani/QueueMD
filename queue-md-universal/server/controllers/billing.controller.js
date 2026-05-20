@@ -3,6 +3,16 @@ const { z } = require("zod");
 const logger = require("../utils/logger"); // Tumhare utils se logger aayega
 const mongoose = require("mongoose");
 const { getIO } = require("../sockets/index");
+const Counter = require("../models/Counter");
+
+async function getNextSequence(id) {
+  const counter = await Counter.findByIdAndUpdate(
+    id,
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+}
 
 // ✅ Validation Schema (Zod)
 const invoiceSchema = z.object({
@@ -16,7 +26,7 @@ const invoiceSchema = z.object({
 // 1️⃣ CREATE INVOICE (Naya Bill Banana)
 exports.createInvoice = async (req, res, next) => {
   try {
-    console.log("📝 Creating Invoice - User:", req.user);
+    logger.info(`Creating Invoice - User: ${JSON.stringify(req.user)}`);
     // 🔒 Security: User se Facility ID lena (Token se)
     const { facilityId, facilityType } = req.user;
     
@@ -28,21 +38,32 @@ exports.createInvoice = async (req, res, next) => {
 
     const { patientName, phone, amount, status, description } = validation.data;
 
-    // 🔢 Auto Invoice Number Generator (Format: INV-XXXX)
-    // Last invoice dhundho current facility ka
-    const lastInvoice = await Invoice.findOne({ facilityId })
-      .sort({ invoiceNumber: -1 })
-      .select("invoiceNumber");
-    
-    let nextNum = 2000; // Starting number
-    if (lastInvoice) {
-      // "INV-2041" me se 2041 nikalo
-      const lastNum = parseInt(lastInvoice.invoiceNumber.split("-")[1]);
-      nextNum = lastNum + 1;
+    // 🔢 Auto Invoice Number Generator (Format: INV-XXXX) - Atomic & thread-safe
+    let counter = await Counter.findById(`invoice:${facilityId}`);
+    if (!counter) {
+      const lastInvoice = await Invoice.findOne({ facilityId })
+        .sort({ invoiceNumber: -1 })
+        .select("invoiceNumber");
+      
+      let startNum = 1999; // So that first auto increment gives 2000
+      if (lastInvoice) {
+        // "INV-2041" -> 2041
+        const lastNum = parseInt(lastInvoice.invoiceNumber.split("-")[1]);
+        if (!isNaN(lastNum)) {
+          startNum = lastNum;
+        }
+      }
+      try {
+        await Counter.create({ _id: `invoice:${facilityId}`, seq: startNum });
+      } catch (err) {
+        // Ignore duplicate key error
+      }
     }
 
+    const seq = await getNextSequence(`invoice:${facilityId}`);
+
     const newInvoice = await Invoice.create({
-      invoiceNumber: `INV-${nextNum}`,
+      invoiceNumber: `INV-${seq}`,
       facilityId,
       facilityType,
       patientName,
@@ -74,7 +95,7 @@ exports.createInvoice = async (req, res, next) => {
 // 2️ GET INVOICES (List + Pagination)
 exports.getInvoices = async (req, res, next) => {
   try {
-    console.log("📋 Fetching Invoices - User:", req.user, "Query:", req.query);
+    logger.info(`Fetching Invoices - User: ${JSON.stringify(req.user)} Query: ${JSON.stringify(req.query)}`);
     const { facilityId, facilityType } = req.user;
     const { page = 1, limit = 10, status } = req.query;
 
@@ -103,11 +124,11 @@ exports.getInvoices = async (req, res, next) => {
 // 3️ GET STATS (Dashboard Cards ke liye)
 exports.getStats = async (req, res, next) => {
   try {
-    console.log("📊 Fetching Billing Stats - User:", req.user);
+    logger.info(`Fetching Billing Stats - User: ${JSON.stringify(req.user)}`);
     const { facilityId } = req.user;
 
     if (!facilityId) {
-      console.error("❌ No facilityId in req.user");
+      logger.error("No facilityId in req.user");
       return res.status(400).json({ success: false, message: "Facility ID is required" });
     }
     

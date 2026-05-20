@@ -11,12 +11,11 @@ exports.createAppointment = async (req, res, next) => {
     // 🔥 Extract from token (ALWAYS trust token over body)
     const { facilityId, facilityType } = req.user;
     
-    // Debug log (remove after testing)
-    console.log("🔍 Creating appointment for:", {
+    logger.debug(`Creating appointment for: ${JSON.stringify({
       facilityId,
       facilityType,
       userId: req.user.id
-    });
+    })}`);
 
     const { 
       patientName, 
@@ -102,7 +101,7 @@ exports.createAppointment = async (req, res, next) => {
         lastVisit: new Date(appointmentDate) // ✅ Track last visit
       });
       
-      console.log("✅ New patient created in directory:", patient._id);
+      logger.info(`New patient created in directory: ${patient._id}`);
     } else {
       // ✅ EXISTING PATIENT - Update details
       patient.name = patientName; 
@@ -112,7 +111,7 @@ exports.createAppointment = async (req, res, next) => {
       if (!patient.facilityType) patient.facilityType = facilityType;
       await patient.save();
       
-      console.log("🔄 Existing patient updated in directory:", patient._id);
+      logger.info(`Existing patient updated in directory: ${patient._id}`);
     }
 
     // ✅ Create Appointment
@@ -149,7 +148,7 @@ exports.createAppointment = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Create Appointment Error:", err);
+    logger.error(`Create Appointment Error: ${err.message}`, { stack: err.stack });
     
     // ✅ Better error messages
     if (err.name === "ValidationError") {
@@ -423,7 +422,7 @@ exports.updateAppointment = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Update Appointment Error:", err);
+    logger.error(`Update Appointment Error: ${err.message}`, { stack: err.stack });
     next(err);
   }
 };
@@ -491,7 +490,7 @@ exports.syncToDirectory = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Sync Error:", err);
+    logger.error(`Sync Error: ${err.message}`, { stack: err.stack });
     next(err);
   }
 };
@@ -501,10 +500,7 @@ exports.deletePatient = async (req, res, next) => {
     const { patientId } = req.params;
     const { facilityId, facilityType } = req.user;
 
-    console.log("=== DELETE PATIENT DEBUG ===");
-    console.log("req.params.patientId:", patientId);
-    console.log("req.user.facilityId:", facilityId);
-    console.log("req.user.facilityType:", facilityType);
+    logger.debug(`DELETE PATIENT DEBUG: patientId=${patientId}, facilityId=${facilityId}, facilityType=${facilityType}`);
 
     // 1. Find and Delete Patient
     const patient = await Patient.findOneAndDelete({
@@ -514,17 +510,17 @@ exports.deletePatient = async (req, res, next) => {
     });
 
     if (!patient) {
-      console.log("❌ Patient not found with these criteria in Facility:", facilityId);
+      logger.error(`Patient not found with these criteria in Facility: ${facilityId}`);
       // Optional: Log if patient exists without filter to confirm isolation
       const rawPatient = await Patient.findById(patientId);
       if (rawPatient) {
-        console.log("⚠️ Patient exists but belongs to a different facility:", rawPatient.facilityId);
+        logger.warn(`Patient exists but belongs to a different facility: ${rawPatient.facilityId}`);
       } else {
-        console.log("🚫 Patient ID does not exist in Database at all.");
+        logger.warn("Patient ID does not exist in Database at all.");
       }
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
-    console.log("✅ Patient found and deleted:", patient.patientName);
+    logger.info(`Patient found and deleted: ${patient.patientName}`);
 
     // 2. Delete ALL Appointments associated with this Patient (Isolated by Facility)
     await Appointment.deleteMany({ 

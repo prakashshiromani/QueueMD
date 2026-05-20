@@ -10,6 +10,16 @@ const { calculateWaitPredictions } = require("../utils/waitTimeCalculator");
 const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
 const notificationQueue = require('../jobs/notification.queue');
+const Counter = require("../models/Counter");
+
+async function getNextSequence(id) {
+  const counter = await Counter.findByIdAndUpdate(
+    id,
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+}
 
 
 // ✅ ADD PATIENT - CORRECT ISOLATION
@@ -40,7 +50,7 @@ exports.addPatient = async (req, res, next) => {
       queueFacilityType = req.body.facilityType;
     }
 
-    console.log(`📋 [ADD] Patient: ${patientName}, Queue FacilityType: ${queueFacilityType}, Facility: ${facilityId}`);
+    logger.info(`[ADD] Patient: ${patientName}, Queue FacilityType: ${queueFacilityType}, Facility: ${facilityId}`);
 
     // 🔥 Check if patient already in ACTIVE queue for their department
     const existingActive = await Queue.findOne({
@@ -64,11 +74,23 @@ exports.addPatient = async (req, res, next) => {
       });
     }
 
-    // 🔥 Generate next token for this specific department
-    const lastToken = await Queue.findOne({ facilityId, facilityType: queueFacilityType })
-      .sort({ tokenNumber: -1 });
-    
-    const nextToken = (lastToken?.tokenNumber || 0) + 1;
+    // 🔥 Generate next token for this specific department atomically
+    let counter = await Counter.findById(`token:${facilityId}:${queueFacilityType}`);
+    if (!counter) {
+      const lastToken = await Queue.findOne({ facilityId, facilityType: queueFacilityType })
+        .sort({ tokenNumber: -1 });
+      
+      let startNum = 0;
+      if (lastToken) {
+        startNum = lastToken.tokenNumber;
+      }
+      try {
+        await Counter.create({ _id: `token:${facilityId}:${queueFacilityType}`, seq: startNum });
+      } catch (err) {
+        // Ignore duplicate key error
+      }
+    }
+    const nextToken = await getNextSequence(`token:${facilityId}:${queueFacilityType}`);
 
     // ✅ Update patient's lastVisit + totalVisits WITHOUT changing their facilityType
     if (patientId) {
@@ -117,7 +139,7 @@ exports.addPatient = async (req, res, next) => {
     // 🔥 Real-time push to centralized notification room
     emitNotification(facilityId, newNotif);
 
-    console.log(`✅ Patient added: ${patientName}, Token: ${nextToken}, Department: ${queueFacilityType}`);
+    logger.info(`Patient added: ${patientName}, Token: ${nextToken}, Department: ${queueFacilityType}`);
 
     res.status(201).json({
       success: true,
@@ -126,7 +148,7 @@ exports.addPatient = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Add patient error:", err);
+    logger.error(`Add patient error: ${err.message}`, { stack: err.stack });
     next(err);
   }
 };
@@ -140,7 +162,7 @@ exports.getQueue = async (req, res, next) => {
     // Use query param 'type' if provided (Dashboard Demo Mode), else JWT default
     const facilityType = type || jwtFacilityType;
 
-    console.log(`📋 [GET QUEUE] FacilityType: ${facilityType}, Status: ${status}`);
+    logger.info(`[GET QUEUE] FacilityType: ${facilityType}, Status: ${status}`);
 
     const queue = await Queue.find({
       facilityId,
@@ -192,7 +214,7 @@ exports.markPatientCompleted = async (req, res, next) => {
     const { patientId } = req.params;
     const { facilityId, facilityType } = req.user;
     const { consultationNotes, prescription, doctorName } = req.body;
-    console.log("📝 [DEBUG] markPatientCompleted body:", req.body);
+    logger.debug(`markPatientCompleted body: ${JSON.stringify(req.body)}`);
 
     // 🔍 First find the patient to get their actual facilityType
     const existingPatient = await Queue.findOne({ _id: patientId, facilityId });
@@ -300,7 +322,7 @@ exports.nextPatient = async (req, res, next) => {
     // Use body or query param 'type' if provided (from Dashboard), else JWT default
     const facilityType = req.body.facilityType || req.query.type || jwtFacilityType;
 
-    console.log(`🔍 Finding next patient for: facilityId=${facilityId}, type=${facilityType}`);
+    logger.info(`Finding next patient for: facilityId=${facilityId}, type=${facilityType}`);
 
     // ✅ Find oldest waiting patient for this department
     const nextPatient = await Queue.findOneAndUpdate(
@@ -378,7 +400,7 @@ exports.nextPatient = async (req, res, next) => {
     // 🔥 Real-time push to centralized notification room
     emitNotification(facilityId, newNotif);
 
-    console.log(`✅ Next patient: ${nextPatient.patientName}, Token: ${nextPatient.tokenNumber}, Dept: ${facilityType}`);
+    logger.info(`Next patient: ${nextPatient.patientName}, Token: ${nextPatient.tokenNumber}, Dept: ${facilityType}`);
 
     res.json({
       success: true,
@@ -388,7 +410,7 @@ exports.nextPatient = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Next patient error:", err);
+    logger.error(`Next patient error: ${err.message}`, { stack: err.stack });
     next(err);
   }
 };

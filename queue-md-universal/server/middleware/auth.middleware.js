@@ -1,5 +1,6 @@
 // server/middleware/auth.middleware.js
 const jwt = require("jsonwebtoken");
+const logger = require("../utils/logger");
 
 exports.auth = async (req, res, next) => {
   try {
@@ -19,12 +20,12 @@ exports.auth = async (req, res, next) => {
       role: decoded.role
     };
 
-    // Debug log (remove in production)
-    console.log("🔐 Auth Middleware - User:", {
+    // Debug log using winston
+    logger.debug("🔐 Auth Middleware - User: " + JSON.stringify({
       id: decoded.id,
       facilityId: decoded.facilityId,
       facilityType: decoded.facilityType
-    });
+    }));
 
     next();
   } catch (err) {

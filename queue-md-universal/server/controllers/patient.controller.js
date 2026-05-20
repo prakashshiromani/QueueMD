@@ -3,6 +3,9 @@ const Notification = require("../models/Notification");
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
 
+// 🔒 Regex Escape Utility
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 exports.searchPatients = async (req, res, next) => {
   try {
     const { q } = req.query;
@@ -12,12 +15,14 @@ exports.searchPatients = async (req, res, next) => {
       return res.json({ success: true, data: [] });
     }
 
+    const safeQ = escapeRegex(q.toString());
+
     // Search by name or phone
     const patients = await Patient.find({
       facilityId,
       $or: [
-        { name: { $regex: q, $options: "i" } },
-        { phone: { $regex: q, $options: "i" } }
+        { name: { $regex: safeQ, $options: "i" } },
+        { phone: { $regex: safeQ, $options: "i" } }
       ]
     }).limit(10);
 
@@ -31,7 +36,7 @@ exports.searchPatients = async (req, res, next) => {
 exports.addPatientToDirectory = async (req, res, next) => {
   try {
     const { facilityId, facilityType } = req.user;
-    console.log("📝 [DEBUG] addPatientToDirectory body:", req.body);
+    logger.debug(`addPatientToDirectory body: ${JSON.stringify(req.body)}`);
     const { name, patientName, phone, email, gender, age, status, customData, doctorName, facilityType: bodyFacilityType } = req.body;
     const finalName = name || patientName;
 
@@ -89,9 +94,10 @@ exports.getPatients = async (req, res, next) => {
     let query = { facilityId };
 
     if (search) {
+      const safeSearch = escapeRegex(search.toString());
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } }
+        { name: { $regex: safeSearch, $options: "i" } },
+        { phone: { $regex: safeSearch, $options: "i" } }
       ];
     }
 
