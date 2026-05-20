@@ -88,6 +88,9 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 
+// 📄 Swagger API Documentation
+require('./config/swagger')(app);
+
 // Global Error Handling Middleware
 app.use(errorHandler);
 

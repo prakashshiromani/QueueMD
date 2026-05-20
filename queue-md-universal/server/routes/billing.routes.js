@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { createInvoice, getInvoices, getStats, updateInvoiceStatus } = require("../controllers/billing.controller");
-const { auth } = require("../middleware/auth.middleware");
-const { authorize } = require("../middleware/role.middleware");
+const { auth, authorize } = require("../middleware/auth.middleware");
 
 // ✅ Routes Protected hain (Sirf logged in user access kar sakta hai)
 // Admin aur Receptionist dono billing dekh/pay kar sakte hain usually.

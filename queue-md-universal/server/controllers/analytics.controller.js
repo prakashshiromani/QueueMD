@@ -1,123 +1,7 @@
 const mongoose = require("mongoose");
 const Queue = require("../models/Queue");
 const logger = require("../utils/logger");
-
-// Helper: Parse date range from query parameter
-const parseDateRange = (range, customStart, customEnd) => {
-  const now = new Date();
-  let start = new Date();
-  let end = now;
-
-  switch (range) {
-    case 'today':
-      start.setHours(0, 0, 0, 0);
-      break;
-    
-    case 'yesterday':
-      start = new Date();
-      start.setDate(start.getDate() - 1);
-      start.setHours(0, 0, 0, 0);
-      end = new Date();
-      end.setDate(end.getDate() - 1);
-      end.setHours(23, 59, 59, 999);
-      break;
-    
-    case '7d':
-    case 'week':
-      start = new Date();
-      start.setDate(start.getDate() - 7);
-      start.setHours(0, 0, 0, 0);
-      break;
-    
-    case '30d':
-    case 'month':
-      start = new Date();
-      start.setDate(start.getDate() - 30);
-      start.setHours(0, 0, 0, 0);
-      break;
-    
-    case 'custom':
-      if (customStart && customEnd) {
-        start = new Date(customStart);
-        start.setHours(0, 0, 0, 0);
-        end = new Date(customEnd);
-        end.setHours(23, 59, 59, 999);
-      } else {
-        start.setHours(0, 0, 0, 0);
-      }
-      break;
-    
-    default:
-      start.setHours(0, 0, 0, 0);
-  }
-
-  return { start, end };
-};
-
-// Original Helper (keeping for legacy chart queries if needed)
-const getISTRange = (range, startDate, endDate) => {
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const now = new Date();
-  
-  const getStartOfISTDay = (date) => {
-    const d = new Date(date.getTime() + istOffset);
-    d.setUTCHours(0, 0, 0, 0);
-    return new Date(d.getTime() - istOffset);
-  };
-
-  let start, end;
-
-  switch (range) {
-    case 'today':
-      start = getStartOfISTDay(now);
-      end = now;
-      break;
-    case 'yesterday':
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      start = getStartOfISTDay(yesterday);
-      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-      break;
-    case '7d':
-    case 'week':
-      start = new Date(getStartOfISTDay(now).getTime() - 7 * 24 * 60 * 60 * 1000);
-      end = now;
-      break;
-    case '30d':
-    case 'month':
-      start = new Date(getStartOfISTDay(now).getTime() - 30 * 24 * 60 * 60 * 1000);
-      end = now;
-      break;
-    case '6m':
-      start = new Date(getStartOfISTDay(now));
-      start.setMonth(start.getMonth() - 6);
-      end = now;
-      break;
-    case '1y':
-      start = new Date(getStartOfISTDay(now));
-      start.setFullYear(start.getFullYear() - 1);
-      end = now;
-      break;
-    case 'all':
-      start = new Date(0);
-      end = now;
-      break;
-    case 'custom':
-      if (startDate && endDate) {
-        start = getStartOfISTDay(new Date(startDate));
-        end = new Date(new Date(endDate).getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000);
-      } else {
-        start = getStartOfISTDay(now);
-        end = now;
-      }
-      break;
-    default:
-      start = getStartOfISTDay(now);
-      end = now;
-  }
-
-  return { start, end };
-};
+const { getISTRange } = require("../utils/dateHelpers");
 
 // ✅ GET STATS (Summary Cards + Log Table)
 exports.getStats = async (req, res, next) => {
@@ -373,7 +257,7 @@ exports.getCompletedConsultations = async (req, res) => {
     const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, q, status } = req.query;
     
     // Parse date range
-    const { start, end } = parseDateRange(range, startDate, endDate);
+    const { start, end } = getISTRange(range, startDate, endDate);
     
     const skip = (parseInt(page) - 1) * parseInt(limit);
     

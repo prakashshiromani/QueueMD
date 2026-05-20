@@ -8,8 +8,7 @@ const {
   getHistory
 } = require("../controllers/subscription.controller");
 
-const { auth } = require("../middleware/auth.middleware");
-const { authorize } = require("../middleware/role.middleware");
+const { auth, authorize, requirePro } = require("../middleware/auth.middleware");
 
 // Public webhook (Razorpay calls this, no auth)
 router.post("/webhook", express.raw({ type: "application/json" }), handleWebhook);

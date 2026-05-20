@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
@@ -23,8 +23,8 @@ export default function Dashboard() {
   
   const queueRef = useRef([]);
 
-  // ✅ Load initial data
-  const loadData = async () => {
+  // ✅ Load initial data (memoized to fix useEffect exhaustive-deps warning)
+  const loadData = useCallback(async () => {
     if (!facilityId) return;
     setLoading(true);
     try {
@@ -49,12 +49,11 @@ export default function Dashboard() {
       setCurrentPatient(inProgress?.[0] || null);
 
     } catch (err) {
-      console.error("Dashboard load error:", err);
       toast.error("Failed to sync dashboard");
     } finally {
       setLoading(false);
     }
-  };
+  }, [facilityId, facilityType]);
 
   // ✅ Socket Real-Time Sync
   useEffect(() => {
@@ -116,7 +115,7 @@ export default function Dashboard() {
       socket.off("disconnect");
       socket.off("connect");
     };
-  }, [facilityId, facilityType]);
+  }, [facilityId, facilityType, loadData]);
 
   // ✅ Actions
   const handleCallNext = async () => {
