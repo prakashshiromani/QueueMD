@@ -32,6 +32,7 @@ const billingRoutes = require("./routes/billing.routes");
 const subscriptionRoutes = require("./routes/subscription.routes");
 
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
 
 const app = express();
@@ -49,6 +50,7 @@ app.use(cors({
 
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(cookieParser());
 
 // ✅ Request Logger Middleware
 app.use((req, res, next) => {
@@ -125,4 +127,10 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start server in non-test environments
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+// Export app for testing
+module.exports = app;

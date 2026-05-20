@@ -21,15 +21,38 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor to handle 401 Unauthorized globally to prevent ghost sessions
+// Interceptor to handle 401 Unauthorized globally and attempt auto-refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      const isLoginRequest = error.config.url.includes('/auth/login');
-      if (!isLoginRequest) {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      const isLoginRequest = originalRequest.url.includes('/auth/login');
+      const isRefreshRequest = originalRequest.url.includes('/auth/refresh');
+      
+      if (!isLoginRequest && !isRefreshRequest) {
+        originalRequest._retry = true;
+        try {
+          // Attempt to refresh the token using HTTP-only cookie
+          const { data } = await axios.post(`${api.defaults.baseURL || '/api'}/auth/refresh`, {}, { withCredentials: true });
+          
+          if (data.success && data.accessToken) {
+            // Update auth store with new token
+            useAuthStore.getState().setToken(data.accessToken);
+            
+            // Retry the original request
+            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh failed (cookie expired or invalid)
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        }
+      } else if (!isRefreshRequest) {
+        // Direct 401 on login page or other flows
         useAuthStore.getState().logout();
-        window.location.href = '/login'; 
       }
     }
     return Promise.reject(error);

@@ -7,6 +7,20 @@ const jwt = require("jsonwebtoken");
 const { z } = require("zod");
 
 // Validation Schemas
+const createTokens = (user) => {
+  const accessToken = jwt.sign(
+    { id: user._id, facilityId: user.facilityId, facilityType: user.facilityType, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE || '15m' }
+  );
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d' }
+  );
+  return { accessToken, refreshToken };
+};
+
 const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -65,21 +79,20 @@ exports.register = async (req, res, next) => {
       role
     });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { 
-        id: user._id, 
-        facilityId: user.facilityId, 
-        facilityType: user.facilityType, 
-        role: user.role 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    // Generate Tokens
+    const tokens = createTokens(user);
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     res.status(201).json({
       success: true,
-      token,
+      token: tokens.accessToken, // Keeping for backward compatibility or direct use
+      accessToken: tokens.accessToken,
       data: {
         id: user._id,
         name: user.name,
@@ -123,22 +136,21 @@ exports.login = async (req, res, next) => {
 
     logger.info(`Login success for user: ${user.email}, FacilityType: ${user.facilityType}`);
 
-    // Generate JWT
-    const token = jwt.sign(
-      { 
-        id: user._id, 
-        facilityId: user.facilityId, 
-        facilityType: user.facilityType, 
-        role: user.role 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    // Generate Tokens
+    const tokens = createTokens(user);
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     res.json({
       success: true,
       message: "Login successful",
-      token,
+      token: tokens.accessToken, // Backwards compatibility
+      accessToken: tokens.accessToken,
       user: {
         _id: user._id,
         name: user.name,
@@ -151,5 +163,28 @@ exports.login = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+// ✅ REFRESH TOKEN
+exports.refreshToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) return res.status(401).json({ success: false, message: "Refresh token missing" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.id).select('_id role facilityId facilityType');
+    if (!user) throw new Error("User not found");
+
+    const newAccess = jwt.sign(
+      { id: user._id, facilityId: user.facilityId, facilityType: user.facilityType, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '15m' }
+    );
+    
+    res.json({ success: true, accessToken: newAccess });
+  } catch (err) {
+    res.clearCookie('refreshToken');
+    res.status(403).json({ success: false, message: "Invalid or expired refresh token" });
   }
 };

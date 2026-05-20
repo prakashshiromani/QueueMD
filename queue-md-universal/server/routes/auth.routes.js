@@ -1,7 +1,7 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const { register, login } = require("../controllers/auth.controller");
+const { register, login, refreshToken } = require("../controllers/auth.controller");
 
 // 🔒 Rate Limiter Setup
 const authLimiter = rateLimit({
@@ -12,5 +12,6 @@ const authLimiter = rateLimit({
 
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
+router.post("/refresh", refreshToken);
 
 module.exports = router;

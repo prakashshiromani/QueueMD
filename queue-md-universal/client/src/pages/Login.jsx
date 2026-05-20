@@ -4,25 +4,31 @@ import { loginApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { connectSocket } from '../services/socket';
 import { useFacilityStore } from '../store/facilityStore';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters")
+});
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   const { setFacility } = useFacilityStore();
 
-  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(loginSchema)
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     setError('');
-    setLoading(true);
     try {
-      const res = await loginApi(form);
+      const res = await loginApi(data);
       const { token, user: userData } = res.data;
 
       login(userData, token);
@@ -33,8 +39,6 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Invalid credentials. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -77,21 +81,19 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <label className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] ml-1">Email Address</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-blue-500 transition-colors">alternate_email</span>
                 <input
                   type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
+                  {...register('email')}
                   placeholder="name@facility.com"
-                  className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[15px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
+                  className={`w-full h-[54px] bg-white/5 border ${errors.email ? 'border-status-error' : 'border-white/10'} rounded-2xl pl-12 pr-4 text-[15px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner`}
                 />
               </div>
+              {errors.email && <p className="text-status-error text-[12px] font-bold mt-1 ml-1">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -103,12 +105,9 @@ export default function Login() {
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-blue-500 transition-colors">lock</span>
                 <input
                   type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
+                  {...register('password')}
                   placeholder="••••••••"
-                  className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-12 text-[15px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
+                  className={`w-full h-[54px] bg-white/5 border ${errors.password ? 'border-status-error' : 'border-white/10'} rounded-2xl pl-12 pr-12 text-[15px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner`}
                 />
                 <button
                   type="button"
@@ -118,6 +117,7 @@ export default function Login() {
                   <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
+              {errors.password && <p className="text-status-error text-[12px] font-bold mt-1 ml-1">{errors.password.message}</p>}
             </div>
 
             <div className="flex items-center gap-3 px-1">
@@ -127,10 +127,10 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="w-full h-[56px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:from-blue-800 disabled:to-blue-900 disabled:cursor-not-allowed text-white font-black text-[15px] rounded-2xl transition-all duration-300 shadow-[0_8px_30px_rgba(37,99,235,0.4)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.6)] active:scale-[0.98] mt-2 flex items-center justify-center gap-3 relative overflow-hidden group"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <span className="material-symbols-outlined animate-spin">sync</span>
                   Authenticating...

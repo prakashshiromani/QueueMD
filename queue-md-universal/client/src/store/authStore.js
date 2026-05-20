@@ -9,6 +9,7 @@ export const useAuthStore = create(
       isAuthenticated: false,
       login: (user, token) => set(() => ({ user, token, isAuthenticated: true })),
       logout: () => set(() => ({ user: null, token: null, isAuthenticated: false })),
+      setToken: (token) => set(() => ({ token })),
       checkAuth: () => {
         const { token } = get();
         return !!token;

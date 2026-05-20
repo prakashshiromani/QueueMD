@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
@@ -8,21 +8,12 @@ import { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompl
 import { socket } from "../services/socket";
 import toast from "react-hot-toast";
 import AnimatePage from "../components/AnimatePage";
-import { SkeletonQueue } from "../components/Skeletons";
+import { SkeletonQueue, SkeletonCard } from "../components/Skeletons";
 
 export default function Dashboard() {
   const { user } = useAuthStore();
   const { facilityId, facilityType, setFacilityType, isDemoMode, toggleDemoMode } = useFacilityStore();
   
-  // ✅ Add this DEBUG code at the top of component
-  useEffect(() => {
-    console.log('🔍 Dashboard Facility Context:', {
-      facilityId,
-      facilityType,
-      userFacilityType: user?.facilityType,
-      storeFacilityType: facilityType // Already destructured
-    });
-  }, [facilityId, facilityType, user]);
 
   const [queue, setQueue] = useState([]);
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -272,6 +263,14 @@ export default function Dashboard() {
 
         {/* 📊 Premium Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {loading && stats.waiting === 0 && stats.completed === 0 ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
           {/* Waiting Patients */}
           <motion.div 
             whileHover={{ scale: 1.02, y: -4 }}
@@ -334,6 +333,8 @@ export default function Dashboard() {
               </div>
             </div>
           </motion.div>
+          </>
+          )}
         </div>
 
         {/* 🔄 Main Queue Layout */}
