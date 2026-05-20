@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from "framer-motion";
-import { Users } from "lucide-react";
 
 export default function StaffEmptyState() {
   return (
@@ -8,12 +7,12 @@ export default function StaffEmptyState() {
       <motion.div
         animate={{ y: [0, -10, 0] }}
         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        className="mb-4 p-5 bg-white/5 rounded-full border border-white/10"
+        className="mb-4 p-5 bg-bg-primary rounded-full border border-border-muted/50 shadow-sm"
       >
-        <Users className="w-12 h-12 text-blue-400 opacity-80" />
+        <span className="material-symbols-outlined text-4xl text-text-secondary/40">groups</span>
       </motion.div>
-      <h3 className="text-xl font-black text-white mb-2">No personnel found</h3>
-      <p className="text-white/40 max-w-sm text-[14px]">
+      <h3 className="text-text-primary font-black uppercase tracking-widest">No personnel found</h3>
+      <p className="text-text-secondary text-xs mt-1 uppercase tracking-widest font-medium max-w-sm">
         We couldn't find any staff members matching your criteria. Try adjusting your filters or search query.
       </p>
     </div>

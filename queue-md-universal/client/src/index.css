@@ -11,6 +11,7 @@
     --border-muted: #E2E8F0;
     --surface-variant: #F1F5F9;
     --primary-container: #3B82F6;
+    --font-scale: 1;
   }
 
   .dark {
@@ -57,16 +58,33 @@
     color: var(--text-primary);
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  /* Fix text selection highlight — prevents pink/random colors from accent settings */
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.25);
+    color: inherit;
+  }
+
+  ::-moz-selection {
+    background-color: rgba(59, 130, 246, 0.25);
+    color: inherit;
+  }
+
+  /* Prevent accent-color on form elements from inheriting pink --primary-container */
+  input, textarea, select {
+    accent-color: #3B82F6;
+  }
 }
 
 @layer utilities {
+
   /* 🌈 Premium Glassmorphism */
   .glass-premium {
     background-color: rgb(255 255 255 / 0.1);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgb(255 255 255 / 0.2);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
 
   .glass-input {
@@ -84,7 +102,7 @@
   .glow-blue {
     box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
   }
-  
+
   .glow-green {
     box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
   }
@@ -94,9 +112,11 @@
     transition-property: transform;
     transition-duration: 200ms;
   }
+
   .hover-lift:hover {
     transform: scale(1.02);
   }
+
   .hover-lift:active {
     transform: scale(0.98);
   }
@@ -132,7 +152,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -181,13 +201,22 @@
 }
 
 /* ✨ Custom Scrollbar Glow - Premium */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.3); border-radius: 6px; }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 6px;
+}
+
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
   border-radius: 6px;
   transition: all 0.3s ease;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #60a5fa, #a78bfa);
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
@@ -239,3 +268,63 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ─── Font Accessibility Size ──────────────────────── */
+[data-font-size="small"] {
+  --font-scale: 0.875;
+  font-size: 14px;
+}
+
+[data-font-size="medium"] {
+  --font-scale: 1;
+  font-size: 16px;
+}
+
+[data-font-size="large"] {
+  --font-scale: 1.125;
+  font-size: 18px;
+}
+
+/* Inherit root font-size into all text elements */
+[data-font-size] body,
+[data-font-size] p,
+[data-font-size] span,
+[data-font-size] button,
+[data-font-size] input,
+[data-font-size] label,
+[data-font-size] td,
+[data-font-size] th {
+  font-size: inherit;
+}
+
+/* Smooth font-size transition */
+* {
+  transition: font-size 0.2s ease-in-out;
+}
+
+/* ─── Compact Mode (data-attribute on <html>) ────────────── */
+
+/* Reduce padding in card containers */
+[data-compact="true"] .p-4 { padding: 0.5rem !important; }
+[data-compact="true"] .p-5 { padding: 0.625rem !important; }
+[data-compact="true"] .p-6 { padding: 0.75rem !important; }
+[data-compact="true"] .p-8 { padding: 1rem !important; }
+
+/* Reduce gap/spacing in grids and flex rows */
+[data-compact="true"] .gap-6 { gap: 0.75rem !important; }
+[data-compact="true"] .gap-4 { gap: 0.5rem !important; }
+[data-compact="true"] .gap-3 { gap: 0.375rem !important; }
+
+/* Reduce vertical spacing between stacked elements */
+[data-compact="true"] .space-y-6 > * + * { margin-top: 0.75rem !important; }
+[data-compact="true"] .space-y-4 > * + * { margin-top: 0.5rem !important; }
+[data-compact="true"] .space-y-3 > * + * { margin-top: 0.375rem !important; }
+
+/* Reduce queue list item height */
+[data-compact="true"] .max-h-\[450px\] { max-height: 600px !important; }
+
+/* Reduce stat card number sizes slightly */
+[data-compact="true"] .text-\[32px\] { font-size: 24px !important; }
+
+/* Reduce page-level padding */
+[data-compact="true"] .p-6.space-y-6 { padding: 1rem !important; }

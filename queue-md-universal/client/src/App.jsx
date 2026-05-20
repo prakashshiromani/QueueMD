@@ -15,13 +15,48 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import CreateInvoice from './pages/CreateInvoice';
 import HelpCenter from './pages/HelpCenter';
+import { useEffect } from 'react';
+import { useAuthStore } from './store/authStore';
+import { useFacilityStore } from './store/facilityStore';
+import { connectSocket } from './services/socket';
 import { Toaster } from "react-hot-toast";
 
 export default function App() {
+  const { isAuthenticated, user } = useAuthStore();
+  const { facilityId, facilityType } = useFacilityStore();
+
+  // ── Restore user preferences on mount ─────────────────────────
+  useEffect(() => {
+    const root = document.documentElement;
+
+    // 1. Theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    root.classList.toggle('dark', savedTheme === 'dark');
+
+    // 2. Accent Color
+    const savedColor = localStorage.getItem('accentColor') || '#2563EB';
+    root.style.setProperty('--primary-container', savedColor);
+
+    // 3. Font Size
+    const savedFontSize = localStorage.getItem('fontSize') || 'medium';
+    root.setAttribute('data-font-size', savedFontSize);
+
+    // 4. Compact Mode
+    const savedCompact = localStorage.getItem('compactMode') === 'true';
+    root.setAttribute('data-compact', String(savedCompact));
+  }, []);
+
+  // ── Socket Connection ──────────────────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated && user?.facilityId && facilityId && facilityType) {
+      connectSocket(facilityId, facilityType);
+    }
+  }, [isAuthenticated, user, facilityId, facilityType]);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Toaster 
-        position="bottom-right" 
+      <Toaster
+        position="bottom-right"
         toastOptions={{
           style: {
             background: "rgba(15, 23, 42, 0.85)",

@@ -54,7 +54,7 @@ const Layout = ({ children, scaled = true }) => {
   ];
 
   return (
-    <div 
+    <div
       className="flex h-screen w-full bg-bg-primary text-text-primary overflow-hidden"
       style={{
         '--theme-primary': config.theme.primary,
@@ -75,11 +75,10 @@ const Layout = ({ children, scaled = true }) => {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-300 border-r-4 ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-300 border-r-4 ${isActive
                     ? 'text-[var(--theme-primary)] bg-[rgba(var(--theme-primary-rgb),0.05)] border-[var(--theme-primary)]'
                     : 'text-text-secondary hover:bg-surface-variant/30 hover:text-text-primary hover:translate-x-1 border-transparent'
-                }`}
+                  }`}
               >
                 <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                 {item.name}
@@ -90,7 +89,7 @@ const Layout = ({ children, scaled = true }) => {
       </aside>
 
       {/* Main Content Area */}
-      <div 
+      <div
         className="flex-1 flex flex-col min-w-0 transition-all duration-500"
         style={scaled ? { zoom: 0.9 } : {}}
       >
@@ -127,8 +126,8 @@ const Layout = ({ children, scaled = true }) => {
             >
               <span className="material-symbols-outlined text-[24px]">logout</span>
             </button>
-            <Link 
-              to="/settings" 
+            <Link
+              to="/settings"
               className="ml-2 w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-border-muted flex items-center justify-center font-bold text-xs hover:border-primary-container transition-all active:scale-95 cursor-pointer"
               title="Profile Settings"
             >
@@ -147,7 +146,7 @@ const Layout = ({ children, scaled = true }) => {
             <div className="px-4 py-2 bg-bg-secondary/80 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 pointer-events-none">
               <span className="text-[13px] font-bold text-text-primary whitespace-nowrap">Help Center</span>
             </div>
-            <Link 
+            <Link
               to="/help"
               className="w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group/btn"
               style={{
