@@ -1,7 +1,7 @@
 const logger = require("../utils/logger");
 
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || err.status || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message || "Internal Server Error";
 
   if (err.name === 'CastError' && err.kind === 'ObjectId') {

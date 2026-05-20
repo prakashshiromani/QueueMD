@@ -191,8 +191,13 @@ exports.verifyPayment = async (req, res, next) => {
 exports.handleWebhook = async (req, res, next) => {
   try {
     const webhookSignature = req.headers["x-razorpay-signature"];
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new Error("RAZORPAY_WEBHOOK_SECRET is missing in .env");
+    }
+
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET || "webhook_secret_placeholder")
+      .createHmac("sha256", webhookSecret)
       .update(JSON.stringify(req.body))
       .digest("hex");
 

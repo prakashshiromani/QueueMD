@@ -31,10 +31,14 @@ const notificationRoutes = require("./routes/notification.routes");
 const billingRoutes = require("./routes/billing.routes");
 const subscriptionRoutes = require("./routes/subscription.routes");
 
+const helmet = require("helmet");
 const connectDB = require("./config/db");
 
 const app = express();
 const server = http.createServer(app);
+
+// Security Headers
+app.use(helmet());
 
 // Configuration
 app.use(cors({
@@ -43,8 +47,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // ✅ Request Logger Middleware
 app.use((req, res, next) => {
