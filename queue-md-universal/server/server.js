@@ -29,6 +29,7 @@ const appointmentRoutes = require("./routes/appointment.routes");
 const labRoutes = require("./routes/lab.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const billingRoutes = require("./routes/billing.routes");
+const subscriptionRoutes = require("./routes/subscription.routes");
 
 const connectDB = require("./config/db");
 
@@ -79,6 +80,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/lab", labRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/billing", billingRoutes);
+app.use("/api/subscription", subscriptionRoutes);
 
 // Global Error Handling Middleware
 app.use(errorHandler);

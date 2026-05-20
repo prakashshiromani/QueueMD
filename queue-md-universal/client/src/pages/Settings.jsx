@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
+import { useBillingStore } from '../store/billingStore';
 import { FACILITY_TYPES, getFacilityConfig } from '../utils/facilityTypeConfig';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -728,28 +729,26 @@ const AppearanceTab = ({ config }) => {
 };
 
 const NotificationsTab = ({ facilityId }) => {
-  const localStorageKey = `queue-md-notification-prefs-${facilityId}`;
-
-  const [prefs, setPrefs] = useState(() => {
-    try {
-      const saved = localStorage.getItem(localStorageKey);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return {
-      inApp: true,
-      sound: true,
-      emailSummary: false,
-      browserNotify: true
-    };
+  const { subscriptionPlan } = useBillingStore();
+  const isPro = subscriptionPlan === "pro";
+  const [prefs, setPrefs] = useState({
+    inApp: true,
+    sound: true,
+    emailSummary: false,
+    browserNotify: false
   });
+
+  useEffect(() => {
+    const localStorageKey = `queue-md-notifs-${facilityId}`;
+    const saved = localStorage.getItem(localStorageKey);
+    if (saved) setPrefs(JSON.parse(saved));
+  }, [facilityId]);
 
   const handleToggle = (key) => {
     const newVal = !prefs[key];
     const updated = { ...prefs, [key]: newVal };
     setPrefs(updated);
-    localStorage.setItem(localStorageKey, JSON.stringify(updated));
+    localStorage.setItem(`queue-md-notifs-${facilityId}`, JSON.stringify(updated));
     toast.success('Notification preferences updated!');
   };
 
@@ -778,16 +777,21 @@ const NotificationsTab = ({ facilityId }) => {
         </div>
       ))}
 
-      {/* Pro Features Locked */}
-      <div className="p-4 bg-amber-500/5 rounded-2xl border border-amber-500/20">
-        <p className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[16px]">lock</span> Integrations Premium Channel
+      {/* Pro Features (WhatsApp / SMS) */}
+      <div className={`p-4 rounded-2xl border ${isPro ? 'bg-blue-50/50 border-blue-200' : 'bg-amber-500/5 border-amber-500/20'}`}>
+        <p className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${isPro ? 'text-blue-600' : 'text-amber-500'}`}>
+          <span className="material-symbols-outlined text-[16px]">{isPro ? 'verified' : 'lock'}</span> 
+          {isPro ? 'Pro Integrations Active' : 'Integrations Premium Channel'}
         </p>
         <div className="space-y-2.5 mt-3">
           {['WhatsApp Notifications', 'Direct SMS Broadcast Alerts'].map((feature) => (
             <div key={feature} className="flex items-center justify-between text-xs">
               <span className="text-text-secondary font-medium">{feature}</span>
-              <span className="px-2.5 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-muted/50 font-bold uppercase tracking-wider text-[9px]">Upgrade to Pro</span>
+              {isPro ? (
+                <span className="px-2.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold uppercase tracking-wider text-[9px]">Enabled</span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-muted/50 font-bold uppercase tracking-wider text-[9px]">Upgrade to Pro</span>
+              )}
             </div>
           ))}
         </div>
@@ -925,6 +929,130 @@ const DangerZoneTab = ({ user, facility }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// SUBSCRIPTION TAB
+// ─────────────────────────────────────────────────────────────
+
+const SubscriptionTab = () => {
+  const { facilityId } = useAuthStore();
+  const { subscriptionPlan, subscriptionStatus, subscriptionEnd, fetchSubscriptionStatus, initiateUpgrade, loading } = useBillingStore();
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    if (facilityId) fetchSubscriptionStatus();
+  }, [facilityId]);
+
+  const isPro = subscriptionPlan === "pro";
+  const isExpired = subscriptionStatus === "expired";
+  const validDate = subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString("en-IN") : "—";
+
+  return (
+    <div className="space-y-6">
+      {/* Current Plan Card */}
+      <div className={`p-5 rounded-xl border ${isPro ? "bg-blue-50 border-blue-200" : "bg-bg-primary border-border-muted"}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">
+              {isPro ? "🎉 PRO PLAN" : "🆓 FREE PLAN"}
+            </h3>
+            <p className="text-sm text-text-secondary mt-1">
+              {isPro ? `Valid until: ${validDate}` : "Basic queue management • 1 Branch • 5 Staff"}
+            </p>
+          </div>
+          {!isPro && (
+            <button
+              onClick={() => initiateUpgrade("monthly")}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition uppercase tracking-wider"
+            >
+              {loading ? "Processing..." : "Upgrade to Pro"}
+            </button>
+          )}
+          {isPro && !isExpired && (
+            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">Active ✓</span>
+          )}
+        </div>
+      </div>
+
+      {/* Plan Comparison */}
+      <div className="bg-bg-primary rounded-xl border border-border-muted p-5">
+        <h4 className="font-semibold text-text-primary mb-4">Plan Comparison</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border-muted/50">
+              <th className="text-left py-2 font-medium text-text-secondary">Feature</th>
+              <th className="text-center py-2 font-medium text-text-secondary">Free</th>
+              <th className="text-center py-2 font-medium text-blue-600 bg-blue-50/50 rounded-t-lg">Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["Branches", "1", "Unlimited"],
+              ["Staff Members", "5", "Unlimited"],
+              ["SMS/WhatsApp Alerts", "❌", "✅"],
+              ["Advanced Analytics", "❌", "✅"],
+              ["Priority Support", "❌", "✅"],
+              ["PDF Invoice Export", "❌", "✅"],
+              ["Custom Branding", "❌", "✅"]
+            ].map(([feature, freeVal, proVal]) => (
+              <tr key={feature} className="border-b border-border-muted/20 last:border-0">
+                <td className="py-3 text-text-primary">{feature}</td>
+                <td className="text-center py-3 text-text-secondary">{freeVal}</td>
+                <td className="text-center py-3 bg-blue-50/30 font-medium text-blue-700">{proVal}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pricing Options */}
+      {!isPro && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <button
+            onClick={() => initiateUpgrade("monthly")}
+            className="p-5 border border-border-muted rounded-xl hover:border-blue-400 transition text-left group bg-bg-primary"
+          >
+            <div className="text-2xl font-black text-blue-600 group-hover:scale-105 transition-transform origin-left">₹499</div>
+            <div className="text-sm text-text-secondary font-medium">per month</div>
+            <div className="text-xs text-text-muted mt-2">Billed monthly</div>
+          </button>
+          <button
+            onClick={() => initiateUpgrade("yearly")}
+            className="p-5 border-2 border-blue-500 rounded-xl bg-blue-50 hover:bg-blue-100 transition text-left relative overflow-hidden group"
+          >
+            <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
+            <div className="text-2xl font-black text-blue-700 group-hover:scale-105 transition-transform origin-left">₹4,999</div>
+            <div className="text-sm text-blue-800 font-medium">per year</div>
+            <div className="text-xs text-green-600 mt-2 font-bold flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">redeem</span> Save ₹989
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Billing History Toggle */}
+      <div className="mt-6 border-t border-border-muted/50 pt-4">
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="text-sm text-blue-600 hover:underline font-medium flex items-center gap-1"
+        >
+          {showHistory ? "Hide" : "View"} Billing History 
+          <span className="material-symbols-outlined text-[18px]">
+            {showHistory ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+        
+        {showHistory && (
+          <div className="mt-4 text-sm text-text-secondary italic">
+            Billing history will appear here after your first transaction.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+
 // MAIN SETTINGS COMPONENT
 // ─────────────────────────────────────────────────────────────
 
@@ -945,6 +1073,7 @@ export default function Settings() {
     { id: 'queue', label: 'Queue & Tokens', icon: 'queue' },
     { id: 'appearance', label: 'Appearance', icon: 'palette' },
     { id: 'notifications', label: 'Notifications', icon: 'notifications' },
+    { id: 'subscription', label: 'Subscription & Billing', icon: 'credit_card' },
     { id: 'danger', label: 'Danger Zone', icon: 'warning' }
   ];
 
@@ -1005,6 +1134,7 @@ export default function Settings() {
       case 'queue': return <QueueSettingsTab facility={facility} onSave={handleFieldChange} config={config} />;
       case 'appearance': return <AppearanceTab config={config} />;
       case 'notifications': return <NotificationsTab facilityId={facilityId} />;
+      case 'subscription': return <SubscriptionTab />;
       case 'danger': return <DangerZoneTab user={user} facility={facility} />;
       default: return null;
     }

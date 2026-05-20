@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { fetchInvoices as fetchInvoicesApi, createInvoiceApi, updateInvoiceStatus as updateInvoiceStatusApi, fetchBillingStats } from '../services/api';
+import api from '../services/api';
 import { socket } from '../services/socket';
 
 export const useBillingStore = create(
@@ -106,6 +107,77 @@ export const useBillingStore = create(
           throw error;
         }
       },
+
+      // --- Subscription Actions ---
+      subscriptionPlan: "free",
+      subscriptionStatus: "active",
+      subscriptionEnd: null,
+
+      fetchSubscriptionStatus: async () => {
+        try {
+          set({ loading: true });
+          const { data } = await api.get("/subscription/status");
+          set({
+            subscriptionPlan: data.plan,
+            subscriptionStatus: data.status,
+            subscriptionEnd: data.validUntil,
+            loading: false
+          });
+        } catch (err) {
+          console.error("Failed to fetch subscription:", err);
+          set({ loading: false });
+        }
+      },
+
+      initiateUpgrade: async (duration = "monthly") => {
+        try {
+          set({ loading: true });
+          // 1. Order create
+          const { data: order } = await api.post("/subscription/create-order", { plan: "pro", duration });
+          
+          // 2. Razorpay Options
+          const options = {
+            key: order.key,
+            amount: order.amount,
+            currency: order.currency,
+            name: "QueueMD Pro",
+            description: `Pro Plan - ${order.planLabel}`,
+            order_id: order.orderId,
+            handler: async (response) => {
+              // 3. Verify Payment
+              const { data: result } = await api.post("/subscription/verify-payment", {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+              
+              if (result.success) {
+                set({
+                  subscriptionPlan: "pro",
+                  subscriptionStatus: "active",
+                  subscriptionEnd: result.subscription.validUntil,
+                  loading: false
+                });
+                return { success: true, message: result.message };
+              }
+            },
+            prefill: {
+              name: "QueueMD Admin",
+              email: "admin@queuemd.com",
+            },
+            theme: { color: "#2563EB" }
+          };
+
+          // 4. Razorpay Modal Open
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+          
+        } catch (err) {
+          console.error("Upgrade failed:", err);
+          set({ loading: false });
+          throw err;
+        }
+      },
       
       reset: () => set({
         invoices: [],
@@ -120,7 +192,10 @@ export const useBillingStore = create(
         error: null,
         currentPage: 1,
         totalPages: 1,
-        totalInvoices: 0
+        totalInvoices: 0,
+        subscriptionPlan: "free",
+        subscriptionStatus: "active",
+        subscriptionEnd: null
       })
     }),
     {

@@ -29,3 +29,25 @@ exports.authorize = (...roles) => {
     next();
   };
 };
+
+const Facility = require("../models/Facility");
+
+// PRO SUBSCRIPTION CHECK
+exports.requirePro = async (req, res, next) => {
+  try {
+    const facility = await Facility.findById(req.user.facilityId).select("subscriptionPlan subscriptionStatus");
+    
+    if (!facility || facility.subscriptionPlan !== "pro" || facility.subscriptionStatus !== "active") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Pro subscription required for this feature",
+        upgradeRequired: true,
+        upgradeUrl: "/settings?tab=subscription"
+      });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
