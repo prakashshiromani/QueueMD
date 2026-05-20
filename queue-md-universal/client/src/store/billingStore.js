@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { fetchInvoices as fetchInvoicesApi, createInvoiceApi, updateInvoiceStatus as updateInvoiceStatusApi, fetchBillingStats } from '../services/api';
 import api from '../services/api';
 import { socket } from '../services/socket';
+import toast from 'react-hot-toast';
 
 export const useBillingStore = create(
   persist(
@@ -135,6 +136,37 @@ export const useBillingStore = create(
           // 1. Order create
           const { data: order } = await api.post("/subscription/create-order", { plan: "pro", duration });
           
+          // ✅ MOCK MODE DETECTED
+          if (order.isMock) {
+            set({ loading: false });
+            
+            // 🧪 Developer Sandbox Prompt
+            const confirmed = window.confirm(
+              `🧪 QueueMD Developer Sandbox\n\nWould you like to complete this simulated payment?\n\nPlan: ${order.planLabel}\nAmount: ₹${order.amount/100}\n\n✅ No real money will be charged.`
+            );
+            
+            if (!confirmed) return;
+            
+            set({ loading: true });
+            // Simulate payment verification
+            const { data: result } = await api.post("/subscription/verify-payment", {
+              razorpay_order_id: order.orderId,
+              razorpay_payment_id: "mock_payment_" + Date.now(),
+              razorpay_signature: "mock_signature"
+            });
+            
+            if (result.success) {
+              set({
+                subscriptionPlan: "pro",
+                subscriptionStatus: "active",
+                subscriptionEnd: result.subscription.validUntil,
+                loading: false
+              });
+              toast.success(result.message || "🎉 Upgrade successful! Pro features unlocked!");
+              return { success: true, isMock: true };
+            }
+          }
+
           // 2. Razorpay Options
           const options = {
             key: order.key,
@@ -144,37 +176,61 @@ export const useBillingStore = create(
             description: `Pro Plan - ${order.planLabel}`,
             order_id: order.orderId,
             handler: async (response) => {
-              // 3. Verify Payment
-              const { data: result } = await api.post("/subscription/verify-payment", {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              });
-              
-              if (result.success) {
-                set({
-                  subscriptionPlan: "pro",
-                  subscriptionStatus: "active",
-                  subscriptionEnd: result.subscription.validUntil,
-                  loading: false
+              try {
+                const { data: result } = await api.post("/subscription/verify-payment", {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
                 });
-                return { success: true, message: result.message };
+                
+                if (result.success) {
+                  set({
+                    subscriptionPlan: "pro",
+                    subscriptionStatus: "active",
+                    subscriptionEnd: result.subscription.validUntil,
+                    loading: false
+                  });
+                  toast.success(result.message || "🎉 Upgrade successful!");
+                  return { success: true };
+                }
+              } catch (err) {
+                toast.error("Payment verification failed");
+                set({ loading: false });
+                throw err;
               }
             },
             prefill: {
               name: "QueueMD Admin",
               email: "admin@queuemd.com",
             },
-            theme: { color: "#2563EB" }
+            theme: { color: "#2563EB" },
+            modal: {
+              ondismiss: () => {
+                set({ loading: false });
+                toast.dismiss();
+              }
+            }
           };
 
-          // 4. Razorpay Modal Open
+          // Load Razorpay script if not already loaded
+          if (!window.Razorpay) {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement("script");
+              script.src = "https://checkout.razorpay.com/v1/checkout.js";
+              script.onload = resolve;
+              script.onerror = reject;
+              document.body.appendChild(script);
+            });
+          }
+
           const rzp = new window.Razorpay(options);
           rzp.open();
           
         } catch (err) {
           console.error("Upgrade failed:", err);
           set({ loading: false });
+          // ✅ Show error toast
+          toast.error(err.response?.data?.message || "Upgrade failed. Please try again.");
           throw err;
         }
       },

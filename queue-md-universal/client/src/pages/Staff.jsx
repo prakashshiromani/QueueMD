@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Download, Edit, Trash2, Loader2, UserX, Plus, Shield } from "lucide-react";
 import { Link } from 'react-router-dom';
@@ -143,7 +143,7 @@ export default function StaffPage() {
             <button 
               onClick={handleExport} 
               disabled={isExporting} 
-              className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
             >
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <span className="material-symbols-outlined text-[18px]">download</span>} 
               {isExporting ? "Exporting..." : "Export"}
@@ -163,14 +163,14 @@ export default function StaffPage() {
         </div>
 
         {/* 🔎 Filter Bar */}
-        <div className="bg-bg-secondary p-4 rounded-2xl border border-border-muted/50 shadow-sm grid grid-cols-1 lg:grid-cols-4 gap-4 items-center">
+        <div className="bg-bg-secondary p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm grid grid-cols-1 lg:grid-cols-4 gap-4 items-center">
           <div className="relative lg:col-span-2 w-full">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">search</span>
             <input 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
               placeholder="Search by name, ID or email..." 
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all placeholder:text-text-secondary/50 shadow-inner"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all placeholder:text-text-secondary/50 shadow-inner"
               style={{ '--theme-primary': config.theme.primary }}
             />
           </div>
@@ -180,7 +180,7 @@ export default function StaffPage() {
             <select 
               value={roleFilter} 
               onChange={e => setRoleFilter(e.target.value)} 
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select font-bold"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select font-bold"
             >
               <option value="All">All Roles</option>
               <option value="admin">Admin</option>
@@ -195,7 +195,7 @@ export default function StaffPage() {
             <select 
               value={statusFilter} 
               onChange={e => setStatusFilter(e.target.value)} 
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select font-bold"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select font-bold"
             >
               <option value="All">All Statuses</option>
               <option value="Active">Active</option>
@@ -263,7 +263,7 @@ const StaffCard = ({ staff, index, onEdit, onDelete, canDelete, config }) => {
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.4, delay: index * 0.04 }}
       whileHover={{ y: -4 }}
-      className="bg-bg-secondary border border-border-muted/50 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
+      className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden"
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = `${config.theme.primary}40`;
         e.currentTarget.style.boxShadow = `0 8px 30px rgba(${primaryRgb}, 0.06)`;
@@ -313,10 +313,10 @@ const StaffCard = ({ staff, index, onEdit, onDelete, canDelete, config }) => {
         </div>
       </div>
       
-      <div className="flex gap-3 pt-4 border-t border-border-muted/30 relative z-10">
+      <div className="flex gap-3 pt-4 border-t border-border-muted/30 dark:border-white/5 relative z-10">
         <button 
           onClick={onEdit} 
-          className="flex-1 h-[42px] bg-bg-primary hover:bg-surface-variant text-text-primary font-bold rounded-xl text-[13px] border border-border-muted/50 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
+          className="flex-1 h-[42px] bg-bg-primary hover:bg-surface-variant text-text-primary font-bold rounded-xl text-[13px] border border-border-muted/50 dark:border-white/5 flex items-center justify-center gap-2 transition-all active:scale-[0.97]"
         >
           <span className="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>

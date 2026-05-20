@@ -19,7 +19,7 @@
     --bg-secondary: #1E293B;
     --text-primary: #F8FAFC;
     --text-secondary: #94A3B8;
-    --border-muted: #334155;
+    --border-muted: #1E293B; /* Same as bg-secondary = invisible borders by default */
     --surface-variant: #32343d;
     --primary-container: #2563eb;
     color-scheme: dark;
@@ -71,7 +71,9 @@
   }
 
   /* Prevent accent-color on form elements from inheriting pink --primary-container */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     accent-color: #3B82F6;
   }
 }
@@ -231,13 +233,29 @@
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-strong {
   background: rgba(30, 41, 59, 0.7);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Global Dark Mode Border Override ─────────────────────────────
+   This globally tones down ALL border colors in dark mode so no
+   harsh white lines appear on any page, card, table, or div.
+   Specific blue/red/green accent borders are intentionally excluded.
+   ─────────────────────────────────────────────────────────────────── */
+.dark *:not([class*="border-blue"]):not([class*="border-red"]):not([class*="border-green"]):not([class*="border-emerald"]):not([class*="border-amber"]):not([class*="ring"]) {
+  --tw-border-opacity: 1;
+  border-color: rgb(38 50 68 / var(--tw-border-opacity));
+}
+
+/* Override for transparent / no-border cases (don't add borders where none exist) */
+.dark .border-0,
+.dark .border-none {
+  border-color: transparent !important;
 }
 
 /* Loading Overlay */
@@ -305,26 +323,59 @@
 /* ─── Compact Mode (data-attribute on <html>) ────────────── */
 
 /* Reduce padding in card containers */
-[data-compact="true"] .p-4 { padding: 0.5rem !important; }
-[data-compact="true"] .p-5 { padding: 0.625rem !important; }
-[data-compact="true"] .p-6 { padding: 0.75rem !important; }
-[data-compact="true"] .p-8 { padding: 1rem !important; }
+[data-compact="true"] .p-4 {
+  padding: 0.5rem !important;
+}
+
+[data-compact="true"] .p-5 {
+  padding: 0.625rem !important;
+}
+
+[data-compact="true"] .p-6 {
+  padding: 0.75rem !important;
+}
+
+[data-compact="true"] .p-8 {
+  padding: 1rem !important;
+}
 
 /* Reduce gap/spacing in grids and flex rows */
-[data-compact="true"] .gap-6 { gap: 0.75rem !important; }
-[data-compact="true"] .gap-4 { gap: 0.5rem !important; }
-[data-compact="true"] .gap-3 { gap: 0.375rem !important; }
+[data-compact="true"] .gap-6 {
+  gap: 0.75rem !important;
+}
+
+[data-compact="true"] .gap-4 {
+  gap: 0.5rem !important;
+}
+
+[data-compact="true"] .gap-3 {
+  gap: 0.375rem !important;
+}
 
 /* Reduce vertical spacing between stacked elements */
-[data-compact="true"] .space-y-6 > * + * { margin-top: 0.75rem !important; }
-[data-compact="true"] .space-y-4 > * + * { margin-top: 0.5rem !important; }
-[data-compact="true"] .space-y-3 > * + * { margin-top: 0.375rem !important; }
+[data-compact="true"] .space-y-6>*+* {
+  margin-top: 0.75rem !important;
+}
+
+[data-compact="true"] .space-y-4>*+* {
+  margin-top: 0.5rem !important;
+}
+
+[data-compact="true"] .space-y-3>*+* {
+  margin-top: 0.375rem !important;
+}
 
 /* Reduce queue list item height */
-[data-compact="true"] .max-h-\[450px\] { max-height: 600px !important; }
+[data-compact="true"] .max-h-\[450px\] {
+  max-height: 600px !important;
+}
 
 /* Reduce stat card number sizes slightly */
-[data-compact="true"] .text-\[32px\] { font-size: 24px !important; }
+[data-compact="true"] .text-\[32px\] {
+  font-size: 24px !important;
+}
 
 /* Reduce page-level padding */
-[data-compact="true"] .p-6.space-y-6 { padding: 1rem !important; }
+[data-compact="true"] .p-6.space-y-6 {
+  padding: 1rem !important;
+}

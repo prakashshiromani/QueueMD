@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
@@ -196,7 +196,7 @@ export default function Dashboard() {
       <AnimatePage className="p-6 space-y-6 max-w-7xl mx-auto pb-32">
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
           <div className="flex items-center gap-3 w-full md:w-auto overflow-hidden">
             <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">UI Preview:</span>
             <div className="flex gap-2 overflow-x-auto scrollbar-hide w-full pb-1">
@@ -226,7 +226,7 @@ export default function Dashboard() {
           </div>
 
           {/* Toggle Switch */}
-          <div className="flex items-center gap-4 shrink-0 bg-bg-primary/50 p-2 px-4 rounded-xl border border-border-muted/30">
+          <div className="flex items-center gap-4 shrink-0 bg-bg-primary/50 p-2 px-4 rounded-xl border border-border-muted/30 dark:border-white/5">
             <div className="text-right">
               <div className={`text-[10px] font-black tracking-widest uppercase ${isDemoMode ? "text-orange-400" : "text-text-secondary"}`}>
                 {isDemoMode ? "🧪 Demo Mode" : "🔒 Secure Mode"}
@@ -253,7 +253,7 @@ export default function Dashboard() {
         )}
         
         {/* 🏥 Facility Mode Badge (Read-Only) */}
-        <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-2xl border border-border-muted/50 w-fit">
+        <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-2xl border border-border-muted/50 dark:border-white/5 w-fit">
           <div 
             className="w-10 h-10 rounded-xl flex items-center justify-center border"
             style={{ 
@@ -276,7 +276,7 @@ export default function Dashboard() {
           <motion.div 
             whileHover={{ scale: 1.02, y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-blue-500/30 transition-all group shadow-sm"
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-5 hover:border-blue-500/30 transition-all group shadow-sm"
           >
             <div className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" style={{ backgroundColor: config.theme.primary }} />
             <div className="relative flex items-center justify-between">
@@ -297,7 +297,7 @@ export default function Dashboard() {
           <motion.div 
             whileHover={{ scale: 1.02, y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-orange-500/30 transition-all group shadow-sm"
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-5 hover:border-orange-500/30 transition-all group shadow-sm"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
             <div className="relative flex items-center justify-between">
@@ -318,7 +318,7 @@ export default function Dashboard() {
           <motion.div 
             whileHover={{ scale: 1.02, y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 hover:border-green-500/30 transition-all group shadow-sm"
+            className="relative overflow-hidden bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-5 hover:border-green-500/30 transition-all group shadow-sm"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
             <div className="relative flex items-center justify-between">
@@ -339,8 +339,8 @@ export default function Dashboard() {
         {/* 🔄 Main Queue Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Currently Serving */}
-          <div className="lg:col-span-1 bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden shadow-sm">
-            <div className="p-5 border-b border-border-muted/50 flex items-center justify-between bg-surface-variant/30">
+          <div className="lg:col-span-1 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-border-muted/50 dark:border-white/5 flex items-center justify-between bg-surface-variant/30">
               <h2 className="text-[14px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-2">
                 <span className="material-symbols-outlined text-orange-500">person_pin</span>
                 Currently Serving
@@ -369,7 +369,7 @@ export default function Dashboard() {
                   <div className="text-[32px] font-black text-text-primary mb-1 tracking-tight">Token #{currentPatient.tokenNumber}</div>
                   <div className="text-[18px] font-bold text-text-secondary mb-6">{currentPatient.patientName}</div>
                   
-                  <div className="w-full bg-bg-primary rounded-2xl p-5 mb-8 border border-border-muted/50 shadow-inner">
+                  <div className="w-full bg-bg-primary rounded-2xl p-5 mb-8 border border-border-muted/50 dark:border-white/5 shadow-inner">
                     <div className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-2">Duration In Progress</div>
                     <div className="text-[28px] font-black text-orange-500 tabular-nums">
                       {formatWaitTime(elapsed)}
@@ -406,8 +406,8 @@ export default function Dashboard() {
           </div>
 
           {/* Waiting Queue */}
-          <div className="lg:col-span-2 bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden flex flex-col shadow-sm">
-            <div className="p-5 border-b border-border-muted/50 flex items-center justify-between bg-surface-variant/30">
+          <div className="lg:col-span-2 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden flex flex-col shadow-sm">
+            <div className="p-5 border-b border-border-muted/50 dark:border-white/5 flex items-center justify-between bg-surface-variant/30">
               <h2 className="text-[14px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-2">
                 <span className="material-symbols-outlined" style={{ color: config.theme.primary }}>queue</span>
                 Waiting Queue
@@ -429,7 +429,7 @@ export default function Dashboard() {
               ) : (
                 queue.map((patient, idx) => (
                   <div key={patient._id} 
-                       className="group flex items-center justify-between p-4 rounded-xl border border-border-muted/30 bg-bg-primary transition-all border-l-4 border-l-transparent shadow-sm"
+                       className="group flex items-center justify-between p-4 rounded-xl border border-border-muted/30 dark:border-white/5 bg-bg-primary transition-all border-l-4 border-l-transparent shadow-sm"
                        style={{ '--hover-color': config.theme.primary }}
                        onMouseEnter={(e) => {
                          e.currentTarget.style.borderColor = `${config.theme.primary}50`;
@@ -459,7 +459,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase bg-surface-variant/50 text-text-secondary border border-border-muted/30">
+                      <span className="px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase bg-surface-variant/50 text-text-secondary border border-border-muted/30 dark:border-white/5">
                         WAITING
                       </span>
                     </div>
@@ -469,7 +469,7 @@ export default function Dashboard() {
             </div>
 
             {/* Call Next Floating Action */}
-            <div className="p-5 border-t border-border-muted/50 bg-surface-variant/20">
+            <div className="p-5 border-t border-border-muted/50 dark:border-white/5 bg-surface-variant/20">
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
@@ -492,7 +492,7 @@ export default function Dashboard() {
         </div>
 
         {/* 🏷 Facility Status Footer */}
-        <div className="flex items-center justify-between p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 shadow-sm">
+        <div className="flex items-center justify-between p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
           <div className="flex items-center gap-4">
             <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center border"

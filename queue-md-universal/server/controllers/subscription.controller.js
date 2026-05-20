@@ -18,6 +18,12 @@ const PRICING = {
   }
 };
 
+// Helper function to detect Mock Mode
+const isMockMode = () => {
+  const key = process.env.RAZORPAY_KEY_ID || '';
+  return !key || key.includes('your_key') || key.includes('placeholder') || key === 'rzp_test_XXXXXXXX';
+};
+
 // CREATE ORDER
 exports.createOrder = async (req, res, next) => {
   try {
@@ -29,7 +35,37 @@ exports.createOrder = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid plan" });
     }
 
-    // Razorpay Order Create
+    // 🧪 MOCK MODE CHECK
+    if (isMockMode()) {
+      logger.info(`🧪 Mock Mode: Creating sandbox order for facility ${facilityId}`);
+      
+      const mockOrderId = `mock_order_${facilityId}_${Date.now()}`;
+      
+      // DB mein save (tracking ke liye)
+      await Subscription.create({
+        facilityId,
+        razorpayOrderId: mockOrderId,
+        plan,
+        duration,
+        amount: pricing.amount,
+        status: "created",
+        validFrom: new Date(),
+        validUntil: new Date(Date.now() + (duration === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000)
+      });
+
+      return res.json({
+        success: true,
+        isMock: true,  // ✅ Frontend ko signal
+        orderId: mockOrderId,
+        amount: pricing.amount,
+        currency: "INR",
+        planLabel: pricing.label,
+        key: "rzp_test_mock_key",
+        message: "Developer Sandbox Mode Active"
+      });
+    }
+
+    // 🎯 REAL RAZORPAY FLOW
     const options = {
       amount: pricing.amount,
       currency: "INR",
@@ -39,7 +75,6 @@ exports.createOrder = async (req, res, next) => {
 
     const order = await razorpay.orders.create(options);
 
-    // DB mein save karo (tracking ke liye)
     await Subscription.create({
       facilityId,
       razorpayOrderId: order.id,
@@ -50,15 +85,14 @@ exports.createOrder = async (req, res, next) => {
       validUntil: new Date(Date.now() + (duration === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000)
     });
 
-    logger.info(`Order created: ${order.id} for facility ${facilityId}`);
-
     res.json({
       success: true,
+      isMock: false,
       orderId: order.id,
       amount: pricing.amount,
       currency: "INR",
       planLabel: pricing.label,
-      key: process.env.RAZORPAY_KEY_ID // Frontend ko chahiye
+      key: process.env.RAZORPAY_KEY_ID
     });
   } catch (err) {
     logger.error(`Create order failed: ${err.message}`);
@@ -72,7 +106,43 @@ exports.verifyPayment = async (req, res, next) => {
     const { facilityId } = req.user;
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    // Signature Verify (Security Critical)
+    // 🧪 MOCK MODE VERIFY
+    if (razorpay_order_id?.startsWith('mock_order_')) {
+      logger.info(`🧪 Mock Mode: Verifying sandbox payment for ${facilityId}`);
+      
+      const subscription = await Subscription.findOneAndUpdate(
+        { facilityId, razorpayOrderId: razorpay_order_id },
+        {
+          razorpayPaymentId: razorpay_payment_id || "mock_payment_" + Date.now(),
+          razorpaySignature: razorpay_signature || "mock_signature",
+          status: "paid"
+        },
+        { new: true }
+      );
+
+      if (!subscription) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      // ✅ Facility upgrade
+      await Facility.findByIdAndUpdate(facilityId, {
+        subscriptionPlan: "pro",
+        subscriptionStatus: "active",
+        subscriptionEnd: subscription.validUntil
+      });
+
+      return res.json({
+        success: true,
+        isMock: true,
+        message: "🎉 Sandbox Upgrade Successful! Pro features unlocked.",
+        subscription: {
+          plan: "pro",
+          validUntil: subscription.validUntil
+        }
+      });
+    }
+
+    // 🎯 REAL SIGNATURE VERIFY
     const generatedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "secret_placeholder")
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -82,13 +152,12 @@ exports.verifyPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid signature" });
     }
 
-    // Subscription record update
     const subscription = await Subscription.findOneAndUpdate(
       { facilityId, razorpayOrderId: razorpay_order_id },
-      {
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature,
-        status: "paid"
+      { 
+        razorpayPaymentId: razorpay_payment_id, 
+        razorpaySignature: razorpay_signature, 
+        status: "paid" 
       },
       { new: true }
     );
@@ -97,17 +166,15 @@ exports.verifyPayment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Facility ko upgrade karo
     await Facility.findByIdAndUpdate(facilityId, {
       subscriptionPlan: "pro",
       subscriptionStatus: "active",
       subscriptionEnd: subscription.validUntil
     });
 
-    logger.info(`Payment verified: ${razorpay_payment_id} | Facility ${facilityId} upgraded to PRO`);
-
     res.json({
       success: true,
+      isMock: false,
       message: "Upgrade successful! 🎉",
       subscription: {
         plan: "pro",
@@ -201,3 +268,4 @@ exports.getHistory = async (req, res, next) => {
     next(err);
   }
 };
+

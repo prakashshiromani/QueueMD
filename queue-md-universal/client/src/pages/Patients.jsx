@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import AddPatientModal from "../components/AddPatientModal";
 import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi } from "../services/api";
@@ -254,7 +254,7 @@ export default function Patients() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-primary font-bold text-[13px] hover:bg-surface-variant transition shadow-sm">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-primary font-bold text-[13px] hover:bg-surface-variant transition shadow-sm">
               <span className="material-symbols-outlined text-[20px]">download</span>
               Export CSV
             </button>
@@ -273,7 +273,7 @@ export default function Patients() {
         </div>
 
         {/* Premium Search & Filter Bar */}
-        <div className="bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 shadow-sm">
+        <div className="bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search Input */}
             <div className="relative flex-[2]">
@@ -285,7 +285,7 @@ export default function Patients() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, ID, or phone..."
-                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all font-medium"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all font-medium"
               />
               {searchQuery && (
                 <button
@@ -331,11 +331,11 @@ export default function Patients() {
         </div>
 
         {/* Patient Table */}
-        <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden shadow-sm">
+        <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-surface-variant/30 border-b border-border-muted/50">
+                <tr className="bg-surface-variant/30 border-b border-border-muted/50 dark:border-white/5">
                   <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PATIENT</th>
                   <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">CONTACT</th>
                   <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PRIMARY FACILITY</th>
@@ -444,7 +444,7 @@ export default function Patients() {
                             </button>
 
                             {openMenuId === patient._id && (
-                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-bg-secondary border border-border-muted/50 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                                 <button
                                   onClick={() => handleEditOpen(patient)}
                                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-text-primary hover:bg-surface-variant transition-all group"
@@ -474,7 +474,7 @@ export default function Patients() {
 
           {/* Pagination */}
           {!loading && patients.length > 0 && (
-            <div className="px-6 py-5 border-t border-border-muted/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/50">
+            <div className="px-6 py-5 border-t border-border-muted/50 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/50">
               <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.15em]">
                 Registry Index: <span className="text-text-primary">{((currentPage - 1) * patientsPerPage) + 1} — {Math.min(currentPage * patientsPerPage, totalPatients)}</span> / {totalPatients}
               </div>
@@ -482,7 +482,7 @@ export default function Patients() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
                 >
                   Prev
                 </button>
@@ -505,7 +505,7 @@ export default function Patients() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalPatients / patientsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalPatients / patientsPerPage)}
-                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
                 >
                   Next
                 </button>
@@ -526,7 +526,7 @@ export default function Patients() {
       {/* ✅ Edit Patient Modal */}
       {editPatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg-secondary border border-border-muted/50 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
               <h2 className="text-[18px] font-black text-text-primary">Edit Patient</h2>
               <button onClick={() => setEditPatient(null)} className="p-2 rounded-xl hover:bg-surface-variant text-text-secondary transition">
@@ -541,7 +541,7 @@ export default function Patients() {
                   type="text"
                   value={editForm.name || ''}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                 />
               </div>
               <div>
@@ -550,7 +550,7 @@ export default function Patients() {
                   type="text"
                   value={editForm.phone || ''}
                   onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                 />
               </div>
               <div>
@@ -559,7 +559,7 @@ export default function Patients() {
                   type="email"
                   value={editForm.email || ''}
                   onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                 />
               </div>
             </div>
@@ -567,7 +567,7 @@ export default function Patients() {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setEditPatient(null)}
-                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
+                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
               >
                 Cancel
               </button>
@@ -587,7 +587,7 @@ export default function Patients() {
       {/* ✅ Delete Confirm Modal */}
       {deletePatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg-secondary border border-border-muted/50 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
               <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-4xl text-red-400">person_remove</span>
@@ -600,7 +600,7 @@ export default function Patients() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeletePatient(null)}
-                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
+                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
               >
                 Cancel
               </button>

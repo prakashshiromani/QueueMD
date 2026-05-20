@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
@@ -47,14 +47,14 @@ const MyAccountTab = ({ user }) => {
   return (
     <div className="space-y-6">
       {/* Avatar + Basic Info */}
-      <div className="flex items-center gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50">
-        <div className="w-16 h-16 rounded-full bg-slate-500/10 flex items-center justify-center text-xl font-bold text-text-primary border border-border-muted/30">
+      <div className="flex items-center gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5">
+        <div className="w-16 h-16 rounded-full bg-slate-500/10 flex items-center justify-center text-xl font-bold text-text-primary border border-border-muted/30 dark:border-white/5">
           {user?.name?.[0]?.toUpperCase() || 'U'}
         </div>
         <div>
           <h3 className="text-lg font-bold text-text-primary capitalize">{user?.name}</h3>
           <p className="text-text-secondary text-sm">{user?.email}</p>
-          <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-slate-500/10 text-text-secondary border border-border-muted/50 mt-1.5 uppercase tracking-wider">
+          <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-slate-500/10 text-text-secondary border border-border-muted/50 dark:border-white/5 mt-1.5 uppercase tracking-wider">
             {user?.role}
           </span>
         </div>
@@ -69,14 +69,14 @@ const MyAccountTab = ({ user }) => {
             type="text"
             value={formData.displayName}
             onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-            className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+            className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
             placeholder="Enter your name"
           />
         </div>
       </div>
 
       {/* Password Change */}
-      <form onSubmit={handlePasswordUpdate} className="space-y-4 pt-6 border-t border-border-muted/30">
+      <form onSubmit={handlePasswordUpdate} className="space-y-4 pt-6 border-t border-border-muted/30 dark:border-white/5">
         <h4 className="font-bold text-text-primary">Change Password</h4>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -91,7 +91,7 @@ const MyAccountTab = ({ user }) => {
                 type="password"
                 value={formData[field.key]}
                 onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3 px-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3 px-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
               />
               {errors[field.key] && <p className="text-rose-500 text-xs mt-1">{errors[field.key]}</p>}
             </div>
@@ -101,7 +101,7 @@ const MyAccountTab = ({ user }) => {
         <button
           type="submit"
           disabled
-          className="px-5 py-3 rounded-xl bg-bg-primary border border-border-muted/50 text-text-secondary/50 text-xs font-bold uppercase tracking-widest cursor-not-allowed"
+          className="px-5 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary/50 text-xs font-bold uppercase tracking-widest cursor-not-allowed"
           title="Coming Soon"
         >
           Update Password 🔐
@@ -155,7 +155,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
   return (
     <div className="space-y-6">
       {/* Logo Placeholder */}
-      <div className="flex items-center gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50">
+      <div className="flex items-center gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5">
         <div className="w-16 h-16 rounded-2xl bg-bg-primary border-2 border-dashed border-border-muted/50 flex items-center justify-center">
           <span className="text-3xl">{config.icon}</span>
         </div>
@@ -181,7 +181,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
               type="text"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
               placeholder="Facility Name"
             />
           </div>
@@ -195,7 +195,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
               type="tel"
               value={formData.contact}
               onChange={(e) => handleChange('contact', e.target.value)}
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
               placeholder="+91 XXXXX XXXXX"
             />
           </div>
@@ -209,7 +209,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
               type="text"
               value={formData.workingHours}
               onChange={(e) => handleChange('workingHours', e.target.value)}
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
               placeholder="09:00 - 20:00"
             />
           </div>
@@ -222,7 +222,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
             <textarea
               value={formData.address}
               onChange={(e) => handleChange('address', e.target.value)}
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm min-h-[100px]"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm min-h-[100px]"
               placeholder="Enter facility address"
             />
           </div>
@@ -230,7 +230,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
       </div>
 
       {/* Facility Type Badge */}
-      <div className="p-4 bg-bg-primary rounded-xl border border-border-muted/50 flex justify-between items-center">
+      <div className="p-4 bg-bg-primary rounded-xl border border-border-muted/50 dark:border-white/5 flex justify-between items-center">
         <div>
           <p className="text-xs text-text-secondary">Facility Configuration Type</p>
           <p className="text-text-primary font-bold flex items-center gap-2 mt-1 capitalize text-sm">
@@ -310,14 +310,14 @@ const BranchesTab = ({ facilityId }) => {
         </div>
         <button
           onClick={() => setShowAddForm(true)}
-          className="px-4 h-[38px] rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-text-primary border border-border-muted/50 text-xs font-bold transition flex items-center gap-1.5"
+          className="px-4 h-[38px] rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-text-primary border border-border-muted/50 dark:border-white/5 text-xs font-bold transition flex items-center gap-1.5"
         >
           <span className="material-symbols-outlined text-[16px]">add</span> Add Branch
         </button>
       </div>
 
       {showAddForm && (
-        <div className="p-5 bg-bg-primary rounded-2xl border border-border-muted/50 space-y-4">
+        <div className="p-5 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5 space-y-4">
           <h4 className="text-xs font-black text-text-secondary uppercase tracking-widest">Register Branch</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
@@ -325,29 +325,29 @@ const BranchesTab = ({ facilityId }) => {
               value={newBranch.name}
               onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
               placeholder="Branch Name *"
-              className="w-full bg-bg-secondary border border-border-muted/50 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
+              className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
             />
             <input
               type="text"
               value={newBranch.address}
               onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
               placeholder="Address"
-              className="w-full bg-bg-secondary border border-border-muted/50 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
+              className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
             />
           </div>
           <div className="flex gap-2">
             <button onClick={handleAddBranch} className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider">Save Branch</button>
-            <button onClick={() => setShowAddForm(false)} className="px-4 py-2.5 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary font-bold text-xs uppercase tracking-wider">Cancel</button>
+            <button onClick={() => setShowAddForm(false)} className="px-4 py-2.5 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-wider">Cancel</button>
           </div>
         </div>
       )}
 
       {loading ? (
         <div className="space-y-2">
-          {[1, 2].map(i => <div key={i} className="h-[72px] bg-bg-primary border border-border-muted/30 animate-pulse rounded-2xl" />)}
+          {[1, 2].map(i => <div key={i} className="h-[72px] bg-bg-primary border border-border-muted/30 dark:border-white/5 animate-pulse rounded-2xl" />)}
         </div>
       ) : branches.length === 0 ? (
-        <div className="text-center py-10 bg-bg-primary rounded-2xl border border-border-muted/30">
+        <div className="text-center py-10 bg-bg-primary rounded-2xl border border-border-muted/30 dark:border-white/5">
           <span className="material-symbols-outlined text-4xl text-text-secondary/35">map</span>
           <p className="font-bold text-text-primary mt-2">No branches added yet</p>
           <p className="text-xs text-text-secondary mt-1">Click "Add Branch" to aggregate location queues</p>
@@ -355,19 +355,19 @@ const BranchesTab = ({ facilityId }) => {
       ) : (
         <div className="space-y-3">
           {branches.map((branch) => (
-            <div key={branch._id} className="flex items-center justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50 hover:border-border-muted transition-all">
+            <div key={branch._id} className="flex items-center justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5 hover:border-border-muted transition-all">
               <div className="flex-1 min-w-0 pr-4">
                 {editingBranch?._id === branch._id ? (
                   <div className="space-y-2">
                     <input
                       value={editingBranch.name}
                       onChange={(e) => setEditingBranch({ ...editingBranch, name: e.target.value })}
-                      className="bg-bg-secondary border border-border-muted/50 outline-none text-text-primary font-bold text-sm px-3 py-1.5 rounded-lg w-full"
+                      className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 outline-none text-text-primary font-bold text-sm px-3 py-1.5 rounded-lg w-full"
                     />
                     <input
                       value={editingBranch.address || ''}
                       onChange={(e) => setEditingBranch({ ...editingBranch, address: e.target.value })}
-                      className="bg-bg-secondary border border-border-muted/50 outline-none text-text-secondary text-xs px-3 py-1.5 rounded-lg w-full"
+                      className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 outline-none text-text-secondary text-xs px-3 py-1.5 rounded-lg w-full"
                     />
                   </div>
                 ) : (
@@ -393,14 +393,14 @@ const BranchesTab = ({ facilityId }) => {
                     <button onClick={handleUpdateBranch} className="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition">
                       <span className="material-symbols-outlined text-[18px]">check</span>
                     </button>
-                    <button onClick={() => setEditingBranch(null)} className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 text-text-secondary flex items-center justify-center transition">
+                    <button onClick={() => setEditingBranch(null)} className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary flex items-center justify-center transition">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setEditingBranch(branch)}
-                    className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 text-text-secondary hover:text-text-primary flex items-center justify-center transition"
+                    className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary flex items-center justify-center transition"
                   >
                     <span className="material-symbols-outlined text-[16px]">edit</span>
                   </button>
@@ -460,7 +460,7 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
           type="text"
           value={settings.tokenPrefix}
           onChange={(e) => handleChange('tokenPrefix', e.target.value.toUpperCase().slice(0, 4))}
-          className="w-32 bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 px-4 text-text-primary font-mono text-center text-lg focus:outline-none focus:border-border-muted transition-all"
+          className="w-32 bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 px-4 text-text-primary font-mono text-center text-lg focus:outline-none focus:border-border-muted transition-all"
           placeholder="TKN"
         />
         <p className="text-xs text-text-secondary mt-1">Generated Token: <code className="bg-bg-primary px-1.5 py-0.5 rounded font-mono text-emerald-500 font-bold">{settings.tokenPrefix}-001</code></p>
@@ -472,7 +472,7 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
           { key: 'autoReset', label: 'Auto-Reset Tokens Daily', desc: 'Reset token counter to 1 at midnight' },
           { key: 'unlimitedQueue', label: 'Unlimited Queue Capacity', desc: 'Allow patients to join queue without restriction' }
         ].map((item) => (
-          <div key={item.key} className="flex items-start justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50">
+          <div key={item.key} className="flex items-start justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5">
             <div>
               <p className="font-bold text-text-primary text-sm">{item.label}</p>
               <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
@@ -493,7 +493,7 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
       {/* Consult Time Slider */}
       <div className="space-y-3">
         <label className="text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary">Base Consult Time</label>
-        <div className="flex items-center gap-4 p-4 bg-bg-primary border border-border-muted/50 rounded-2xl">
+        <div className="flex items-center gap-4 p-4 bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl">
           <input
             type="range"
             min="5"
@@ -503,7 +503,7 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
             onChange={(e) => handleChange('baseConsultTime', parseInt(e.target.value))}
             className="flex-1 h-1.5 bg-border-muted rounded-lg appearance-none cursor-pointer"
           />
-          <span className="text-text-primary font-bold text-sm w-20 text-right bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-muted/50">{settings.baseConsultTime} min</span>
+          <span className="text-text-primary font-bold text-sm w-20 text-right bg-bg-secondary px-3 py-1.5 rounded-lg border border-border-muted/50 dark:border-white/5">{settings.baseConsultTime} min</span>
         </div>
       </div>
 
@@ -513,14 +513,14 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
         <textarea
           value={settings.notificationTemplate}
           onChange={(e) => handleChange('notificationTemplate', e.target.value)}
-          className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 px-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm min-h-[100px]"
+          className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 px-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm min-h-[100px]"
           placeholder="Use #{token} for token number"
         />
         <p className="text-xs text-text-secondary mt-1">Syntax variables: <code className="bg-bg-primary px-1.5 py-0.5 rounded font-mono text-[11px]">#{'{token}'}</code> or <code className="bg-bg-primary px-1.5 py-0.5 rounded font-mono text-[11px]">#{'{sampleId}'}</code></p>
       </div>
 
       {/* Status Flow Preview */}
-      <div className="p-4 bg-bg-primary rounded-2xl border border-border-muted/50">
+      <div className="p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5">
         <p className="text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary mb-3">Department Queue Flow Preview</p>
         <div className="flex items-center gap-2 flex-wrap">
           {config.statusFlow ? (
@@ -692,7 +692,7 @@ const AppearanceTab = ({ config }) => {
       </div>
 
       {/* Compact Dashboard View */}
-      <div className="flex items-center justify-between p-4 bg-bg-secondary rounded-xl border border-border-muted/50">
+      <div className="flex items-center justify-between p-4 bg-bg-secondary rounded-xl border border-border-muted/50 dark:border-white/5">
         <div>
           <p className="font-medium text-text-primary mb-1">Compact Dashboard View</p>
           <p className="text-sm text-text-secondary">Reduce queue card margins for high-density lists</p>
@@ -760,7 +760,7 @@ const NotificationsTab = ({ facilityId }) => {
         { key: 'emailSummary', label: 'Daily Email Summary', desc: 'Receive queue metrics report daily at 9 PM' },
         { key: 'browserNotify', label: 'Browser Push Notifications', desc: 'Allow system alerts when QueueMD is in the background' }
       ].map((item) => (
-        <div key={item.key} className="flex items-start justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50">
+        <div key={item.key} className="flex items-start justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5">
           <div>
             <p className="font-bold text-text-primary text-sm">{item.label}</p>
             <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
@@ -790,7 +790,7 @@ const NotificationsTab = ({ facilityId }) => {
               {isPro ? (
                 <span className="px-2.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold uppercase tracking-wider text-[9px]">Enabled</span>
               ) : (
-                <span className="px-2.5 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-muted/50 font-bold uppercase tracking-wider text-[9px]">Upgrade to Pro</span>
+                <span className="px-2.5 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-muted/50 dark:border-white/5 font-bold uppercase tracking-wider text-[9px]">Upgrade to Pro</span>
               )}
             </div>
           ))}
@@ -836,7 +836,7 @@ const DangerZoneTab = ({ user, facility }) => {
           { label: 'Current Plan', value: facility?.subscriptionPlan === 'pro' ? '💎 Pro Plan' : '🆓 Free Plan', color: 'text-blue-500' },
           { label: 'Today\'s Limit', value: 'Unlimited', color: 'text-text-primary' }
         ].map((card) => (
-          <div key={card.label} className="p-4 bg-bg-primary rounded-2xl border border-border-muted/50">
+          <div key={card.label} className="p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5">
             <p className="text-xs text-text-secondary font-bold uppercase tracking-wide">{card.label}</p>
             <p className={`font-black text-sm mt-1 capitalize ${card.color}`}>{card.value}</p>
           </div>
@@ -847,7 +847,7 @@ const DangerZoneTab = ({ user, facility }) => {
       <div className="space-y-3 pt-3">
         <button
           onClick={handleExport}
-          className="w-full py-3.5 px-4 rounded-2xl border border-border-muted/50 text-text-primary hover:bg-bg-primary transition text-left text-sm font-bold flex items-center justify-between"
+          className="w-full py-3.5 px-4 rounded-2xl border border-border-muted/50 dark:border-white/5 text-text-primary hover:bg-bg-primary transition text-left text-sm font-bold flex items-center justify-between"
         >
           <span>📥 Export Facility Database (JSON Format)</span>
           <span className="material-symbols-outlined text-[18px] opacity-50">arrow_forward</span>
@@ -881,7 +881,7 @@ const DangerZoneTab = ({ user, facility }) => {
       {/* Archive Confirmation Modal */}
       {showArchiveModal && (
         <div className="fixed inset-0 bg-bg-primary/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-bg-secondary rounded-3xl border border-border-muted/50 p-7 max-w-md w-full shadow-2xl">
+          <div className="bg-bg-secondary rounded-3xl border border-border-muted/50 dark:border-white/5 p-7 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-black text-text-primary mb-2">Confirm Facility Archival</h3>
             <p className="text-xs text-text-secondary mb-4 leading-relaxed">
               Archiving will hide patients database. To proceed, please type <strong className="text-rose-500">"{facility?.facilityName}"</strong> below:
@@ -890,7 +890,7 @@ const DangerZoneTab = ({ user, facility }) => {
               type="text"
               value={confirmArchive}
               onChange={(e) => setConfirmArchive(e.target.value)}
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-3.5 px-4 text-text-primary text-sm focus:outline-none mb-5"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 px-4 text-text-primary text-sm focus:outline-none mb-5"
               placeholder="Confirm Facility Name"
             />
             <div className="flex gap-3">
@@ -902,7 +902,7 @@ const DangerZoneTab = ({ user, facility }) => {
               </button>
               <button
                 onClick={() => setShowArchiveModal(false)}
-                className="px-4 py-3 rounded-xl bg-bg-primary border border-border-muted/50 text-text-secondary font-bold text-xs uppercase tracking-widest"
+                className="px-4 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-widest"
               >
                 Cancel
               </button>
@@ -936,6 +936,7 @@ const SubscriptionTab = () => {
   const { facilityId } = useAuthStore();
   const { subscriptionPlan, subscriptionStatus, subscriptionEnd, fetchSubscriptionStatus, initiateUpgrade, loading } = useBillingStore();
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState("yearly"); // Default yearly plan selection
 
   useEffect(() => {
     if (facilityId) fetchSubscriptionStatus();
@@ -945,43 +946,58 @@ const SubscriptionTab = () => {
   const isExpired = subscriptionStatus === "expired";
   const validDate = subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString("en-IN") : "—";
 
+  // Pricing Data
+  const plans = {
+    monthly: { amount: 499, label: "₹499/month", desc: "Billed monthly", save: null },
+    yearly: { amount: 4999, label: "₹4,999/year", desc: "Billed annually", save: "Save ₹989 🎁" }
+  };
+
   return (
     <div className="space-y-6">
       {/* Current Plan Card */}
-      <div className={`p-5 rounded-xl border ${isPro ? "bg-blue-50 border-blue-200" : "bg-bg-primary border-border-muted"}`}>
+      <div className={`p-6 rounded-2xl border transition-colors ${isPro ? "bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30" : "bg-bg-primary border-border-muted dark:border-white/10"}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary">
+            <h3 className={`text-xl font-black tracking-wide ${isPro ? "text-blue-700 dark:text-blue-400" : "text-text-primary"}`}>
               {isPro ? "🎉 PRO PLAN" : "🆓 FREE PLAN"}
             </h3>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-sm text-text-secondary mt-1.5 font-medium">
               {isPro ? `Valid until: ${validDate}` : "Basic queue management • 1 Branch • 5 Staff"}
             </p>
           </div>
           {!isPro && (
             <button
-              onClick={() => initiateUpgrade("monthly")}
+              onClick={() => initiateUpgrade(selectedDuration)}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition uppercase tracking-wider"
+              className="px-5 py-2.5 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 transition-all flex items-center gap-2 uppercase tracking-wider shadow-lg shadow-blue-500/20"
             >
-              {loading ? "Processing..." : "Upgrade to Pro"}
+              {loading ? (
+                <span className="animate-pulse">Processing...</span>
+              ) : (
+                <>
+                  <span>Upgrade to Pro</span>
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded font-black">{plans[selectedDuration].label}</span>
+                </>
+              )}
             </button>
           )}
           {isPro && !isExpired && (
-            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">Active ✓</span>
+            <span className="text-xs bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-full font-black uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/30 shadow-sm">Active ✓</span>
           )}
         </div>
       </div>
 
       {/* Plan Comparison */}
-      <div className="bg-bg-primary rounded-xl border border-border-muted p-5">
-        <h4 className="font-semibold text-text-primary mb-4">Plan Comparison</h4>
+      <div className="bg-bg-primary rounded-2xl border border-border-muted dark:border-white/10 overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-border-muted/50 dark:border-white/10 bg-bg-secondary/40">
+          <h4 className="font-bold text-text-primary text-base">Plan Comparison</h4>
+        </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border-muted/50">
-              <th className="text-left py-2 font-medium text-text-secondary">Feature</th>
-              <th className="text-center py-2 font-medium text-text-secondary">Free</th>
-              <th className="text-center py-2 font-medium text-blue-600 bg-blue-50/50 rounded-t-lg">Pro</th>
+            <tr className="border-b border-border-muted/50 dark:border-white/10 bg-bg-primary">
+              <th className="text-left py-3.5 px-6 font-bold text-text-secondary uppercase tracking-widest text-[11px]">Feature</th>
+              <th className="text-center py-3.5 px-3 font-bold text-text-secondary uppercase tracking-widest text-[11px]">Free</th>
+              <th className="text-center py-3.5 px-3 font-black text-blue-700 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-500/10 border-b-2 border-blue-500 uppercase tracking-widest text-[11px]">Pro</th>
             </tr>
           </thead>
           <tbody>
@@ -994,46 +1010,95 @@ const SubscriptionTab = () => {
               ["PDF Invoice Export", "❌", "✅"],
               ["Custom Branding", "❌", "✅"]
             ].map(([feature, freeVal, proVal]) => (
-              <tr key={feature} className="border-b border-border-muted/20 last:border-0">
-                <td className="py-3 text-text-primary">{feature}</td>
-                <td className="text-center py-3 text-text-secondary">{freeVal}</td>
-                <td className="text-center py-3 bg-blue-50/30 font-medium text-blue-700">{proVal}</td>
+              <tr key={feature} className="border-b border-border-muted/30 dark:border-white/5 last:border-0 hover:bg-bg-secondary/30 transition-colors">
+                <td className="py-4 px-6 text-text-primary font-medium">{feature}</td>
+                <td className="text-center py-4 px-3 text-text-secondary font-medium">{freeVal}</td>
+                <td className="text-center py-4 px-3 bg-blue-50/40 dark:bg-blue-500/5 font-bold text-blue-700 dark:text-blue-400">{proVal}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Pricing Options */}
+      {/* Plan Selection Cards */}
       {!isPro && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <button
-            onClick={() => initiateUpgrade("monthly")}
-            className="p-5 border border-border-muted rounded-xl hover:border-blue-400 transition text-left group bg-bg-primary"
-          >
-            <div className="text-2xl font-black text-blue-600 group-hover:scale-105 transition-transform origin-left">₹499</div>
-            <div className="text-sm text-text-secondary font-medium">per month</div>
-            <div className="text-xs text-text-muted mt-2">Billed monthly</div>
-          </button>
-          <button
-            onClick={() => initiateUpgrade("yearly")}
-            className="p-5 border-2 border-blue-500 rounded-xl bg-blue-50 hover:bg-blue-100 transition text-left relative overflow-hidden group"
-          >
-            <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
-            <div className="text-2xl font-black text-blue-700 group-hover:scale-105 transition-transform origin-left">₹4,999</div>
-            <div className="text-sm text-blue-800 font-medium">per year</div>
-            <div className="text-xs text-green-600 mt-2 font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">redeem</span> Save ₹989
-            </div>
-          </button>
+        <div className="space-y-4 mt-8">
+          <p className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] ml-1">Select your plan</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {["monthly", "yearly"].map((duration) => {
+              const plan = plans[duration];
+              const isSelected = selectedDuration === duration;
+              
+              return (
+                <button
+                  key={duration}
+                  type="button"
+                  onClick={() => setSelectedDuration(duration)}
+                  className={`relative p-6 rounded-2xl border-2 transition-all text-left overflow-hidden group ${
+                    isSelected 
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20" 
+                      : "border-border-muted/50 dark:border-white/10 bg-bg-primary hover:border-blue-500/40 dark:hover:border-blue-500/40 opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  {duration === "yearly" && (
+                    <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm">
+                      POPULAR
+                    </div>
+                  )}
+
+                  {/* Checkmark for selected */}
+                  {isSelected && (
+                    <div className="absolute -top-1 -right-1 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center scale-90 shadow-sm">
+                      <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+                    </div>
+                  )}
+                  
+                  <div className={`text-3xl font-black transition-colors ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-text-primary group-hover:text-blue-500 dark:group-hover:text-blue-400"}`}>
+                    ₹{plan.amount.toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-sm text-text-secondary font-medium mt-1.5">
+                    {plan.desc}
+                  </div>
+                  {plan.save && (
+                    <div className="inline-flex text-xs text-emerald-700 dark:text-emerald-400 mt-4 font-bold items-center gap-1.5 bg-emerald-100 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
+                      <span className="material-symbols-outlined text-[14px]">redeem</span>
+                      {plan.save}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
+      {/* Bottom CTA Button - Prominent */}
+      {!isPro && (
+        <button
+          onClick={() => initiateUpgrade(selectedDuration)}
+          disabled={loading}
+          className="w-full mt-8 py-4.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-sm disabled:opacity-50 transition-all shadow-xl hover:shadow-blue-500/25 flex items-center justify-center gap-2 uppercase tracking-widest border border-blue-400/20 transform hover:-translate-y-0.5 active:translate-y-0"
+        >
+          {loading ? (
+            <span className="animate-pulse flex items-center gap-2"><span className="material-symbols-outlined animate-spin text-[18px]">sync</span> Processing Upgrade...</span>
+          ) : (
+            <>
+              <span>🚀 Upgrade to Pro — {plans[selectedDuration].label}</span>
+              {plans[selectedDuration].save && (
+                <span className="text-[10px] bg-white/25 px-2.5 py-0.5 rounded-lg font-black tracking-normal ml-1 border border-white/10">
+                  {plans[selectedDuration].save}
+                </span>
+              )}
+            </>
+          )}
+        </button>
+      )}
+
       {/* Billing History Toggle */}
-      <div className="mt-6 border-t border-border-muted/50 pt-4">
+      <div className="mt-8 border-t border-border-muted/50 dark:border-white/10 pt-6">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="text-sm text-blue-600 hover:underline font-medium flex items-center gap-1"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 font-bold flex items-center gap-1 transition-colors"
         >
           {showHistory ? "Hide" : "View"} Billing History 
           <span className="material-symbols-outlined text-[18px]">
@@ -1042,8 +1107,9 @@ const SubscriptionTab = () => {
         </button>
         
         {showHistory && (
-          <div className="mt-4 text-sm text-text-secondary italic">
-            Billing history will appear here after your first transaction.
+          <div className="mt-4 p-5 rounded-2xl bg-bg-secondary/40 border border-border-muted/40 dark:border-white/5 text-sm text-text-secondary italic flex flex-col items-center justify-center gap-3 py-8">
+            <span className="material-symbols-outlined text-[32px] opacity-30">receipt_long</span>
+            <p className="font-medium text-text-secondary/80">Billing history will appear here after your first transaction.</p>
           </div>
         )}
       </div>
@@ -1165,7 +1231,7 @@ export default function Settings() {
           {/* Tabs Sidebar */}
           <div className="lg:w-64 flex-shrink-0">
             {/* Desktop: Vertical */}
-            <div className="hidden lg:flex flex-col gap-1.5 bg-bg-secondary rounded-2xl border border-border-muted/50 p-3 shadow-sm">
+            <div className="hidden lg:flex flex-col gap-1.5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-3 shadow-sm">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -1198,7 +1264,7 @@ export default function Settings() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${isActive
                       ? 'text-white'
-                      : 'text-text-secondary bg-bg-secondary border border-border-muted/50'
+                      : 'text-text-secondary bg-bg-secondary border border-border-muted/50 dark:border-white/5'
                       }`}
                     style={isActive ? { backgroundColor: config.theme.primary } : {}}
                   >
@@ -1211,14 +1277,14 @@ export default function Settings() {
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 bg-bg-secondary rounded-2xl border border-border-muted/50 p-6 md:p-8 shadow-sm transition-all duration-300 min-h-[400px]">
+          <div className="flex-1 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-6 md:p-8 shadow-sm transition-all duration-300 min-h-[400px]">
             {renderTabContent()}
           </div>
         </div>
 
         {/* Save Bar */}
         {Object.keys(pendingChanges).length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 border-t border-border-muted/30 bg-bg-primary/95 backdrop-blur-sm p-4 z-40 shadow-lg">
+          <div className="fixed bottom-0 left-0 right-0 border-t border-border-muted/30 dark:border-white/10 bg-bg-primary/95 backdrop-blur-sm p-4 z-40 shadow-lg">
             <div className="max-w-7xl mx-auto flex items-center justify-between px-4">
               <p className="text-sm text-text-secondary font-medium">You have unsaved changes</p>
               <button

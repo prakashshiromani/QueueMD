@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import Layout from "../components/Layout";
@@ -166,17 +166,17 @@ export default function Appointments() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="flex bg-bg-secondary rounded-lg p-1 border border-border-muted/50">
+          <div className="flex bg-bg-secondary rounded-lg p-1 border border-border-muted/50 dark:border-white/5">
             {["month", "week", "day"].map(v => (
               <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-md text-[13px] font-bold capitalize transition ${view === v ? "bg-blue-600 text-white shadow-lg" : "text-text-secondary hover:bg-surface-variant"}`}>{v}</button>
             ))}
           </div>
-          <div className="flex items-center gap-2 bg-bg-secondary px-4 py-2 rounded-lg border border-border-muted/50">
+          <div className="flex items-center gap-2 bg-bg-secondary px-4 py-2 rounded-lg border border-border-muted/50 dark:border-white/5">
             <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_left</span></button>
             <span className="text-[14px] font-bold text-text-primary min-w-[120px] text-center">{currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
             <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_right</span></button>
           </div>
-          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 rounded-lg border border-border-muted/50 text-[13px] font-bold text-text-secondary hover:bg-surface-variant">Today</button>
+          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 rounded-lg border border-border-muted/50 dark:border-white/5 text-[13px] font-bold text-text-secondary hover:bg-surface-variant">Today</button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

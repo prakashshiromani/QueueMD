@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
@@ -23,7 +23,7 @@ function hexToRgb(hex) {
 const StatsSkeleton = () => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {[1, 2, 3].map((i) => (
-      <div key={i} className="h-[120px] rounded-2xl bg-bg-secondary border border-border-muted/50 p-5 flex items-center justify-between animate-pulse">
+      <div key={i} className="h-[120px] rounded-2xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 p-5 flex items-center justify-between animate-pulse">
         <div className="space-y-3 flex-1">
           <div className="h-3 bg-border-muted rounded w-1/3" />
           <div className="h-8 bg-border-muted rounded w-1/2" />
@@ -38,7 +38,7 @@ const StatsSkeleton = () => (
 const TableSkeleton = () => (
   <div className="space-y-4">
     {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="h-[76px] rounded-xl bg-bg-secondary border border-border-muted/30 p-4 flex items-center justify-between animate-pulse">
+      <div key={i} className="h-[76px] rounded-xl bg-bg-secondary border border-border-muted/30 dark:border-white/5 p-4 flex items-center justify-between animate-pulse">
         <div className="flex items-center gap-4 flex-1">
           <div className="w-8 h-8 rounded-full bg-border-muted" />
           <div className="space-y-2 flex-1">
@@ -101,7 +101,7 @@ const StatCard = ({ title, value, subtext, icon, config, trend }) => {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      className="relative overflow-hidden rounded-2xl p-5 bg-bg-secondary border border-border-muted/50 hover:shadow-lg transition-all duration-300 group shadow-sm"
+      className="relative overflow-hidden rounded-2xl p-5 bg-bg-secondary border border-border-muted/50 dark:border-white/5 hover:shadow-lg transition-all duration-300 group shadow-sm"
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = `${config.theme.primary}50`;
         e.currentTarget.style.boxShadow = `0 8px 30px rgba(${primaryRgb}, 0.08)`;
@@ -187,7 +187,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 rounded-3xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-3xl shadow-2xl overflow-hidden"
         >
           {loading && (
             <div className="loading-overlay rounded-3xl">
@@ -199,7 +199,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
           )}
 
           {/* Header */}
-          <div className="p-8 border-b border-border-muted/30 flex justify-between items-center bg-bg-primary/30">
+          <div className="p-8 border-b border-border-muted/30 dark:border-white/5 flex justify-between items-center bg-bg-primary/30">
             <div>
               <h2 className="text-2xl font-black text-text-primary tracking-tight">Create New Invoice</h2>
               <p className="text-text-secondary text-xs mt-1">Generate a billing invoice for patient consultation</p>
@@ -226,7 +226,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                     required
                     value={formData.patientName}
                     onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                    className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
+                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
                     placeholder="e.g. Rahul Sharma"
                     style={{ '--theme-primary': config.theme.primary }}
                   />
@@ -242,7 +242,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
+                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
                     placeholder="e.g. +91 9876543210"
                     style={{ '--theme-primary': config.theme.primary }}
                   />
@@ -262,7 +262,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                       step="0.01"
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
+                      className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
                       placeholder="0.00"
                       style={{ '--theme-primary': config.theme.primary }}
                     />
@@ -277,7 +277,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-8 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner appearance-none cursor-pointer billing-select"
+                      className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-8 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner appearance-none cursor-pointer billing-select"
                       style={{ '--theme-primary': config.theme.primary }}
                     >
                       <option value="Pending">Pending</option>
@@ -297,7 +297,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows="3"
-                    className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30 resize-none"
+                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30 resize-none"
                     placeholder="Add notes about this invoice..."
                     style={{ '--theme-primary': config.theme.primary }}
                   />
@@ -405,7 +405,7 @@ export default function Billing() {
             </div>
             
             <div className="flex gap-3">
-              <button className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center gap-2 shadow-sm">
+              <button className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center gap-2 shadow-sm">
                 <span className="material-symbols-outlined text-[18px]">download</span> Export
               </button>
               <button 
@@ -454,7 +454,7 @@ export default function Billing() {
           )}
 
           {/* Filters */}
-          <div className="bg-bg-secondary p-4 rounded-2xl border border-border-muted/50 flex flex-col md:flex-row gap-4 items-center shadow-sm">
+          <div className="bg-bg-secondary p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 flex flex-col md:flex-row gap-4 items-center shadow-sm">
             <div className="relative flex-1 w-full">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">search</span>
               <input
@@ -462,7 +462,7 @@ export default function Billing() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by patient name or invoice ID..."
-                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all placeholder:text-text-secondary/50 shadow-inner"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all placeholder:text-text-secondary/50 shadow-inner"
                 style={{ '--theme-primary': config.theme.primary }}
               />
             </div>
@@ -472,7 +472,7 @@ export default function Billing() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full md:w-48 bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select"
+                className="w-full md:w-48 bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer billing-select"
               >
                 <option value="">All Statuses</option>
                 <option value="Paid">Paid</option>
@@ -483,8 +483,8 @@ export default function Billing() {
           </div>
 
           {/* Invoices Table Card */}
-          <div className="bg-bg-secondary border border-border-muted/50 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-border-muted/50 bg-surface-variant/30 flex items-center justify-between">
+          <div className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-border-muted/50 dark:border-white/5 bg-surface-variant/30 flex items-center justify-between">
               <h2 className="text-[14px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-2">
                 <span className="material-symbols-outlined" style={{ color: config.theme.primary }}>receipt_long</span>
                 Recent Invoices
@@ -500,7 +500,7 @@ export default function Billing() {
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50">
+                      <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50 dark:border-white/5">
                         <th className="px-6 py-5">Invoice ID</th>
                         <th className="px-6 py-5">Patient</th>
                         <th className="px-6 py-5">Date</th>
@@ -567,7 +567,7 @@ export default function Billing() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50">
+              <div className="flex items-center justify-between px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50 dark:border-white/5">
                 <span className="text-[12px] text-text-secondary font-medium">
                   Showing <span className="text-text-primary font-bold">{(currentPage - 1) * 10 + 1}</span> to{' '}
                   <span className="text-text-primary font-bold">{Math.min(currentPage * 10, invoices.length)}</span> of{' '}
@@ -577,14 +577,14 @@ export default function Billing() {
                   <button
                     onClick={() => useBillingStore.getState().fetchInvoices(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 shadow-sm"
+                    className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 dark:border-white/5 shadow-sm"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => useBillingStore.getState().fetchInvoices(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 shadow-sm"
+                    className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 dark:border-white/5 shadow-sm"
                   >
                     Next
                   </button>

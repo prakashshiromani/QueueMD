@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+﻿import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import api from "../services/api";
@@ -288,7 +288,7 @@ export default function Analytics() {
           </div>
           <button
             onClick={() => { loadSummary(); loadConsultations(pagination.page); }}
-            className="px-4 py-2 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-primary font-bold text-[14px] hover:bg-surface-variant transition flex items-center gap-2"
+            className="px-4 py-2 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-primary font-bold text-[14px] hover:bg-surface-variant transition flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[16px]">refresh</span>
             Refresh Data
@@ -296,7 +296,7 @@ export default function Analytics() {
         </div>
 
         {/* Filter Bar (Date + Branch) */}
-        <div className="bg-bg-secondary p-4 rounded-xl border border-border-muted/50 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="bg-bg-secondary p-4 rounded-xl border border-border-muted/50 dark:border-white/5 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
           {/* Date Filter Pills */}
           <div className="flex gap-2 flex-wrap overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
             {[
@@ -328,14 +328,14 @@ export default function Analytics() {
                 type="date" 
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="bg-surface-variant border border-border-muted/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
+                className="bg-surface-variant border border-border-muted/50 dark:border-white/5 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
               />
               <span className="text-text-secondary font-black">→</span>
               <input 
                 type="date" 
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="bg-surface-variant border border-border-muted/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
+                className="bg-surface-variant border border-border-muted/50 dark:border-white/5 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-blue-500"
               />
             </div>
           )}
@@ -345,7 +345,7 @@ export default function Analytics() {
             <select
               value={selectedBranch || ""}
               onChange={(e) => setSelectedBranch(e.target.value || null)}
-              className="w-full h-[44px] appearance-none bg-surface-variant border border-border-muted/50 rounded-xl px-4 pr-10 text-[14px] text-text-primary font-bold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-500 transition-all shadow-inner"
+              className="w-full h-[44px] appearance-none bg-surface-variant border border-border-muted/50 dark:border-white/5 rounded-xl px-4 pr-10 text-[14px] text-text-primary font-bold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-500 transition-all shadow-inner"
             >
               <option value="">🌐 All Branches</option>
               {branches.map(b => (
@@ -463,7 +463,7 @@ export default function Analytics() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by Patient Name, Phone, Token, Doctor, Facility, or Date (DD/MM)..."
-              className="w-full bg-bg-secondary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
             {searchQuery && (
               <button
@@ -477,7 +477,7 @@ export default function Analytics() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary font-bold hover:text-text-primary transition outline-none cursor-pointer"
+            className="px-4 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold hover:text-text-primary transition outline-none cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
@@ -486,7 +486,7 @@ export default function Analytics() {
           </select>
           <button
             onClick={handleResetFilters}
-            className="px-5 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 text-text-secondary font-bold hover:text-text-primary transition whitespace-nowrap"
+            className="px-5 py-3 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold hover:text-text-primary transition whitespace-nowrap"
           >
             Reset Filters
           </button>
@@ -496,8 +496,8 @@ export default function Analytics() {
         {loading && patients.length === 0 ? (
           <SkeletonTable />
         ) : (
-          <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden">
-            <div className="p-5 border-b border-border-muted/50 flex items-center justify-between">
+          <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden">
+            <div className="p-5 border-b border-border-muted/50 dark:border-white/5 flex items-center justify-between">
               <h2 className="text-lg font-black text-text-primary flex items-center gap-2">
                 <span className="material-symbols-outlined text-green-500">check_circle</span>
                 Consultation Log
@@ -627,7 +627,7 @@ export default function Analytics() {
 
             {/* ✅ Premium Registry Style Pagination */}
             {pagination.total > 0 && (
-              <div className="px-6 py-5 border-t border-border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/30">
+              <div className="px-6 py-5 border-t border-border-muted/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-secondary/30">
                 <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] flex items-center gap-2">
                   <span className="opacity-50">Registry Index:</span>
                   <span className="text-text-primary bg-surface-variant px-2 py-0.5 rounded">
@@ -641,7 +641,7 @@ export default function Analytics() {
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page <= 1}
-                    className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
+                    className="h-8 px-4 rounded-xl border border-border-muted/50 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
                   >
                     Prev
                   </button>
@@ -672,7 +672,7 @@ export default function Analytics() {
                   <button
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page >= pagination.pages}
-                    className="h-8 px-4 rounded-xl border border-border-muted/50 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
+                    className="h-8 px-4 rounded-xl border border-border-muted/50 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-text-primary hover:bg-surface-variant disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-95"
                   >
                     Next
                   </button>

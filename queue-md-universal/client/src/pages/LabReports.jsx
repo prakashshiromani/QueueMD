@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { useLabStore } from '../store/labStore';
 import { useAuthStore } from '../store/authStore';
@@ -148,7 +148,7 @@ export default function LabReports() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               key={i}
-              className="bg-bg-secondary border border-border-muted/50 p-5 rounded-2xl hover:border-primary-container/30 transition-all group shadow-sm"
+              className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 p-5 rounded-2xl hover:border-primary-container/30 transition-all group shadow-sm"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -164,13 +164,13 @@ export default function LabReports() {
         </div>
 
         {/* 3. Filters & Search */}
-        <div className="bg-bg-secondary/80 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 flex flex-col lg:flex-row gap-4 items-center">
+        <div className="bg-bg-secondary/80 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 flex flex-col lg:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
             <input
               type="text"
               placeholder="Search by Patient Name or Sample ID..."
-              className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all placeholder:text-text-secondary/50 shadow-inner"
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all placeholder:text-text-secondary/50 shadow-inner"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
@@ -180,7 +180,7 @@ export default function LabReports() {
             <div className="relative flex-1 lg:flex-none">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
               <select
-                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
                 value={filters.date}
                 onChange={(e) => setFilters({ date: e.target.value })}
               >
@@ -193,7 +193,7 @@ export default function LabReports() {
             <div className="relative flex-1 lg:flex-none">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
               <select
-                className="w-full bg-bg-primary border border-border-muted/50 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-10 pr-8 text-sm text-text-primary focus:outline-none appearance-none cursor-pointer"
                 value={filters.status}
                 onChange={(e) => setFilters({ status: e.target.value })}
               >
@@ -208,11 +208,11 @@ export default function LabReports() {
         </div>
 
         {/* 4. Data Table */}
-        <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 overflow-hidden shadow-xl">
+        <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50">
+                <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50 dark:border-white/5">
                   <th className="px-6 py-5">Sample ID</th>
                   <th className="px-6 py-5">Patient Name</th>
                   <th className="px-6 py-5">Test Type</th>
@@ -259,7 +259,7 @@ export default function LabReports() {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-[10px] font-black text-text-secondary border border-border-muted/50">
+                          <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-[10px] font-black text-text-secondary border border-border-muted/50 dark:border-white/5">
                             {report.patientName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                           </div>
                           <span className="text-sm text-text-primary font-bold tracking-tight">{report.patientName}</span>
@@ -281,7 +281,7 @@ export default function LabReports() {
                       <td className="px-6 py-5 text-right">
                         <button
                           onClick={() => handleStatusUpdate(report._id, report.status)}
-                          className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50"
+                          className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50 dark:border-white/5"
                         >
                           NEXT STEP
                         </button>
@@ -294,13 +294,13 @@ export default function LabReports() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="px-6 py-5 bg-bg-primary/30 border-t border-border-muted/50 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[12px] text-text-secondary font-medium">
               Showing <span className="text-text-primary font-bold">{reports.length}</span> of <span className="text-text-primary font-bold">{pagination.total}</span> reports
             </span>
             <div className="flex gap-2">
               <button
-                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
+                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 dark:border-white/5"
                 disabled={pagination.page === 1}
                 onClick={() => setFilters({ page: pagination.page - 1 })}
               >
@@ -321,7 +321,7 @@ export default function LabReports() {
                 ))}
               </div>
               <button
-                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50"
+                className="px-4 py-2 rounded-xl bg-bg-secondary text-text-secondary text-xs font-bold hover:bg-bg-primary hover:text-text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-border-muted/50 dark:border-white/5"
                 disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
                 onClick={() => setFilters({ page: pagination.page + 1 })}
               >
@@ -348,9 +348,9 @@ export default function LabReports() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-3xl shadow-2xl overflow-hidden"
             >
-              <div className="p-8 border-b border-border-muted/30 flex justify-between items-center bg-bg-primary/30">
+              <div className="p-8 border-b border-border-muted/30 dark:border-white/5 flex justify-between items-center bg-bg-primary/30">
                 <div>
                   <h2 className="text-2xl font-black text-text-primary tracking-tight">New Lab Order</h2>
                   <p className="text-text-secondary text-xs mt-1">Register a new sample for clinical testing</p>
@@ -373,7 +373,7 @@ export default function LabReports() {
                         required
                         type="text"
                         placeholder="e.g. Rahul Sharma"
-                        className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
+                        className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
                         value={formData.patientName}
                         onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
                       />
@@ -387,7 +387,7 @@ export default function LabReports() {
                       <input
                         type="tel"
                         placeholder="e.g. +91 9876543210"
-                        className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
+                        className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       />
@@ -400,7 +400,7 @@ export default function LabReports() {
                       <div className="relative">
                         <Beaker className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
                         <select
-                          className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner appearance-none cursor-pointer"
+                          className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner appearance-none cursor-pointer"
                           value={formData.testType}
                           onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
                         >
@@ -420,7 +420,7 @@ export default function LabReports() {
                         <input
                           required
                           type="text"
-                          className="w-full bg-bg-primary border border-border-muted/50 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner"
+                          className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner"
                           value={formData.sampleId}
                           onChange={(e) => setFormData({ ...formData, sampleId: e.target.value })}
                         />
