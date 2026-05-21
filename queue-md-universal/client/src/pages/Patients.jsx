@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import AddPatientModal from "../components/AddPatientModal";
 import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi } from "../services/api";
@@ -228,7 +228,7 @@ export default function Patients() {
     const config = FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
 
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border"
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border whitespace-nowrap"
         style={{
           backgroundColor: `${config.theme.primary}15`,
           color: config.theme.primary,
@@ -395,10 +395,10 @@ export default function Patients() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <div className="text-[13px] font-bold text-text-primary">
+                        <div className="text-[13px] font-bold text-text-primary whitespace-nowrap">
                           {patient.phone || "N/A"}
                         </div>
-                        <div className="text-[11px] font-medium text-text-secondary">
+                        <div className="text-[11px] font-medium text-text-secondary whitespace-nowrap">
                           {patient.email || "No email provided"}
                         </div>
                       </td>

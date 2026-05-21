@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { createFacility, getFacilities, addBranch, updateBranch, getBranches } = require("../controllers/facility.controller");
+const { createFacility, getFacilities, addBranch, updateBranch, getBranches, getMyFacility, updateFacility } = require("../controllers/facility.controller");
 const { auth } = require("../middleware/auth.middleware");
 
 router.post("/create", auth, createFacility);
+router.get("/me", auth, getMyFacility);
+router.put("/update", auth, updateFacility);
 router.get("/", auth, getFacilities);
 
 // Branch Routes

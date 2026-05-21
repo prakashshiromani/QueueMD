@@ -169,7 +169,15 @@ export default function Dashboard() {
       const startTime = new Date(currentPatient.calledAt || Date.now()).getTime();
       const now = Date.now();
       const diffMins = Math.floor((now - startTime) / 60000);
-      setElapsed(diffMins);
+      
+      // Guard against stale active timers from previous calendar days or anomaly (>12h)
+      const startDay = new Date(startTime).toDateString();
+      const today = new Date(now).toDateString();
+      if (startDay !== today || diffMins > 720) {
+        setElapsed(-1);
+      } else {
+        setElapsed(diffMins);
+      }
     };
 
     calculate();
@@ -179,7 +187,10 @@ export default function Dashboard() {
 
   const config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
   const getInitials = (name) => name?.charAt(0).toUpperCase() || "P";
-  const formatWaitTime = (mins) => `${mins || 0} min`;
+  const formatWaitTime = (mins) => {
+    if (mins === -1) return "-- min";
+    return `${mins || 0} min`;
+  };
 
   return (
     <Layout>
@@ -452,7 +463,7 @@ export default function Dashboard() {
                       <div>
                         <div className="text-[14px] font-black text-text-primary">{patient.patientName}</div>
                         <div className="text-[11px] text-text-secondary font-medium flex items-center gap-2 uppercase tracking-wider">
-                          <span>{patient.phone || "N/A"}</span>
+                          <span className="whitespace-nowrap">{patient.phone || "N/A"}</span>
                           <span className="w-1 h-1 rounded-full bg-text-secondary/40"></span>
                           <span style={{ color: config.theme.primary }}>Est. {patient.estimatedWaitTime || Math.max(5, (idx + 1) * stats.avgWait)} min</span>
                         </div>

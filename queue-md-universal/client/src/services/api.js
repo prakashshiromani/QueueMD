@@ -250,4 +250,31 @@ export const markAllNotificationsRead = async () => {
   return await api.post(`/notifications/read-all`);
 };
 
+// ✅ 12. Support Ticket APIs
+export const fetchTicketsApi = async (params = {}) => {
+  const response = await api.get('/tickets', { params });
+  return response.data.tickets;
+};
+
+export const createTicketApi = async (payload) => {
+  const response = await api.post('/tickets', payload);
+  return response.data.data;
+};
+
+export const fetchTicketDetailsApi = async (ticketId) => {
+  const response = await api.get(`/tickets/${ticketId}`);
+  return response.data.data;
+};
+
+export const addTicketCommentApi = async (ticketId, message) => {
+  const response = await api.post(`/tickets/${ticketId}/comments`, { message });
+  return response.data.data;
+};
+
+export const updateTicketStatusApi = async (ticketId, status) => {
+  const response = await api.patch(`/tickets/${ticketId}`, { status });
+  return response.data.data;
+};
+
 export default api;
+

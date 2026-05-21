@@ -8,7 +8,7 @@ import { useToast } from '../utils/useToast';
 
 const Layout = ({ children, scaled = true }) => {
   const { user, logout } = useAuthStore();
-  const { facilityType } = useFacilityStore();
+  const { facilityType, facilityLogo } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
   const location = useLocation();
   const { addToast, ToastContainer } = useToast();
@@ -128,10 +128,22 @@ const Layout = ({ children, scaled = true }) => {
             </button>
             <Link
               to="/settings"
-              className="ml-2 w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-border-muted flex items-center justify-center font-bold text-xs hover:border-primary-container transition-all active:scale-95 cursor-pointer"
+              className="ml-2 w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-border-muted hover:border-primary-container transition-all active:scale-95 cursor-pointer flex items-center justify-center font-bold text-xs relative"
               title="Profile Settings"
             >
-              {user?.name?.charAt(0) || 'U'}
+              {/* Fallback initial always sits behind */}
+              <span className="absolute inset-0 flex items-center justify-center font-bold text-xs text-text-primary">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
+              {/* Logo image overlays if available */}
+              {facilityLogo && (
+                <img
+                  src={facilityLogo}
+                  alt="Facility Logo"
+                  className="relative z-10 w-full h-full object-cover ring-2 ring-white/10 shadow-lg rounded-full"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
             </Link>
           </div>
         </header>

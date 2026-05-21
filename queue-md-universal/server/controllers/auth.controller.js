@@ -158,7 +158,8 @@ exports.login = async (req, res, next) => {
         role: user.role,
         facilityId: user.facilityId,
         facilityType: user.facilityType,
-        facilityName: facility ? facility.name : ''
+        facilityName: facility ? facility.name : '',
+        facilityLogo: facility ? facility.logo || '' : ''
       }
     });
   } catch (err) {

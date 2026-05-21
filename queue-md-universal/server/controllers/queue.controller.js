@@ -6,7 +6,7 @@ const { emitQueueUpdate, emitAnalyticsUpdate } = require("../sockets/queue.socke
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
 const { z } = require("zod");
-const { calculateWaitPredictions } = require("../utils/waitTimeCalculator");
+const { calculateWaitPredictions, cleanupStaleTokens } = require("../utils/waitTimeCalculator");
 const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
 const notificationQueue = require('../jobs/notification.queue');
@@ -28,6 +28,9 @@ exports.addPatient = async (req, res, next) => {
     // facilityId = which clinic/hospital account (from JWT - for multi-tenancy)
     // facilityType = which department (dental/clinic/pathlab - from patient's record)
     const { facilityId } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
     const { patientId, patientName, phone, customData, doctorName } = req.body;
 
     // ✅ Validation
@@ -157,6 +160,9 @@ exports.addPatient = async (req, res, next) => {
 exports.getQueue = async (req, res, next) => {
   try {
     const { facilityId, facilityType: jwtFacilityType } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
     const { status = "waiting", limit = 50, type } = req.query;
 
     // Use query param 'type' if provided (Dashboard Demo Mode), else JWT default
@@ -186,6 +192,9 @@ exports.getQueue = async (req, res, next) => {
 exports.getCompletedCount = async (req, res, next) => {
   try {
     const { facilityId, facilityType: jwtFacilityType } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
     const { type } = req.query;
     const facilityType = type || jwtFacilityType;
 
@@ -318,6 +327,9 @@ exports.markPatientCompleted = async (req, res, next) => {
 exports.nextPatient = async (req, res, next) => {
   try {
     const { facilityId, facilityType: jwtFacilityType } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
 
     // Use body or query param 'type' if provided (from Dashboard), else JWT default
     const facilityType = req.body.facilityType || req.query.type || jwtFacilityType;

@@ -42,7 +42,7 @@ const QueueList = ({ queue, loading, onComplete }) => {
                   <div>
                     <h3 className="font-bold text-[15px] text-text-primary leading-tight">{patient.patientName}</h3>
                     {patient.phone && (
-                      <p className="text-caption-xs font-body-sm text-text-secondary">{patient.phone}</p>
+                      <p className="text-caption-xs font-body-sm text-text-secondary whitespace-nowrap">{patient.phone}</p>
                     )}
                   </div>
                 </div>

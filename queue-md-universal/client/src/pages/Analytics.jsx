@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import api from "../services/api";
@@ -250,7 +250,7 @@ export default function Analytics() {
     const config = FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
     return (
       <span
-        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider"
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider whitespace-nowrap"
         style={{
           backgroundColor: `${config.theme.primary}15`,
           color: config.theme.primary,
@@ -555,7 +555,7 @@ export default function Analytics() {
                               <div className="text-[14px] font-bold text-text-primary">
                                 {patient.patientName}
                               </div>
-                              <div className="text-[11px] text-text-secondary">
+                              <div className="text-[11px] text-text-secondary whitespace-nowrap">
                                 {patient.phone || "N/A"}
                               </div>
                             </div>

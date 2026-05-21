@@ -6,13 +6,15 @@ export const useFacilityStore = create(
     (set) => ({
       facilityId: null,
       facilityName: null,
+      facilityLogo: null,
       isDemoMode: false,
       selectedBranch: null, // ✅ For branch-wise analytics filtering
       
-      setFacility: (id, name, type) => set(() => ({
+      setFacility: (id, name, type, logo) => set(() => ({
         facilityId: id,
         facilityName: name,
         facilityType: type || 'clinic',
+        facilityLogo: logo || null,
         isDemoMode: false
       })),
 
@@ -28,6 +30,7 @@ export const useFacilityStore = create(
         facilityId: null,
         facilityName: null,
         facilityType: 'clinic',
+        facilityLogo: null,
         selectedBranch: null,
         isDemoMode: false
       }))

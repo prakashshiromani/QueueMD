@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
@@ -6,6 +6,7 @@ import { useBillingStore } from '../store/billingStore';
 import { FACILITY_TYPES, getFacilityConfig } from '../utils/facilityTypeConfig';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import ImageUploader from '../components/ui/ImageUploader';
 
 // Helper to convert hex to RGB string
 function hexToRgb(hex) {
@@ -112,62 +113,92 @@ const MyAccountTab = ({ user }) => {
 };
 
 const FacilityProfileTab = ({ facility, onSave, config }) => {
-  const facilityId = facility?.facilityId;
+  const facilityId = facility?.facilityId || facility?._id;
   const localStorageKey = `queue-md-facility-settings-${facilityId}`;
 
   const [formData, setFormData] = useState(() => {
-    // Attempt to load previously saved profile fields
     try {
       const saved = localStorage.getItem(localStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
-          name: parsed.name || facility?.facilityName || '',
-          address: parsed.address || '',
-          contact: parsed.contact || '',
-          workingHours: parsed.workingHours || '09:00 - 20:00'
+          name: parsed.name || facility?.name || facility?.facilityName || '',
+          address: parsed.address || facility?.address || '',
+          contact: parsed.contact || facility?.contact || '',
+          workingHours: parsed.workingHours || facility?.workingHours || '09:00 - 20:00',
+          logo: parsed.logo || facility?.logo || ''
         };
       }
     } catch (e) {
       console.error(e);
     }
     return {
-      name: facility?.facilityName || '',
-      address: '',
-      contact: '',
-      workingHours: '09:00 - 20:00'
+      name: facility?.name || facility?.facilityName || '',
+      address: facility?.address || '',
+      contact: facility?.contact || '',
+      workingHours: facility?.workingHours || '09:00 - 20:00',
+      logo: facility?.logo || ''
     };
   });
 
   useEffect(() => {
-    if (facility?.facilityName && !formData.name) {
-      setFormData(prev => ({ ...prev, name: facility.facilityName }));
+    if (facility) {
+      setFormData(prev => ({
+        name: facility.name || facility.facilityName || prev.name || '',
+        address: facility.address || prev.address || '',
+        contact: facility.contact || prev.contact || '',
+        workingHours: facility.workingHours || prev.workingHours || '09:00 - 20:00',
+        logo: facility.logo || prev.logo || ''
+      }));
     }
-  }, [facility, formData.name]);
+  }, [facility]);
 
   const handleChange = (key, value) => {
     const updated = { ...formData, [key]: value };
     setFormData(updated);
-    // Propagate field value up
     onSave(key, value);
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo image must be smaller than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64 = uploadEvent.target?.result;
+      if (typeof base64 === 'string') {
+        handleChange('logo', base64);
+        toast.success('Logo uploaded! Click Save Changes below to persist.');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-6">
-      {/* Logo Placeholder */}
-      <div className="flex items-center gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5">
-        <div className="w-16 h-16 rounded-2xl bg-bg-primary border-2 border-dashed border-border-muted/50 flex items-center justify-center">
-          <span className="text-3xl">{config.icon}</span>
+      {/* Logo Upload with Cloudinary */}
+      <div className="flex items-start gap-4 p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5">
+        <div className="w-16 h-16 rounded-2xl bg-bg-primary border border-border-muted/50 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {formData.logo ? (
+            <img src={formData.logo} alt="Facility Logo" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-3xl">{config.icon}</span>
+          )}
         </div>
-        <div>
-          <p className="text-text-primary font-bold">Facility Logo</p>
-          <button
-            disabled
-            className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-40 mt-1 uppercase tracking-widest font-bold"
-            title="Logo upload coming soon"
-          >
-            Upload Logo 📸
-          </button>
+        <div className="flex-1">
+          <p className="text-text-primary font-bold mb-2">Facility Logo</p>
+          <ImageUploader
+            folderType="logos"
+            currentImage={formData.logo}
+            onUploadSuccess={({ imageUrl }) => {
+              handleChange('logo', imageUrl);
+            }}
+          />
         </div>
       </div>
 
@@ -415,23 +446,29 @@ const BranchesTab = ({ facilityId }) => {
 };
 
 const QueueSettingsTab = ({ facility, onSave, config }) => {
-  const facilityId = facility?.facilityId;
+  const facilityId = facility?.facilityId || facility?._id;
   const localStorageKey = `queue-md-facility-settings-${facilityId}`;
 
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem(localStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          tokenPrefix: parsed.tokenPrefix || config.tokenPrefix || 'TKN',
-          autoReset: parsed.autoReset ?? true,
-          baseConsultTime: parsed.baseConsultTime || config.baseConsultTime || 15,
-          notificationTemplate: parsed.notificationTemplate || config.notificationTemplate || '',
-          maxQueueSize: parsed.maxQueueSize || '',
-          unlimitedQueue: parsed.unlimitedQueue ?? true
-        };
-      }
+      const dbCustomFields = facility?.customFields || {};
+      const getDbVal = (key) => {
+        if (dbCustomFields instanceof Map) return dbCustomFields.get(key);
+        if (typeof dbCustomFields.get === 'function') return dbCustomFields.get(key);
+        return dbCustomFields[key];
+      };
+
+      const savedParsed = saved ? JSON.parse(saved) : {};
+
+      return {
+        tokenPrefix: getDbVal('tokenPrefix') || savedParsed.tokenPrefix || config.tokenPrefix || 'TKN',
+        autoReset: getDbVal('autoReset') ?? savedParsed.autoReset ?? true,
+        baseConsultTime: getDbVal('baseConsultTime') || savedParsed.baseConsultTime || config.baseConsultTime || 15,
+        notificationTemplate: getDbVal('notificationTemplate') || savedParsed.notificationTemplate || config.notificationTemplate || '',
+        maxQueueSize: getDbVal('maxQueueSize') || savedParsed.maxQueueSize || '',
+        unlimitedQueue: getDbVal('unlimitedQueue') ?? savedParsed.unlimitedQueue ?? true
+      };
     } catch (e) {
       console.error(e);
     }
@@ -444,6 +481,26 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
       unlimitedQueue: true
     };
   });
+
+  useEffect(() => {
+    if (facility) {
+      const dbCustomFields = facility.customFields || {};
+      const getDbVal = (key) => {
+        if (dbCustomFields instanceof Map) return dbCustomFields.get(key);
+        if (typeof dbCustomFields.get === 'function') return dbCustomFields.get(key);
+        return dbCustomFields[key];
+      };
+
+      setSettings(prev => ({
+        tokenPrefix: getDbVal('tokenPrefix') || prev.tokenPrefix,
+        autoReset: getDbVal('autoReset') ?? prev.autoReset,
+        baseConsultTime: getDbVal('baseConsultTime') || prev.baseConsultTime,
+        notificationTemplate: getDbVal('notificationTemplate') || prev.notificationTemplate,
+        maxQueueSize: getDbVal('maxQueueSize') || prev.maxQueueSize,
+        unlimitedQueue: getDbVal('unlimitedQueue') ?? prev.unlimitedQueue
+      }));
+    }
+  }, [facility]);
 
   const handleChange = (key, value) => {
     const updated = { ...settings, [key]: value };
@@ -1124,13 +1181,9 @@ const SubscriptionTab = () => {
 
 export default function Settings() {
   const { user } = useAuthStore();
-  const { facilityId, facilityType, facilityName, setFacility } = useFacilityStore();
+  const { facilityId, facilityType, facilityName, facilityLogo, setFacility } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
   const primaryRgb = hexToRgb(config.theme.primary);
-
-  const [activeTab, setActiveTab] = useState('facility');
-  const [isSaving, setIsSaving] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState({});
 
   const tabs = [
     { id: 'profile', label: 'My Account', icon: 'manage_accounts' },
@@ -1143,6 +1196,30 @@ export default function Settings() {
     { id: 'danger', label: 'Danger Zone', icon: 'warning' }
   ];
 
+  const [activeTab, setActiveTab] = useState('facility');
+  const [isSaving, setIsSaving] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState({});
+  const [facilityData, setFacilityData] = useState(null);
+  const [loadingFacility, setLoadingFacility] = useState(true);
+
+  const fetchFacilityData = useCallback(async () => {
+    try {
+      setLoadingFacility(true);
+      const response = await api.get('/facility/me');
+      if (response.data && response.data.data) {
+        setFacilityData(response.data.data);
+      }
+    } catch (err) {
+      console.error("Fetch facility error:", err);
+    } finally {
+      setLoadingFacility(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFacilityData();
+  }, [fetchFacilityData]);
+
   const handleSave = async () => {
     if (Object.keys(pendingChanges).length === 0) {
       toast.info('No changes to save');
@@ -1152,14 +1229,23 @@ export default function Settings() {
     setIsSaving(true);
     try {
       // 🔗 Real API call (if route exists)
-      await api.put('/facility/update', {
+      const response = await api.put('/facility/update', {
         facilityId,
         ...pendingChanges
       });
 
-      // Update global facilityName in store if modified
-      if (pendingChanges.name) {
-        setFacility(facilityId, pendingChanges.name, facilityType);
+      // Update global facilityName/facilityLogo in store if modified
+      if (pendingChanges.name || pendingChanges.logo) {
+        const updatedFacilityData = response.data?.data || {};
+        const newLogo = pendingChanges.logo || updatedFacilityData.logo || facilityLogo;
+        setFacility(facilityId, pendingChanges.name || facilityName, facilityType, newLogo);
+      }
+
+      // Update local facilityData state
+      if (response.data && response.data.data) {
+        setFacilityData(response.data.data);
+      } else {
+        setFacilityData(prev => ({ ...prev, ...pendingChanges }));
       }
 
       // Save locally to simulate persistence for other custom fields
@@ -1172,13 +1258,15 @@ export default function Settings() {
     } catch (err) {
       // Fallback: local save
       console.log('API not ready or update path not defined, saving locally to context');
-      if (pendingChanges.name) {
-        setFacility(facilityId, pendingChanges.name, facilityType);
+      if (pendingChanges.name || pendingChanges.logo) {
+        const newLogo = pendingChanges.logo || facilityLogo;
+        setFacility(facilityId, pendingChanges.name || facilityName, facilityType, newLogo);
       }
       const localStorageKey = `queue-md-facility-settings-${facilityId}`;
       const existingSettings = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
       localStorage.setItem(localStorageKey, JSON.stringify({ ...existingSettings, ...pendingChanges }));
 
+      setFacilityData(prev => ({ ...prev, ...pendingChanges }));
       toast.success('Settings saved successfully! ✅');
       setPendingChanges({});
     } finally {
@@ -1191,7 +1279,7 @@ export default function Settings() {
   };
 
   const renderTabContent = () => {
-    const facility = { facilityId, facilityType, facilityName };
+    const facility = facilityData || { facilityId, facilityType, facilityName };
 
     switch (activeTab) {
       case 'profile': return <MyAccountTab user={user} />;

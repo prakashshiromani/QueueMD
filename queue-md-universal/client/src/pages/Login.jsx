@@ -32,7 +32,7 @@ export default function Login() {
       const { token, user: userData } = res.data;
 
       login(userData, token);
-      setFacility(userData.facilityId, userData.facilityName || '', userData.facilityType);
+      setFacility(userData.facilityId, userData.facilityName || '', userData.facilityType, userData.facilityLogo || '');
 
       connectSocket(userData.facilityId, userData.facilityType);
 

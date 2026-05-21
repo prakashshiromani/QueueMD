@@ -64,3 +64,30 @@ exports.calculateWaitPredictions = async (Queue, facilityId, facilityType) => {
     queueLength: waitingQueue.length
   };
 };
+
+// 🧹 Auto-cleanup stale tokens from previous days to 'no-show'
+exports.cleanupStaleTokens = async (Queue, facilityId) => {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const result = await Queue.updateMany(
+      {
+        facilityId,
+        status: { $in: ["waiting", "in-progress"] },
+        createdAt: { $lt: startOfDay }
+      },
+      {
+        $set: {
+          status: "no-show",
+          completedAt: new Date()
+        }
+      }
+    );
+    return result.modifiedCount;
+  } catch (err) {
+    console.error(`[CLEANUP ERROR] Failed to clean up stale tokens: ${err.message}`);
+    return 0;
+  }
+};
+

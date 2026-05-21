@@ -1,12 +1,16 @@
 const mongoose = require("mongoose");
 const Queue = require("../models/Queue");
 const logger = require("../utils/logger");
+const { cleanupStaleTokens } = require("../utils/waitTimeCalculator");
 const { getISTRange } = require("../utils/dateHelpers");
 
 // ✅ GET STATS (Summary Cards + Log Table)
 exports.getStats = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
     const { page = 1, limit = 10, search = "", range = "today", branchId, startDate, endDate } = req.query;
     
     const dates = getISTRange(range, startDate, endDate);
@@ -43,7 +47,20 @@ exports.getStats = async (req, res, next) => {
           $group: {
             _id: null,
             totalPatients: { $sum: 1 },
-            avgWaitTime: { $avg: { $subtract: ["$calledAt", "$createdAt"] } },
+            avgWaitTime: {
+              $avg: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $gt: [{ $subtract: ["$calledAt", "$createdAt"] }, 0] },
+                      { $lt: [{ $subtract: ["$calledAt", "$createdAt"] }, 12 * 60 * 60 * 1000] } // 12 hours in ms
+                    ]
+                  },
+                  then: { $subtract: ["$calledAt", "$createdAt"] },
+                  else: null
+                }
+              }
+            },
             avgConsultTime: { $avg: "$actualDuration" }
           }
         }

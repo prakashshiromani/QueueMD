@@ -116,3 +116,61 @@ exports.getBranches = async (req, res, next) => {
     next(err);
   }
 };
+
+// ✅ GET CURRENT FACILITY
+exports.getMyFacility = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const facility = await Facility.findById(facilityId);
+    if (!facility) {
+      return res.status(404).json({ success: false, message: "Facility not found" });
+    }
+    res.json({ success: true, data: facility });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ UPDATE FACILITY DETAILS
+exports.updateFacility = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const facility = await Facility.findById(facilityId);
+    if (!facility) {
+      return res.status(404).json({ success: false, message: "Facility not found" });
+    }
+
+    const allowedSchemaFields = ["name", "address", "contact", "logo", "workingHours"];
+    const updates = req.body;
+
+    // Check if name is being updated and validated
+    if (updates.name !== undefined && (!updates.name || updates.name.trim().length < 2)) {
+      return res.status(400).json({ success: false, message: "Facility name must be at least 2 characters" });
+    }
+
+    for (const key of Object.keys(updates)) {
+      if (key === "facilityId" || key === "_id") continue;
+      if (allowedSchemaFields.includes(key)) {
+        facility[key] = updates[key];
+      } else {
+        // Save dynamically into customFields Map
+        if (!facility.customFields) {
+          facility.customFields = new Map();
+        }
+        facility.customFields.set(key, updates[key]);
+      }
+    }
+
+    await facility.save();
+    logger.info(`Facility updated: ${facility.name} (ID: ${facility._id})`);
+
+    res.json({
+      success: true,
+      data: facility,
+      message: "Facility settings updated successfully"
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

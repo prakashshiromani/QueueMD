@@ -74,7 +74,7 @@ export default function NotificationCard({ notification }) {
               {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <span 
-              className="px-3 py-1 text-xs font-semibold rounded-full border backdrop-blur-md flex items-center gap-1.5 tracking-wide shadow-sm"
+              className="px-3 py-1 text-xs font-semibold rounded-full border backdrop-blur-md flex items-center gap-1.5 tracking-wide shadow-sm whitespace-nowrap"
               style={badgeStyle}
             >
               <span className="text-base leading-none">{config.icon}</span> {config.label}

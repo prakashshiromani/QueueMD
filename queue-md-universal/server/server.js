@@ -30,6 +30,8 @@ const labRoutes = require("./routes/lab.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const billingRoutes = require("./routes/billing.routes");
 const subscriptionRoutes = require("./routes/subscription.routes");
+const ticketRoutes = require("./routes/ticket.routes");
+const uploadRoutes = require("./routes/upload.routes");
 
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
@@ -48,8 +50,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
 
 // ✅ Request Logger Middleware
@@ -87,6 +89,8 @@ app.use("/api/lab", labRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/tickets", ticketRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // 📄 Swagger API Documentation
 require('./config/swagger')(app);
@@ -105,6 +109,10 @@ const startServer = async () => {
     console.log("🔌 Connecting to MongoDB...");
     await connectDB();
     console.log("✅ MongoDB Connected");
+
+    // Calibrate system time offset
+    const { syncTimeOffset } = require("./utils/timeSync");
+    await syncTimeOffset();
 
     // Start Subscription Expiry Cron Job
     const { startSubscriptionExpiryCron } = require("./jobs/subscriptionExpiryCron");
