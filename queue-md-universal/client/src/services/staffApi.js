@@ -1,6 +1,10 @@
 import api from "./api";
 
 export const staffApi = {
+  create: async (payload) => {
+    const { data } = await api.post("/user/create", payload);
+    return data;
+  },
   getAll: async (params = {}) => {
     const { data } = await api.get("/user/staff", { params });
     return data;

@@ -52,10 +52,29 @@ exports.calculateWaitPredictions = async (Queue, facilityId, facilityType) => {
   ).sort({ tokenNumber: 1 });
 
   // Predictions generate karo (1.1x buffer for queue friction)
-  const predictions = waitingQueue.map((q, index) => ({
-    _id: q._id,
-    estimatedWaitTime: Math.round((index * avgTime * 1.1) + currentRemaining)
-  }));
+  const predictions = waitingQueue.map((q, index) => {
+    let est = Math.round((index * avgTime * 1.1) + currentRemaining);
+    if (est <= 0) est = 5; // Enforce minimum 5 minutes for waiting patients
+    return {
+      _id: q._id,
+      estimatedWaitTime: est
+    };
+  });
+
+  // Bulk update estimatedWaitTime in the database for global consistency
+  if (predictions.length > 0) {
+    const bulkOps = predictions.map(p => ({
+      updateOne: {
+        filter: { _id: p._id },
+        update: { $set: { estimatedWaitTime: p.estimatedWaitTime } }
+      }
+    }));
+    try {
+      await Queue.bulkWrite(bulkOps);
+    } catch (err) {
+      console.error("[Prediction Engine] Bulk update failed:", err.message);
+    }
+  }
 
   return {
     avgWaitTime: Math.round(avgTime),

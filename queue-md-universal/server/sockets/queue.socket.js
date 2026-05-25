@@ -38,4 +38,20 @@ const emitAnalyticsUpdate = (facilityId, facilityType, data) => {
   }
 };
 
-module.exports = { emitQueueUpdate, emitAnalyticsUpdate };
+const emitPublicQueueUpdate = (facilityId) => {
+  try {
+    const io = getIO();
+    const room = `${String(facilityId).trim()}_public`;
+    
+    console.log(`🌍 [PUBLIC] Emitting queue update to room: ${room}`);
+
+    // We don't send data here, just a trigger for the clients to refetch the masked data securely.
+    io.to(room).emit("public_queue_update", {
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error(`❌ [PUBLIC] Socket Error: ${err.message}`);
+  }
+};
+
+module.exports = { emitQueueUpdate, emitAnalyticsUpdate, emitPublicQueueUpdate };

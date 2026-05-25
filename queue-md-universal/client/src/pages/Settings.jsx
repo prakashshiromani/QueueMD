@@ -137,9 +137,12 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
       address: facility?.address || '',
       contact: facility?.contact || '',
       workingHours: facility?.workingHours || '09:00 - 20:00',
-      logo: facility?.logo || ''
+      logo: facility?.logo || '',
+      lobbyQrCode: facility?.lobbyQrCode || ''
     };
   });
+
+  const [generatingQR, setGeneratingQR] = useState(false);
 
   useEffect(() => {
     if (facility) {
@@ -148,7 +151,8 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
         address: facility.address || prev.address || '',
         contact: facility.contact || prev.contact || '',
         workingHours: facility.workingHours || prev.workingHours || '09:00 - 20:00',
-        logo: facility.logo || prev.logo || ''
+        logo: facility.logo || prev.logo || '',
+        lobbyQrCode: facility.lobbyQrCode || prev.lobbyQrCode || ''
       }));
     }
   }, [facility]);
@@ -256,6 +260,86 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
               className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm min-h-[100px]"
               placeholder="Enter facility address"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Lobby QR Code Section */}
+      <div className="p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 space-y-4">
+        <div>
+          <h4 className="text-sm font-bold text-text-primary">Static Lobby QR Code</h4>
+          <p className="text-xs text-text-secondary mt-1">Generate a static QR code for your lobby. Patients can scan this to check their live queue status.</p>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-border-muted/50">
+            {formData.lobbyQrCode ? (
+              <img src={formData.lobbyQrCode} alt="Lobby QR" className="w-full h-full object-contain p-2" />
+            ) : (
+              <span className="material-symbols-outlined text-4xl text-gray-400">qr_code_2</span>
+            )}
+          </div>
+          
+          <div className="space-y-3">
+            {!formData.lobbyQrCode ? (
+              <button
+                onClick={async () => {
+                  setGeneratingQR(true);
+                  try {
+                    const res = await api.post('/facility/lobby-qr');
+                    handleChange('lobbyQrCode', res.data.qrImage);
+                    toast.success('Lobby QR Generated Successfully!');
+                  } catch (err) {
+                    toast.error('Failed to generate QR');
+                  } finally {
+                    setGeneratingQR(false);
+                  }
+                }}
+                disabled={generatingQR}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition disabled:opacity-50"
+              >
+                {generatingQR ? 'Generating...' : 'Generate Lobby QR'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const printWindow = window.open('', '', 'width=800,height=800');
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>Print Lobby QR</title>
+                        <style>
+                          body { text-align: center; font-family: sans-serif; padding: 20px; }
+                          .container { border: 2px solid #000; padding: 40px; border-radius: 20px; display: inline-block; max-width: 500px; }
+                          img { width: 300px; height: 300px; margin: 20px 0; }
+                          h1 { font-size: 32px; font-weight: 900; margin: 0; color: #2563EB; }
+                          h2 { font-size: 24px; color: #333; margin-top: 10px; }
+                          p { font-size: 16px; color: #666; font-weight: bold; }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="container">
+                          <h1>${formData.name || 'QueueMD'}</h1>
+                          <h2>Scan to Check Live Status</h2>
+                          <img src="${formData.lobbyQrCode}" alt="QR Code" />
+                          <p>1. Scan QR with your phone</p>
+                          <p>2. Enter your Phone Number & Token</p>
+                          <p>3. Wait for your turn!</p>
+                        </div>
+                        <script>
+                          setTimeout(() => { window.print(); window.close(); }, 500);
+                        </script>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                }}
+                className="px-5 py-2.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-text-primary border border-border-muted/50 dark:border-white/5 font-bold text-xs uppercase tracking-wider transition flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">print</span>
+                Print Acrylic Stand
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -108,12 +108,23 @@ export const markPatientCompletedApi = async (patientId, data = {}) => {
   return response.data;
 };
 
+export const pausePatientApi = async (patientId) => {
+  const response = await api.patch(`/queue/${patientId}/pause`);
+  return response.data;
+};
+
+export const resumePatientApi = async (patientId) => {
+  const response = await api.patch(`/queue/${patientId}/resume`);
+  return response.data;
+};
+
 // ✅ 6. Analytics Stats
 export const fetchAnalyticsStatsApi = async (facilityType = null) => {
   const params = facilityType ? { type: facilityType } : {};
   const response = await api.get('/analytics/stats', { params });
   return response.data.stats || response.data.data || response.data;
 };
+
 
 export const fetchCompletedTodayApi = async (page = 1, search = "", facilityType = null) => {
   const params = { page, limit: 10, search };
@@ -130,6 +141,11 @@ export const fetchPatientsApi = async (params = {}) => {
 
 export const addPatientToDirectoryApi = async (payload) => {
   const response = await api.post('/patients/add', payload);
+  return response.data;
+};
+
+export const getPatientHistoryApi = async (patientPhone) => {
+  const response = await api.get(`/visits/history/${patientPhone}`);
   return response.data;
 };
 

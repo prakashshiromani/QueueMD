@@ -55,6 +55,9 @@ afterAll(async () => {
   // Clean up test data
   if (testUser) await User.deleteOne({ _id: testUser._id });
   if (testFacility) await Facility.deleteOne({ _id: testFacility._id });
+  await User.deleteMany({ email: 'receptionist-onboarding@queuemd.test' });
+  await require('../models/Patient').deleteMany({ phone: '+91 99999 88888' });
+  await require('../models/Queue').deleteMany({ phone: '+91 99999 88888' });
   await mongoose.connection.close();
 });
 
@@ -120,5 +123,81 @@ describe('PUT /api/facility/update', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body.success).toBe(false);
+  });
+});
+
+describe('PATCH /api/facility/onboarding', () => {
+  it('should return 401 if unauthorized', async () => {
+    const res = await request(app)
+      .patch('/api/facility/onboarding')
+      .send({ step: 2, facilityType: 'dental' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should process Step 1: Update Facility Type and return new token', async () => {
+    const res = await request(app)
+      .patch('/api/facility/onboarding')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ step: 2, facilityType: 'dental' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.accessToken).toBeDefined();
+
+    // Verify DB state
+    const facility = await Facility.findById(testFacility._id);
+    expect(facility.facilityType).toBe('dental');
+    expect(facility.onboardingStep).toBe(2);
+
+    const adminUser = await User.findById(testUser._id);
+    expect(adminUser.facilityType).toBe('dental');
+  });
+
+  it('should process Step 2: Create receptionist staff user', async () => {
+    const receptionistPayload = {
+      step: 3,
+      staffName: 'Staff Onboarding',
+      staffPhone: '88888 88888',
+      staffEmail: 'receptionist-onboarding@queuemd.test',
+      staffPassword: 'password123'
+    };
+
+    const res = await request(app)
+      .patch('/api/facility/onboarding')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send(receptionistPayload);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // Verify user was created in DB
+    const createdUser = await User.findOne({ email: receptionistPayload.staffEmail });
+    expect(createdUser).toBeDefined();
+    expect(createdUser.role).toBe('receptionist');
+    expect(createdUser.facilityId.toString()).toBe(testFacility._id.toString());
+  });
+
+  it('should process Step 3: Complete onboarding and optionally add dummy patient', async () => {
+    const res = await request(app)
+      .patch('/api/facility/onboarding')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ step: 3, addDummyPatient: true });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.onboardingCompleted).toBe(true);
+
+    // Verify dummy patient in DB
+    const Patient = require('../models/Patient');
+    const Queue = require('../models/Queue');
+
+    const dummyPatient = await Patient.findOne({ facilityId: testFacility._id, phone: '+91 99999 88888' });
+    expect(dummyPatient).toBeDefined();
+    expect(dummyPatient.name).toBe('Rahul Sharma');
+
+    const queueEntry = await Queue.findOne({ facilityId: testFacility._id, phone: '+91 99999 88888' });
+    expect(queueEntry).toBeDefined();
+    expect(queueEntry.patientName).toBe('Rahul Sharma');
+    expect(queueEntry.status).toBe('waiting');
   });
 });

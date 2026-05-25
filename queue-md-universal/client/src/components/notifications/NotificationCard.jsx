@@ -45,10 +45,10 @@ export default function NotificationCard({ notification }) {
       className={`
         relative flex items-start gap-5 p-6 rounded-2xl cursor-pointer transition-all duration-300 border
         ${notification.isRead 
-          ? "bg-slate-900/40 border-white/5" // Read state (dull)
-          : "bg-slate-800/60 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]" // Unread state (Glowing)
+          ? "bg-white border-slate-200 dark:bg-slate-900/40 dark:border-white/5 shadow-sm" // Read state
+          : "bg-blue-50 border-blue-200 shadow-md dark:bg-slate-800/60 dark:border-blue-500/30 dark:shadow-[0_0_15px_rgba(59,130,246,0.15)]" // Unread state
         }
-        backdrop-blur-md hover:border-blue-400/50 hover:shadow-[0_0_25px_rgba(59,130,246,0.3)]
+        backdrop-blur-md hover:border-blue-300 hover:shadow-lg dark:hover:border-blue-400/50 dark:hover:shadow-[0_0_25px_rgba(59,130,246,0.3)]
       `}
     >
       {/* ✅ Dot Indicator for Unread */}
@@ -57,31 +57,31 @@ export default function NotificationCard({ notification }) {
       )}
 
       {/* Icon Container */}
-      <div className={`p-4 rounded-xl bg-slate-900/80 border border-white/10`}>
-        <Icon className="w-6 h-6 text-blue-400" />
+      <div className={`p-4 rounded-xl border ${notification.isRead ? 'bg-slate-50 border-slate-200' : 'bg-white border-blue-100'} dark:bg-slate-900/80 dark:border-white/10`}>
+        <Icon className={`w-6 h-6 ${notification.isRead ? 'text-slate-400 dark:text-blue-400/50' : 'text-blue-600 dark:text-blue-400'}`} />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0"> 
         <div className="flex justify-between items-start gap-4">
-          <h4 className={`text-lg font-semibold truncate ${notification.isRead ? "text-slate-400" : "text-white"}`}>
+          <h4 className={`text-lg font-semibold truncate ${notification.isRead ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-white"}`}>
             {notification.title}
           </h4>
           
           {/* Top Right: Time and Badge */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-sm text-slate-500 whitespace-nowrap">
+            <span className={`text-sm whitespace-nowrap ${notification.isRead ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'}`}>
               {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             <span 
-              className="px-3 py-1 text-xs font-semibold rounded-full border backdrop-blur-md flex items-center gap-1.5 tracking-wide shadow-sm whitespace-nowrap"
+              className="px-3 py-1 text-xs font-semibold rounded-full border flex items-center gap-1.5 tracking-wide shadow-sm whitespace-nowrap dark:backdrop-blur-md"
               style={badgeStyle}
             >
               <span className="text-base leading-none">{config.icon}</span> {config.label}
             </span>
           </div>
         </div>
-        <p className="text-sm text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">{notification.message}</p>
+        <p className={`text-sm mt-1.5 line-clamp-2 leading-relaxed ${notification.isRead ? 'text-slate-500 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`}>{notification.message}</p>
       </div>
     </motion.div>
   );

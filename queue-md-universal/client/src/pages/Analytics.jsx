@@ -15,6 +15,8 @@ import ChartSkeleton from "../components/charts/ChartSkeleton";
 import AnimatePage from "../components/AnimatePage";
 import AIInsightsCard from "../components/charts/AIInsightsCard";
 import { SkeletonTable } from "../components/Skeletons";
+import { motion } from "framer-motion";
+import PatientHistoryDrawer from "../components/PatientHistoryDrawer";
 
 export default function Analytics() {
   const { user } = useAuthStore();
@@ -47,6 +49,7 @@ export default function Analytics() {
 
   const [loading, setLoading] = useState(false);
   const [chartsLoading, setChartsLoading] = useState(false);
+  const [viewHistoryPatient, setViewHistoryPatient] = useState(null);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
@@ -216,17 +219,19 @@ export default function Analytics() {
   useEffect(() => {
     if (!facilityId) return;
     
-    socket.on("queue_update", (data) => {
+    const handleQueueUpdate = (data) => {
       // Security Check: Only refresh if same facility and type
       if (data.facilityId === facilityId && data.facilityType === user?.facilityType) {
         loadSummary();
         loadConsultations(pagination.page);
         loadCharts();
       }
-    });
+    };
+    
+    socket.on("queue_update", handleQueueUpdate);
 
-    return () => socket.off("queue_update");
-  }, [facilityId, user?.facilityType, pagination.page]);
+    return () => socket.off("queue_update", handleQueueUpdate);
+  }, [facilityId, user?.facilityType, pagination.page, loadSummary, loadConsultations, loadCharts]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
@@ -547,18 +552,31 @@ export default function Analytics() {
 
                         {/* Patient */}
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600 font-black text-sm">
-                              {patient.patientName?.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="text-[14px] font-bold text-text-primary">
-                                {patient.patientName}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600 font-black text-sm">
+                                {patient.patientName?.charAt(0).toUpperCase()}
                               </div>
-                              <div className="text-[11px] text-text-secondary whitespace-nowrap">
-                                {patient.phone || "N/A"}
+                              <div>
+                                <div className="text-[14px] font-bold text-text-primary">
+                                  {patient.patientName}
+                                </div>
+                                <div className="text-[11px] text-text-secondary whitespace-nowrap">
+                                  {patient.phone || "N/A"}
+                                </div>
                               </div>
                             </div>
+                            {patient.phone && (
+                              <motion.button
+                                whileHover={{ scale: 1.15 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setViewHistoryPatient({ name: patient.patientName, phone: patient.phone })}
+                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-blue-500/20 hover:border-blue-500/50 text-gray-400 hover:text-blue-400 transition-all flex items-center justify-center cursor-pointer shadow-sm"
+                                title="View EMR History"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">history</span>
+                              </motion.button>
+                            )}
                           </div>
                         </td>
 
@@ -681,6 +699,13 @@ export default function Analytics() {
             )}
           </div>
         )}
+
+        {/* ✅ Patient History Drawer */}
+        <PatientHistoryDrawer 
+          isOpen={!!viewHistoryPatient} 
+          onClose={() => setViewHistoryPatient(null)} 
+          patient={viewHistoryPatient} 
+        />
       </AnimatePage>
     </Layout>
   );

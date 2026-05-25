@@ -18,6 +18,7 @@ const facilitySchema = new mongoose.Schema({
   address: String,
   contact: String,
   logo: String,
+  lobbyQrCode: String,
   workingHours: { type: String, default: "09:00 - 20:00" },
   branches: [{
     name: { type: String, required: true, trim: true },
@@ -42,7 +43,10 @@ const facilitySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  // Onboarding Tracking
+  onboardingCompleted: { type: Boolean, default: false },
+  onboardingStep: { type: Number, default: 1 }
 }, { timestamps: true });
 
 // Indexes

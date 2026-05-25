@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import AddPatientModal from "../components/AddPatientModal";
+import PatientHistoryDrawer from "../components/PatientHistoryDrawer";
 import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi } from "../services/api";
 import { useFacilityStore } from "../store/facilityStore";
 import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
@@ -23,6 +24,7 @@ export default function Patients() {
   const [editLoading, setEditLoading] = useState(false);
   const [deletePatient, setDeletePatient] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [viewHistoryPatient, setViewHistoryPatient] = useState(null);
 
   const patientsPerPage = 10;
 
@@ -95,8 +97,8 @@ export default function Patients() {
       console.log("📤 [REGISTER PATIENT] Payload being sent:", JSON.stringify(payload, null, 2));
       console.log("🏥 FacilityType in payload:", payload.facilityType);
 
-      await addPatientToDirectoryApi(payload);
-      toast.success("New patient registered successfully!");
+      const res = await addPatientToDirectoryApi(payload);
+      toast.success(res.message || "New patient registered successfully!");
       setShowAddModal(false);
       fetchPatients(); // Refresh list
     } catch (err) {
@@ -168,6 +170,12 @@ export default function Patients() {
   const handleDeleteOpen = (patient) => {
     setOpenMenuId(null);
     setDeletePatient(patient);
+  };
+
+  // ✅ Open History Drawer
+  const handleViewHistory = (patient) => {
+    setOpenMenuId(null);
+    setViewHistoryPatient(patient);
   };
 
   const getInitials = (name) => {
@@ -452,6 +460,13 @@ export default function Patients() {
                                   <span className="material-symbols-outlined text-[18px] text-blue-400 group-hover:text-blue-500">edit</span>
                                   Edit Patient
                                 </button>
+                                <button
+                                  onClick={() => handleViewHistory(patient)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-text-primary hover:bg-surface-variant transition-all group"
+                                >
+                                  <span className="material-symbols-outlined text-[18px] text-purple-400 group-hover:text-purple-500">history</span>
+                                  View History
+                                </button>
                                 <div className="h-px bg-border-muted/30 mx-3" />
                                 <button
                                   onClick={() => handleDeleteOpen(patient)}
@@ -616,6 +631,13 @@ export default function Patients() {
           </div>
         </div>
       )}
+
+      {/* ✅ Patient History Drawer */}
+      <PatientHistoryDrawer 
+        isOpen={!!viewHistoryPatient} 
+        onClose={() => setViewHistoryPatient(null)} 
+        patient={viewHistoryPatient} 
+      />
     </Layout>
   );
 }

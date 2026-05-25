@@ -1,7 +1,20 @@
 const Patient = require("../models/Patient");
 const Notification = require("../models/Notification");
+const Queue = require("../models/Queue");
+const Counter = require("../models/Counter");
+const { emitQueueUpdate } = require("../sockets/queue.socket");
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
+const { getPhoneRegex } = require("../utils/phoneHelper");
+
+async function getNextSequence(id) {
+  const counter = await Counter.findByIdAndUpdate(
+    id,
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+}
 
 // 🔒 Regex Escape Utility
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -16,13 +29,14 @@ exports.searchPatients = async (req, res, next) => {
     }
 
     const safeQ = escapeRegex(q.toString());
+    const phoneRegex = getPhoneRegex(q.toString(), false);
 
     // Search by name or phone
     const patients = await Patient.find({
       facilityId,
       $or: [
         { name: { $regex: safeQ, $options: "i" } },
-        { phone: { $regex: safeQ, $options: "i" } }
+        { phone: phoneRegex ? { $regex: phoneRegex } : { $regex: safeQ, $options: "i" } }
       ]
     }).limit(10);
 
@@ -44,40 +58,133 @@ exports.addPatientToDirectory = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Name and phone are required" });
     }
 
-    const patient = await Patient.create({
+    const assignedFacilityType = bodyFacilityType || facilityType || "clinic";
+    const phoneRegex = getPhoneRegex(phone, true);
+
+    // 1. Check if patient already exists in the same facility
+    let patient = await Patient.findOne({ 
+      phone: phoneRegex || phone, 
+      facilityId 
+    });
+    let alreadyExists = false;
+
+    if (patient) {
+      alreadyExists = true;
+
+      // Check if they are already in the active queue for this facility
+      const existingActive = await Queue.findOne({
+        facilityId,
+        $or: [
+          { patientId: patient._id },
+          { phone: phoneRegex || phone }
+        ],
+        status: { $in: ["waiting", "in-progress"] }
+      });
+
+      if (existingActive) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Patient is already in the active queue (Token # ${existingActive.tokenNumber})`
+        });
+      }
+
+      // Update patient's information
+      patient.name = finalName;
+      if (email) patient.email = email;
+      if (gender) patient.gender = gender;
+      if (age) patient.age = age;
+      if (doctorName) patient.doctorName = doctorName;
+      if (customData) patient.customData = { ...patient.customData, ...customData };
+      patient.status = "Active";
+      patient.lastVisit = new Date();
+      patient.lastVisitType = assignedFacilityType.toUpperCase();
+      patient.facilityType = assignedFacilityType; // Use the most recently registered department
+      await patient.save();
+
+    } else {
+      // Create new patient
+      patient = await Patient.create({
+        facilityId,
+        facilityType: assignedFacilityType,
+        name: finalName,
+        phone,
+        email,
+        gender,
+        age,
+        doctorName,
+        customData: customData || {},
+        status: status ? (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) : "Active",
+        lastVisit: new Date(),
+        lastVisitType: assignedFacilityType.toUpperCase()
+      });
+    }
+
+    // 2. Automatically Add to Queue
+    // Generate next token for this specific department atomically
+    const counterId = `token:${facilityId}:${assignedFacilityType}`;
+    let counter = await Counter.findById(counterId);
+    if (!counter) {
+      const lastToken = await Queue.findOne({ facilityId, facilityType: assignedFacilityType })
+        .sort({ tokenNumber: -1 });
+      
+      let startNum = 0;
+      if (lastToken) {
+        startNum = lastToken.tokenNumber;
+      }
+      try {
+        await Counter.create({ _id: counterId, seq: startNum });
+      } catch (err) {}
+    }
+    const nextToken = await getNextSequence(counterId);
+
+    // Create Queue entry
+    const newQueueEntry = await Queue.create({
       facilityId,
-      facilityType: bodyFacilityType || facilityType || "clinic",
-      name: finalName,
+      facilityType: assignedFacilityType,
+      patientId: patient._id,
+      patientName: finalName,
       phone,
-      email,
-      gender,
-      age,
-      doctorName,
-      customData: customData || {},
-      status: status ? (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) : "Active",
-      lastVisit: new Date(),
-      lastVisitType: (bodyFacilityType || facilityType || "clinic").toUpperCase()
+      customData: patient.customData || {},
+      doctorName: doctorName || "Unknown",
+      tokenNumber: nextToken,
+      status: "waiting",
+      createdAt: new Date()
     });
 
-    // 🔥 NEW: Send Notification for Patient Registration
+    // Socket emit to queue
+    emitQueueUpdate(facilityId, assignedFacilityType, {
+      action: "add",
+      patient: newQueueEntry
+    });
+
+    // 3. Send Notification
     try {
-      const notifType = bodyFacilityType || facilityType || "clinic";
+      const notifMessage = alreadyExists 
+        ? `${finalName} (Existing Patient) added to queue with Token #${nextToken}.`
+        : `${finalName} has been added to the directory and queue with Token #${nextToken}.`;
+
       const newNotif = await Notification.create({
         facilityId,
-        facilityType: notifType,
-        type: "system",
-        title: "New Patient Registered",
-        message: `${finalName} has been added to the directory.`,
+        facilityType: assignedFacilityType,
+        type: alreadyExists ? "queue_update" : "system",
+        title: alreadyExists ? "Patient Re-visited" : "New Patient Registered",
+        message: notifMessage,
         isRead: false,
-        metadata: { patientId: patient._id, patientName: finalName }
+        metadata: { patientId: patient._id, patientName: finalName, tokenNumber: nextToken }
       });
-      // 🔥 Real-time push to centralized notification room
+      // Real-time push
       emitNotification(facilityId, newNotif);
     } catch (notifErr) {
       logger.error(`Notification error during registration: ${notifErr.message}`);
     }
 
-    res.status(201).json({ success: true, data: patient });
+    res.status(201).json({ 
+      success: true, 
+      alreadyExists,
+      message: alreadyExists ? `Existing patient found! Added to queue with Token #${nextToken}` : "Patient added successfully",
+      data: patient,
+      queueInfo: { tokenNumber: nextToken }
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({ success: false, message: "Patient already exists in directory" });
@@ -95,9 +202,10 @@ exports.getPatients = async (req, res, next) => {
 
     if (search) {
       const safeSearch = escapeRegex(search.toString());
+      const phoneRegex = getPhoneRegex(search.toString(), false);
       query.$or = [
         { name: { $regex: safeSearch, $options: "i" } },
-        { phone: { $regex: safeSearch, $options: "i" } }
+        { phone: phoneRegex ? { $regex: phoneRegex } : { $regex: safeSearch, $options: "i" } }
       ];
     }
 

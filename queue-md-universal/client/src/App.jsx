@@ -15,6 +15,8 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import CreateInvoice from './pages/CreateInvoice';
 import HelpCenter from './pages/HelpCenter';
+import PublicTracking from './pages/PublicTracking';
+import LobbyPortal from './pages/LobbyPortal';
 import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useFacilityStore } from './store/facilityStore';
@@ -170,6 +172,9 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/track/:facilityId/:tokenNumber" element={<PublicTracking />} />
+        <Route path="/lobby/:facilityId" element={<LobbyPortal />} />
 
         {/* Redirect root to dashboard (will go to login if not auth) */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

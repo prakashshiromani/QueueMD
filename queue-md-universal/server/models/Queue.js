@@ -39,10 +39,11 @@ const queueSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["waiting", "in-progress", "completed", "no-show", "cancelled", "delivered"],
+    enum: ["waiting", "in-progress", "completed", "cancelled", "delivered", "paused"],
     default: "waiting",
     index: true
   },
+  pausedAt: { type: Date, default: null },
   // ✅ NEW: Consultation Tracking Fields
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
   calledAt: { type: Date },        // Jab patient ko call kiya gaya
@@ -58,10 +59,13 @@ const queueSchema = new mongoose.Schema({
 // 🔥 COMPOUND INDEXES (Critical for Performance)
 queueSchema.index({ facilityId: 1, facilityType: 1, tokenNumber: 1 });
 queueSchema.index({ facilityId: 1, facilityType: 1, status: 1 });
+queueSchema.index({ facilityId: 1, facilityType: 1, status: 1, tokenNumber: 1 });
 // ✅ NEW: Index for faster duration queries
 queueSchema.index({ facilityId: 1, facilityType: 1, status: 1, completedAt: -1 });
 // ✅ NEW: Analytics Indexes
 queueSchema.index({ facilityId: 1, facilityType: 1, createdAt: 1 });
+// ✅ NEW: Public Tracking Optimized Index
+queueSchema.index({ facilityId: 1, status: 1, createdAt: 1 });
 queueSchema.index({ facilityId: 1, doctorName: 1, status: 1, completedAt: -1 });
 
 module.exports = mongoose.model("Queue", queueSchema);

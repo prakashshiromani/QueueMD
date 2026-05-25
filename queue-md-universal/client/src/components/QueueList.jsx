@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFacilityStore } from '../store/facilityStore';
 import { getFacilityConfig } from '../utils/facilityTypeConfig';
 import { clsx } from 'clsx';
+import PatientHistoryDrawer from './PatientHistoryDrawer';
 
 const QueueList = ({ queue, loading, onComplete }) => {
   const { facilityType } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
+  const [viewHistoryPatient, setViewHistoryPatient] = useState(null);
 
   return (
     <div className="bg-bg-secondary border border-border-muted rounded-xl flex flex-col h-[550px]">
@@ -40,7 +42,18 @@ const QueueList = ({ queue, loading, onComplete }) => {
                     <span className="text-[14px] leading-tight">{patient.tokenNumber}</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-[15px] text-text-primary leading-tight">{patient.patientName}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-[15px] text-text-primary leading-tight hover:underline cursor-pointer" onClick={() => setViewHistoryPatient({ name: patient.patientName, phone: patient.phone })}>
+                        {patient.patientName}
+                      </h3>
+                      <button 
+                        onClick={() => setViewHistoryPatient({ name: patient.patientName, phone: patient.phone })}
+                        className="p-1 rounded-full bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors flex items-center justify-center"
+                        title="View Patient History"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">history</span>
+                      </button>
+                    </div>
                     {patient.phone && (
                       <p className="text-caption-xs font-body-sm text-text-secondary whitespace-nowrap">{patient.phone}</p>
                     )}
@@ -95,6 +108,12 @@ const QueueList = ({ queue, loading, onComplete }) => {
           </div>
         )}
       </div>
+
+      <PatientHistoryDrawer 
+        isOpen={!!viewHistoryPatient} 
+        onClose={() => setViewHistoryPatient(null)} 
+        patient={viewHistoryPatient} 
+      />
     </div>
   );
 };

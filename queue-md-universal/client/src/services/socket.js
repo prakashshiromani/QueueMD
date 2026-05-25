@@ -28,14 +28,18 @@ socket.on("disconnect", (reason) => {
 
 // Helper functions (for compatibility)
 // Helper functions
+let currentConnectHandler = null;
+
 export const connectSocket = (facilityId, facilityType) => {
   if (!socket.connected) {
     socket.connect();
     
-    // 🔥 Remove previous listeners to prevent duplicate triggers
-    socket.off("connect");
+    // 🔥 Remove previous listener to prevent duplicate triggers, without killing other listeners
+    if (currentConnectHandler) {
+      socket.off("connect", currentConnectHandler);
+    }
     
-    socket.on("connect", () => {
+    currentConnectHandler = () => {
       console.log("🔌 Socket Connected:", socket.id);
       
       // 🔥 Queue Room (Department Isolation)
@@ -46,7 +50,9 @@ export const connectSocket = (facilityId, facilityType) => {
       
       console.log(`🏥 Joined Room: ${facilityId}_${facilityType}`);
       console.log(`🔔 Joined Notification Room: ${facilityId}_notifications`);
-    });
+    };
+
+    socket.on("connect", currentConnectHandler);
   } else if (facilityId && facilityType) {
     // If already connected, join both rooms
     socket.emit("join_facility", { facilityId, facilityType });

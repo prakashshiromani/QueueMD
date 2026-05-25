@@ -2,7 +2,7 @@
 const Queue = require("../models/Queue");
 const Notification = require("../models/Notification");
 const { getFacilityConfig } = require("../utils/facilityTypeConfig");
-const { emitQueueUpdate, emitAnalyticsUpdate } = require("../sockets/queue.socket");
+const { emitQueueUpdate, emitAnalyticsUpdate, emitPublicQueueUpdate } = require("../sockets/queue.socket");
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
 const { z } = require("zod");
@@ -11,6 +11,8 @@ const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
 const notificationQueue = require('../jobs/notification.queue');
 const Counter = require("../models/Counter");
+const ClinicalVisit = require("../models/ClinicalVisit");
+const { getPhoneRegex } = require("../utils/phoneHelper");
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
@@ -56,12 +58,13 @@ exports.addPatient = async (req, res, next) => {
     logger.info(`[ADD] Patient: ${patientName}, Queue FacilityType: ${queueFacilityType}, Facility: ${facilityId}`);
 
     // 🔥 Check if patient already in ACTIVE queue for their department
+    const phoneRegex = getPhoneRegex(phone, true);
     const existingActive = await Queue.findOne({
       facilityId,
       facilityType: queueFacilityType,
       $or: [
         { patientId: patientId || "none" },
-        { phone: phone }
+        { phone: phoneRegex || phone }
       ],
       status: { $in: ["waiting", "in-progress"] }
     });
@@ -122,11 +125,18 @@ exports.addPatient = async (req, res, next) => {
       createdAt: new Date()
     });
 
+    // ✅ Calculate predictions for the updated queue
+    const stats = await calculateWaitPredictions(Queue, facilityId, queueFacilityType);
+
     // 🔥 Socket emit to patient's department room
     emitQueueUpdate(facilityId, queueFacilityType, {
       action: "add",
-      patient: newQueueEntry
+      patient: newQueueEntry,
+      stats
     });
+    
+    // 🌍 Emit to public tracking room
+    emitPublicQueueUpdate(facilityId);
 
     // 🔥 NEW: Notification Create karo
     const newNotif = await Notification.create({
@@ -169,6 +179,10 @@ exports.getQueue = async (req, res, next) => {
     const facilityType = type || jwtFacilityType;
 
     logger.info(`[GET QUEUE] FacilityType: ${facilityType}, Status: ${status}`);
+
+    if (status === "waiting") {
+      await calculateWaitPredictions(Queue, facilityId, facilityType);
+    }
 
     const queue = await Queue.find({
       facilityId,
@@ -271,6 +285,27 @@ exports.markPatientCompleted = async (req, res, next) => {
     updated.actualDuration = consultationDuration;
     await updated.save();
 
+    // ✅ Create ClinicalVisit in EMR Lite history (Prescription & Invoice Print View)
+    try {
+      await ClinicalVisit.create({
+        patientPhone: updated.phone || "0000000000",
+        patientName: updated.patientName,
+        facilityId,
+        facilityType: useType,
+        doctorId: req.user.id,
+        diagnosis: consultationNotes || "Routine Consultation Checkup",
+        prescriptionNotes: typeof prescription === 'string' ? prescription : (prescription?.notes || "Rx:\n1. Tab Paracetamol 650mg - 1-0-1 - after food x 3 days\n2. Tab Cetirizine 10mg - 0-0-1 - at bedtime x 5 days"),
+        vitals: {
+          bp: updated.customData?.vitals?.bp || "120/80",
+          weight: updated.customData?.vitals?.weight || 70,
+          temperature: updated.customData?.vitals?.temperature || 98.6
+        }
+      });
+      logger.info(`[ClinicalVisit] Created visit for patient: ${updated.patientName}`);
+    } catch (visitErr) {
+      logger.error(`[ClinicalVisit] Failed to create clinical visit: ${visitErr.message}`);
+    }
+
     // ✅ Update Analytics Collection (Daily)
     const today = new Date().toISOString().split('T')[0];
     const currentHour = new Date().getHours();
@@ -311,6 +346,204 @@ exports.markPatientCompleted = async (req, res, next) => {
       action: "completed",
       patient: updated
     });
+
+    // 🌍 Emit to public tracking room
+    emitPublicQueueUpdate(facilityId);
+
+    res.json({ 
+      success: true, 
+      message: "Patient completed successfully",
+      data: updated,
+      stats
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ GET QUEUE - accepts facilityType query param for multi-department support
+exports.getQueue = async (req, res, next) => {
+  try {
+    const { facilityId, facilityType: jwtFacilityType } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
+    const { status = "waiting", limit = 50, type } = req.query;
+
+    // Use query param 'type' if provided (Dashboard Demo Mode), else JWT default
+    const facilityType = type || jwtFacilityType;
+
+    logger.info(`[GET QUEUE] FacilityType: ${facilityType}, Status: ${status}`);
+
+    if (status === "waiting") {
+      await calculateWaitPredictions(Queue, facilityId, facilityType);
+    }
+
+    const queue = await Queue.find({
+      facilityId,
+      facilityType,
+      status
+    })
+    .sort(status === "waiting" ? { tokenNumber: 1 } : { updatedAt: -1 })
+    .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      count: queue.length,
+      queue
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ GET COMPLETED COUNT (For Dashboard Stats)
+exports.getCompletedCount = async (req, res, next) => {
+  try {
+    const { facilityId, facilityType: jwtFacilityType } = req.user;
+    
+    // Auto-cleanup stale tokens from previous days
+    await cleanupStaleTokens(Queue, facilityId);
+    const { type } = req.query;
+    const facilityType = type || jwtFacilityType;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const count = await Queue.countDocuments({
+      facilityId,
+      facilityType,
+      status: "completed",
+      completedAt: { $gte: startOfDay }
+    });
+
+    res.json({
+      success: true,
+      completedToday: count
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ MARK PATIENT AS COMPLETED
+exports.markPatientCompleted = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { facilityId, facilityType } = req.user;
+    const { consultationNotes, prescription, doctorName } = req.body;
+    logger.debug(`markPatientCompleted body: ${JSON.stringify(req.body)}`);
+
+    // 🔍 First find the patient to get their actual facilityType
+    const existingPatient = await Queue.findOne({ _id: patientId, facilityId });
+    
+    if (!existingPatient) {
+      return res.status(404).json({ success: false, message: "Patient not found in your facility." });
+    }
+
+    const patientDept = existingPatient.facilityType;
+
+    const updated = await Queue.findOneAndUpdate(
+      { 
+        _id: patientId, 
+        facilityId, 
+        status: { $in: ["waiting", "in-progress"] } 
+      },
+      { 
+        status: "completed",
+        completedAt: new Date(),
+        consultationNotes: consultationNotes || "",
+        prescription: prescription || {},
+        // ✅ FIX: Pehle request body ka doctorName lo, phir jo add karte waqt set tha, phir N/A
+        doctorName: doctorName || existingPatient.doctorName || req.user.name || "N/A",
+        actualDuration: 0 
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(400).json({ success: false, message: "Patient not found or already completed." });
+    }
+
+    // ✅ Use patientDept for analytics and socket updates
+    const useType = patientDept;
+
+    // ✅ Safely calculate wait time and consultation duration
+    const calledTime = updated.calledAt ? new Date(updated.calledAt).getTime() : Date.now();
+    const createdTime = updated.createdAt ? new Date(updated.createdAt).getTime() : calledTime;
+    const completedTime = updated.completedAt ? new Date(updated.completedAt).getTime() : Date.now();
+    
+    const waitTime = Math.max(0, Math.round((calledTime - createdTime) / 60000)) || 0;
+    const consultationDuration = Math.max(1, Math.round((completedTime - calledTime) / 60000)) || 1;
+    
+    updated.waitTime = waitTime;
+    updated.actualDuration = consultationDuration;
+    await updated.save();
+
+    // ✅ Create ClinicalVisit in EMR Lite history (Prescription & Invoice Print View)
+    try {
+      await ClinicalVisit.create({
+        patientPhone: updated.phone || "0000000000",
+        patientName: updated.patientName,
+        facilityId,
+        facilityType: useType,
+        doctorId: req.user.id,
+        diagnosis: consultationNotes || "Routine Consultation Checkup",
+        prescriptionNotes: typeof prescription === 'string' ? prescription : (prescription?.notes || "Rx:\n1. Tab Paracetamol 650mg - 1-0-1 - after food x 3 days\n2. Tab Cetirizine 10mg - 0-0-1 - at bedtime x 5 days"),
+        vitals: {
+          bp: updated.customData?.vitals?.bp || "120/80",
+          weight: updated.customData?.vitals?.weight || 70,
+          temperature: updated.customData?.vitals?.temperature || 98.6
+        }
+      });
+      logger.info(`[ClinicalVisit] Created visit for patient: ${updated.patientName}`);
+    } catch (visitErr) {
+      logger.error(`[ClinicalVisit] Failed to create clinical visit: ${visitErr.message}`);
+    }
+
+    // ✅ Update Analytics Collection (Daily)
+    const today = new Date().toISOString().split('T')[0];
+    const currentHour = new Date().getHours();
+
+    await Analytics.findOneAndUpdate(
+      { facilityId, facilityType: useType, date: today },
+      {
+        $inc: {
+          totalPatients: 1,
+          completedPatients: 1,
+          [`hourlyTraffic.${currentHour}`]: 1
+        },
+        $push: {
+          completedToday: {
+            patientId: updated._id,
+            patientName: updated.patientName,
+            tokenNumber: updated.tokenNumber,
+            completedAt: updated.completedAt,
+            waitTime: updated.waitTime,
+            facilityType: useType
+          }
+        }
+      },
+      { upsert: true }
+    );
+
+    // ✅ Re-calculate predictions for future queue
+    const stats = await calculateWaitPredictions(Queue, facilityId, useType);
+
+    // 🔔 Emit to both Queue and Analytics pages
+    emitQueueUpdate(facilityId, useType, {
+      action: "completed",
+      patient: updated,
+      stats
+    });
+
+    emitAnalyticsUpdate(facilityId, useType, {
+      action: "completed",
+      patient: updated
+    });
+
+    // 🌍 Emit to public tracking room
+    emitPublicQueueUpdate(facilityId);
 
     res.json({ 
       success: true, 
@@ -398,6 +631,9 @@ exports.nextPatient = async (req, res, next) => {
       stats
     });
 
+    // 🌍 Emit to public tracking room
+    emitPublicQueueUpdate(facilityId);
+
     // 🔥 NEW: Notification Create karo
     const newNotif = await Notification.create({
       facilityId,
@@ -423,6 +659,69 @@ exports.nextPatient = async (req, res, next) => {
 
   } catch (err) {
     logger.error(`Next patient error: ${err.message}`, { stack: err.stack });
+    next(err);
+  }
+};
+// ✅ PAUSE PATIENT
+exports.pausePatient = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { facilityId } = req.user;
+
+    const patient = await Queue.findOneAndUpdate(
+      { _id: patientId, facilityId, status: 'waiting' },
+      { status: 'paused', pausedAt: new Date() },
+      { new: true, runValidators: true }
+    );
+
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found or not in waiting status" });
+
+    // Recalculate predictions
+    const stats = await calculateWaitPredictions(Queue, facilityId, patient.facilityType);
+
+    // Emit queue update
+    emitQueueUpdate(facilityId, patient.facilityType, {
+      action: 'paused',
+      patient,
+      stats
+    });
+    
+    emitPublicQueueUpdate(facilityId);
+
+    res.json({ success: true, data: patient, stats });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ RESUME PATIENT
+exports.resumePatient = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { facilityId } = req.user;
+
+    const patient = await Queue.findOneAndUpdate(
+      { _id: patientId, facilityId, status: 'paused' },
+      { status: 'waiting', pausedAt: null },
+      { new: true, runValidators: true }
+    );
+
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found or not paused" });
+
+    // Recalculate predictions
+    const stats = await calculateWaitPredictions(Queue, facilityId, patient.facilityType);
+
+    // Emit queue update
+    emitQueueUpdate(facilityId, patient.facilityType, {
+      action: 'resumed',
+      patient,
+      stats
+    });
+    
+    emitPublicQueueUpdate(facilityId);
+
+    res.json({ success: true, data: patient, stats });
+  } catch (err) {
     next(err);
   }
 };

@@ -4,11 +4,13 @@ import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
-import { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompletedApi, fetchCompletedCountApi } from "../services/api";
+import api, { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompletedApi, fetchCompletedCountApi, pausePatientApi, resumePatientApi } from "../services/api";
 import { socket } from "../services/socket";
 import toast from "react-hot-toast";
 import AnimatePage from "../components/AnimatePage";
 import { SkeletonQueue, SkeletonCard } from "../components/Skeletons";
+import OnboardingWizard from "../components/OnboardingWizard";
+import WaitTimeBadge from "../components/WaitTimeBadge";
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -16,10 +18,12 @@ export default function Dashboard() {
   
 
   const [queue, setQueue] = useState([]);
+  const [pausedQueue, setPausedQueue] = useState([]);
   const [currentPatient, setCurrentPatient] = useState(null);
   const [stats, setStats] = useState({ waiting: 0, avgWait: 0, completed: 0 });
   const [loading, setLoading] = useState(false);
   const [liveIndicator, setLiveIndicator] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
   
   const queueRef = useRef([]);
 
@@ -29,20 +33,29 @@ export default function Dashboard() {
     setLoading(true);
     try {
       // Pass current facilityType (from Demo Mode) to backend
-      const [queueData, statsData, completedCount] = await Promise.all([
+      const [queueData, pausedData, statsData, completedCount, facilityRes] = await Promise.all([
         fetchQueueApi('waiting', facilityType),
+        fetchQueueApi('paused', facilityType),
         fetchAnalyticsStatsApi(facilityType),
-        fetchCompletedCountApi(facilityType)
+        fetchCompletedCountApi(facilityType),
+        api.get('/facility/me')
       ]);
       
       setQueue(queueData || []);
+      setPausedQueue(pausedData || []);
       queueRef.current = queueData || [];
       
       setStats({
         waiting: queueData?.length || 0,
-        avgWait: statsData?.avgWaitTime || 0,
+        avgWait: statsData?.efficiency || statsData?.avgWaitTime || 7,
+        aiPredictedWait: statsData?.aiPredictedWait || 10,
+        confidence: statsData?.confidence || 'medium',
         completed: completedCount || 0
       });
+
+      if (facilityRes.data && facilityRes.data.data && !facilityRes.data.data.onboardingCompleted) {
+        setShowWizard(true);
+      }
 
       // Find in-progress patient for this department
       const inProgress = await fetchQueueApi('in-progress', facilityType);
@@ -63,25 +76,64 @@ export default function Dashboard() {
     socket.emit("join_facility", { facilityId, facilityType });
     setLiveIndicator(socket.connected);
 
-    socket.on("queue_update", (data) => {
+    const handleQueueUpdate = (data) => {
       // Safety Check: ID & Type must match
       if (data.facilityId !== facilityId || data.facilityType !== facilityType) return;
       
       setLiveIndicator(true);
 
+      // Sync stats (avgWait, aiPredictedWait, confidence) globally for all actions
+      if (data.stats) {
+        setStats(prev => ({ 
+          ...prev, 
+          avgWait: data.stats.avgWaitTime !== undefined ? data.stats.avgWaitTime : prev.avgWait,
+          aiPredictedWait: data.stats.aiPredictedWait !== undefined ? data.stats.aiPredictedWait : prev.aiPredictedWait,
+          confidence: data.stats.confidence || prev.confidence
+        }));
+      }
+
       if (data.action === "add") {
         setQueue(prev => {
           if (prev.some(p => p._id === data.patient._id)) return prev;
+          let newQueue = [...prev, data.patient];
+          if (data.stats && data.stats.predictions) {
+            newQueue = newQueue.map(q => {
+              const match = data.stats.predictions.find(p => p._id === q._id);
+              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
+            });
+          }
+          return newQueue;
+        });
+      } else if (data.action === "paused") {
+        setQueue(prev => {
+          let newQueue = prev.filter(p => p._id !== data.patient._id);
+          if (data.stats && data.stats.predictions) {
+            newQueue = newQueue.map(q => {
+              const match = data.stats.predictions.find(p => p._id === q._id);
+              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
+            });
+          }
+          return newQueue;
+        });
+        setPausedQueue(prev => {
+          if (prev.some(p => p._id === data.patient._id)) return prev;
           return [...prev, data.patient];
+        });
+      } else if (data.action === "resumed") {
+        setPausedQueue(prev => prev.filter(p => p._id !== data.patient._id));
+        setQueue(prev => {
+          if (prev.some(p => p._id === data.patient._id)) return prev;
+          let newQueue = [...prev, data.patient].sort((a,b) => a.tokenNumber - b.tokenNumber);
+          if (data.stats && data.stats.predictions) {
+            newQueue = newQueue.map(q => {
+              const match = data.stats.predictions.find(p => p._id === q._id);
+              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
+            });
+          }
+          return newQueue;
         });
       } else if (data.action === "next") {
         setCurrentPatient(data.patient);
-        if (data.stats) {
-          setStats(prev => ({ 
-            ...prev, 
-            avgWait: data.stats.avgWaitTime !== undefined ? data.stats.avgWaitTime : prev.avgWait 
-          }));
-        }
         setQueue(prev => {
           let newQueue = prev.filter(p => p._id !== data.patient._id);
           // Apply new predictions from the backend
@@ -95,25 +147,37 @@ export default function Dashboard() {
         });
       } else if (data.action === "completed") {
         setCurrentPatient(null);
-        setQueue(prev => prev.filter(p => p._id !== data.patient._id));
+        setQueue(prev => {
+          let newQueue = prev.filter(p => p._id !== data.patient._id);
+          if (data.stats && data.stats.predictions) {
+            newQueue = newQueue.map(q => {
+              const match = data.stats.predictions.find(p => p._id === q._id);
+              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
+            });
+          }
+          return newQueue;
+        });
         setStats(prev => ({ 
           ...prev, 
-          completed: (prev.completed || 0) + 1,
-          avgWait: data.stats?.avgWaitTime !== undefined ? data.stats.avgWaitTime : prev.avgWait
+          completed: (prev.completed || 0) + 1
         }));
       }
-    });
+    };
 
-    socket.on("disconnect", () => setLiveIndicator(false));
-    socket.on("connect", () => {
+    const handleDisconnect = () => setLiveIndicator(false);
+    const handleConnect = () => {
       setLiveIndicator(true);
       socket.emit("join_facility", { facilityId, facilityType });
-    });
+    };
+
+    socket.on("queue_update", handleQueueUpdate);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect", handleConnect);
 
     return () => {
-      socket.off("queue_update");
-      socket.off("disconnect");
-      socket.off("connect");
+      socket.off("queue_update", handleQueueUpdate);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect", handleConnect);
     };
   }, [facilityId, facilityType, loadData]);
 
@@ -146,6 +210,24 @@ export default function Dashboard() {
       toast.error(err.response?.data?.message || "Failed to complete session");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePause = async (patientId) => {
+    try {
+      await pausePatientApi(patientId);
+      toast.success("Patient put on hold");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to pause patient");
+    }
+  };
+
+  const handleResume = async (patientId) => {
+    try {
+      await resumePatientApi(patientId);
+      toast.success("Patient resumed to queue");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to resume patient");
     }
   };
 
@@ -194,6 +276,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      {showWizard && <OnboardingWizard onComplete={() => setShowWizard(false)} />}
       <AnimatePage className="p-6 space-y-6 max-w-7xl mx-auto pb-32">
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
@@ -313,8 +396,11 @@ export default function Dashboard() {
               <div>
                 <div className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em] mb-1">Avg Wait Time</div>
                 <div className="text-[32px] font-black text-text-primary">{stats.avgWait} <span className="text-lg font-bold">min</span></div>
-                <div className="text-[10px] mt-2 font-black text-orange-500 bg-orange-500/10 inline-flex px-2.5 py-1 rounded-full uppercase tracking-widest">
-                  Live Prediction
+                <div className="flex flex-col items-start gap-1">
+                  <div className="text-[10px] mt-2 font-black text-orange-500 bg-orange-500/10 inline-flex px-2.5 py-1 rounded-full uppercase tracking-widest">
+                    Live Prediction
+                  </div>
+                  <WaitTimeBadge facilityType={facilityType} />
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
@@ -387,20 +473,22 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleComplete}
-                    disabled={loading}
-                    className="w-full h-[54px] rounded-xl text-white font-black text-[14px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: config.theme.primary,
-                      boxShadow: `0 4px 14px ${config.theme.primary}40`
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-xl">verified</span>
-                    Mark Complete
-                  </motion.button>
+                  <div className="flex gap-3 w-full">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleComplete}
+                      disabled={loading}
+                      className="w-full h-[54px] rounded-xl text-white font-black text-[14px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{ 
+                        backgroundColor: config.theme.primary,
+                        boxShadow: `0 4px 14px ${config.theme.primary}40`
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-xl">verified</span>
+                      Complete
+                    </motion.button>
+                  </div>
                 </>
               ) : (
                 <div className="space-y-4">
@@ -417,7 +505,8 @@ export default function Dashboard() {
           </div>
 
           {/* Waiting Queue */}
-          <div className="lg:col-span-2 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden flex flex-col shadow-sm">
+          <div className="lg:col-span-2 flex flex-col gap-4">
+            <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 overflow-hidden flex flex-col shadow-sm">
             <div className="p-5 border-b border-border-muted/50 dark:border-white/5 flex items-center justify-between bg-surface-variant/30">
               <h2 className="text-[14px] font-black text-text-primary uppercase tracking-[0.15em] flex items-center gap-2">
                 <span className="material-symbols-outlined" style={{ color: config.theme.primary }}>queue</span>
@@ -431,51 +520,95 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto max-h-[450px] p-4 space-y-3 custom-scrollbar">
               {loading && queue.length === 0 ? (
                 <SkeletonQueue />
-              ) : queue.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-center opacity-40">
-                  <span className="material-symbols-outlined text-5xl mb-3">inventory_2</span>
-                  <p className="text-text-primary font-black uppercase tracking-widest">Queue is Empty</p>
-                  <p className="text-text-secondary text-xs mt-1 uppercase tracking-widest font-medium">No pending consultations</p>
-                </div>
               ) : (
-                queue.map((patient, idx) => (
-                  <div key={patient._id} 
-                       className="group flex items-center justify-between p-4 rounded-xl border border-border-muted/30 dark:border-white/5 bg-bg-primary transition-all border-l-4 border-l-transparent shadow-sm"
-                       style={{ '--hover-color': config.theme.primary }}
-                       onMouseEnter={(e) => {
-                         e.currentTarget.style.borderColor = `${config.theme.primary}50`;
-                         e.currentTarget.style.borderLeftColor = config.theme.primary;
-                       }}
-                       onMouseLeave={(e) => {
-                         e.currentTarget.style.borderColor = '';
-                         e.currentTarget.style.borderLeftColor = '';
-                       }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border group-hover:scale-105 transition-transform"
-                           style={{ 
-                             backgroundColor: `${config.theme.primary}10`, 
-                             color: config.theme.primary, 
-                             borderColor: `${config.theme.primary}25` 
-                           }}>
-                        #{patient.tokenNumber.toString().padStart(2, '0')}
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-black text-text-primary">{patient.patientName}</div>
-                        <div className="text-[11px] text-text-secondary font-medium flex items-center gap-2 uppercase tracking-wider">
-                          <span className="whitespace-nowrap">{patient.phone || "N/A"}</span>
-                          <span className="w-1 h-1 rounded-full bg-text-secondary/40"></span>
-                          <span style={{ color: config.theme.primary }}>Est. {patient.estimatedWaitTime || Math.max(5, (idx + 1) * stats.avgWait)} min</span>
-                        </div>
-                      </div>
+                <>
+                {pausedQueue.length > 0 && (
+                  <div className="bg-bg-secondary rounded-2xl border border-amber-500/20 shadow-sm overflow-hidden mb-4">
+                    <div className="p-4 border-b border-amber-500/10 flex justify-between items-center bg-amber-500/5">
+                      <h3 className="font-bold text-amber-500 flex items-center gap-2 text-sm uppercase tracking-widest">
+                        <span className="material-symbols-outlined">pause_circle</span>
+                        On Hold
+                      </h3>
+                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-500 rounded-full text-xs font-black">{pausedQueue.length}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase bg-surface-variant/50 text-text-secondary border border-border-muted/30 dark:border-white/5">
-                        WAITING
-                      </span>
+                    <div className="px-4 pb-4 space-y-2 mt-4">
+                      {pausedQueue.map(p => (
+                        <div key={p._id} className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 hover:bg-amber-500/10 transition-all shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-xs font-black text-amber-500">
+                              #{p.tokenNumber}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-text-primary">{p.patientName}</div>
+                              <div className="text-[10px] text-text-secondary">On hold since {new Date(p.pausedAt || Date.now()).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}</div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleResume(p._id)}
+                            className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-green-500/20 transition-all flex items-center gap-1 border border-green-500/20"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">play_arrow</span>
+                            Resume
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))
+                )}
+                {queue.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center opacity-40">
+                    <span className="material-symbols-outlined text-5xl mb-3">inventory_2</span>
+                    <p className="text-text-primary font-black uppercase tracking-widest">Queue is Empty</p>
+                    <p className="text-text-secondary text-xs mt-1 uppercase tracking-widest font-medium">No pending consultations</p>
+                  </div>
+                ) : (
+                  queue.map((patient, idx) => (
+                    <div key={patient._id} 
+                         className="group flex items-center justify-between p-4 rounded-xl border border-border-muted/30 dark:border-white/5 bg-bg-primary transition-all border-l-4 border-l-transparent shadow-sm"
+                         style={{ '--hover-color': config.theme.primary }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.borderColor = `${config.theme.primary}50`;
+                           e.currentTarget.style.borderLeftColor = config.theme.primary;
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.borderColor = '';
+                           e.currentTarget.style.borderLeftColor = '';
+                         }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border group-hover:scale-105 transition-transform"
+                             style={{ 
+                               backgroundColor: `${config.theme.primary}10`, 
+                               color: config.theme.primary, 
+                               borderColor: `${config.theme.primary}25` 
+                             }}>
+                          #{patient.tokenNumber.toString().padStart(2, '0')}
+                        </div>
+                        <div>
+                          <div className="text-[14px] font-black text-text-primary">{patient.patientName}</div>
+                          <div className="text-[11px] text-text-secondary font-medium flex items-center gap-2 uppercase tracking-wider">
+                            <span className="whitespace-nowrap">{patient.phone || "N/A"}</span>
+                            <span className="w-1 h-1 rounded-full bg-text-secondary/40"></span>
+                            <span style={{ color: config.theme.primary }}>Est. {(patient.estimatedWaitTime !== undefined && patient.estimatedWaitTime !== null && patient.estimatedWaitTime > 0) ? patient.estimatedWaitTime : Math.max(5, (idx + 1) * stats.avgWait)} min</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handlePause(patient._id)}
+                          className="text-amber-400 hover:text-amber-300 p-1 transition-colors hover:bg-amber-500/10 rounded"
+                          title="Put on Hold"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">pause</span>
+                        </button>
+                        <span className="px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase bg-surface-variant/50 text-text-secondary border border-border-muted/30 dark:border-white/5">
+                          WAITING
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+                </>
               )}
             </div>
 
@@ -501,6 +634,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
 
         {/* 🏷 Facility Status Footer */}
         <div className="flex items-center justify-between p-5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
@@ -524,6 +658,7 @@ export default function Dashboard() {
           </div>
         </div>
       </AnimatePage>
+
     </Layout>
   );
 }

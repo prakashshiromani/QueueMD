@@ -32,6 +32,7 @@ const billingRoutes = require("./routes/billing.routes");
 const subscriptionRoutes = require("./routes/subscription.routes");
 const ticketRoutes = require("./routes/ticket.routes");
 const uploadRoutes = require("./routes/upload.routes");
+const visitRoutes = require("./routes/visit.routes");
 
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
@@ -91,6 +92,20 @@ app.use("/api/billing", billingRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/visits", visitRoutes);
+
+// Public Routes
+const publicRoutes = require("./routes/publicRoutes");
+app.use("/api/public", publicRoutes);
+
+// Lobby Routes
+const lobbyRoutes = require("./routes/lobby.routes");
+app.use("/api/lobby", lobbyRoutes);
+
+// Patient secure upload routes
+const patientUploadRoutes = require("./routes/patientUpload.routes");
+app.use("/api/patient", patientUploadRoutes);
+
 
 // 📄 Swagger API Documentation
 require('./config/swagger')(app);

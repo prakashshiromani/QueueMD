@@ -379,3 +379,39 @@
 [data-compact="true"] .p-6.space-y-6 {
   padding: 1rem !important;
 }
+
+/* Global Print Styles */
+@media print {
+  /* 1. Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 2. Only show the print area and its children */
+  #print-section, #print-section * {
+    visibility: visible;
+  }
+
+  /* 3. Position the print area at the top-left of the paper */
+  #print-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20mm; /* A4 Margin */
+    background: white !important;
+    color: black !important;
+  }
+
+  /* 4. Utility class to force hide buttons/interactive elements */
+  .no-print {
+    display: none !important;
+  }
+
+  /* 5. Remove shadows and dark theme artifacts */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

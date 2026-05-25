@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
 import Layout from "../components/Layout";
@@ -52,7 +52,8 @@ export default function Appointments() {
   useEffect(() => {
     if (!facilityId) return;
     socket.emit("join_facility", { facilityId, facilityType });
-    socket.on("appointment_update", (data) => {
+    
+    const handleAppointmentUpdate = (data) => {
       if (data.facilityType !== facilityType) return;
       if (data.action === "create") setAppointments(prev => [...prev, data.appointment]);
       else if (data.action === "update") setAppointments(prev => prev.map(a => a._id === data.appointment._id ? data.appointment : a));
@@ -65,8 +66,10 @@ export default function Appointments() {
           setStats(d.stats);
         }
       });
-    });
-    return () => socket.off("appointment_update");
+    };
+
+    socket.on("appointment_update", handleAppointmentUpdate);
+    return () => socket.off("appointment_update", handleAppointmentUpdate);
   }, [facilityId, facilityType]);
 
   useEffect(() => { loadData(); }, [currentDate]);

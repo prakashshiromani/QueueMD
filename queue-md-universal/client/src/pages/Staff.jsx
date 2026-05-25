@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Download, Edit, Trash2, Loader2, UserX, Plus, Shield } from "lucide-react";
 import { Link } from 'react-router-dom';
@@ -56,14 +56,16 @@ export default function StaffPage() {
 
   // 📡 Real-time Sync Listener
   useEffect(() => {
-    socket.on("staff_update", ({ action, userId, updatedData }) => {
+    const handleStaffUpdate = ({ action, userId, updatedData }) => {
       setStaff(prev => {
         if (action === "update") return prev.map(s => s._id === userId ? { ...s, ...updatedData } : s);
         if (action === "delete") return prev.filter(s => s._id !== userId);
         return prev;
       });
-    });
-    return () => socket.off("staff_update");
+    };
+    
+    socket.on("staff_update", handleStaffUpdate);
+    return () => socket.off("staff_update", handleStaffUpdate);
   }, []);
 
   // 🔍 Filtered
@@ -117,6 +119,17 @@ export default function StaffPage() {
       toast.error("Delete failed");
     }
   };
+
+  const handleToggleStatus = useCallback(async (id, currentStatus) => {
+    try {
+      await staffApi.toggleStatus(id, !currentStatus);
+      toast.success("Status updated successfully");
+      fetchStaff();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update status");
+    }
+  }, [fetchStaff]);
 
   return (
     <Layout>
@@ -186,6 +199,7 @@ export default function StaffPage() {
               <option value="admin">Admin</option>
               <option value="doctor">Doctor</option>
               <option value="receptionist">Receptionist</option>
+              <option value="nurse">Nurse</option>
               <option value="lab_tech">Lab Tech</option>
             </select>
           </div>
@@ -221,7 +235,9 @@ export default function StaffPage() {
                   index={i} 
                   onEdit={() => setEditingStaff(s)} 
                   onDelete={() => handleDelete(s._id)}
+                  onToggleStatus={() => handleToggleStatus(s._id, s.isActive)}
                   canDelete={user?.role === "admin"}
+                  canToggle={user?.role === "admin" || user?.role === "receptionist"}
                   config={config}
                 />
               ))}
@@ -242,12 +258,13 @@ export default function StaffPage() {
 }
 
 // 🃏 Staff Card Component
-const StaffCard = ({ staff, index, onEdit, onDelete, canDelete, config }) => {
+const StaffCard = ({ staff, index, onEdit, onDelete, onToggleStatus, canDelete, canToggle, config }) => {
   const getRoleColor = (role) => {
     switch (role?.toLowerCase()) {
       case 'admin': return 'from-amber-500 to-orange-600';
       case 'doctor': return 'from-blue-500 to-indigo-600';
       case 'receptionist': return 'from-teal-500 to-emerald-600';
+      case 'nurse': return 'from-fuchsia-500 to-pink-600';
       case 'lab_tech': return 'from-purple-500 to-pink-600';
       default: return 'from-slate-500 to-slate-700';
     }
@@ -281,9 +298,17 @@ const StaffCard = ({ staff, index, onEdit, onDelete, canDelete, config }) => {
         <div className="flex items-center gap-4">
           <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getRoleColor(staff.role)} p-[1px]`}>
             <div className="w-full h-full rounded-2xl bg-bg-secondary flex items-center justify-center overflow-hidden border border-border-muted/20">
-              <span className={`text-xl font-black bg-gradient-to-br ${getRoleColor(staff.role)} bg-clip-text text-transparent`}>
-                {staff.name?.charAt(0).toUpperCase()}
-              </span>
+              {staff.profileImage ? (
+                <img 
+                  src={staff.profileImage} 
+                  alt={staff.name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className={`text-xl font-black bg-gradient-to-br ${getRoleColor(staff.role)} bg-clip-text text-transparent`}>
+                  {staff.name?.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
           </div>
           <div>
@@ -292,14 +317,18 @@ const StaffCard = ({ staff, index, onEdit, onDelete, canDelete, config }) => {
           </div>
         </div>
         
-        <span className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg border flex items-center gap-1.5 ${
-          staff.isActive 
-            ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" 
-            : "text-rose-500 bg-rose-500/10 border-rose-500/20"
-        }`}>
+        <button 
+          onClick={onToggleStatus}
+          disabled={!canToggle}
+          className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg border flex items-center gap-1.5 transition active:scale-[0.98] disabled:opacity-80 disabled:cursor-not-allowed ${
+            staff.isActive 
+              ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20" 
+              : "text-rose-500 bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20"
+          }`}
+        >
           <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
           {staff.isActive ? "Active" : "Inactive"}
-        </span>
+        </button>
       </div>
       
       <div className="space-y-3 mb-6 relative z-10">

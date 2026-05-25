@@ -10,7 +10,7 @@ import AnimatePage from "../components/AnimatePage";
 
 // ✅ Skeleton Loader Component
 const Skeleton = () => (
-  <div className="h-24 bg-slate-800/30 rounded-2xl animate-pulse mb-4 border border-white/5" />
+  <div className="h-24 bg-slate-200 dark:bg-slate-800/30 rounded-2xl animate-pulse mb-4 border border-slate-300 dark:border-white/5" />
 );
 
 // ✅ Empty State Component
@@ -23,11 +23,11 @@ const EmptyState = () => (
     <motion.div
       animate={{ rotate: [0, 10, -10, 0] }}
       transition={{ repeat: Infinity, duration: 3 }}
-      className="p-6 bg-slate-800/50 rounded-full mb-4"
+      className="p-6 bg-slate-100 dark:bg-slate-800/50 rounded-full mb-4"
     >
-      <Bell className="w-10 h-10 text-slate-500" />
+      <Bell className="w-10 h-10 text-slate-400 dark:text-slate-500" />
     </motion.div>
-    <h3 className="text-lg font-medium text-slate-300">No new notifications</h3>
+    <h3 className="text-lg font-medium text-slate-800 dark:text-slate-300">No new notifications</h3>
     <p className="text-sm text-slate-500 mt-1">You're all caught up! Relax.</p>
   </motion.div>
 );
@@ -55,14 +55,16 @@ export default function Notifications() {
       connectSocket(user.facilityId, user.facilityType);
 
       // 🔥 Real-time Listener (Centralized Facility Room)
-      socket.on("notification:new", (data) => {
+      const handleNewNotification = (data) => {
         addSocketNotification(data);
-      });
-    }
+      };
+      
+      socket.on("notification:new", handleNewNotification);
 
-    return () => {
-      socket.off("notification:new");
-    };
+      return () => {
+        socket.off("notification:new", handleNewNotification);
+      };
+    }
   }, [user, loadNotifications, addSocketNotification]); 
 
   const handleMarkAll = () => {
@@ -78,17 +80,17 @@ export default function Notifications() {
         {/* Header */}
         <div className="relative flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent tracking-tight">
               Notifications
             </h1>
-            <p className="text-slate-400 text-base mt-1.5">
+            <p className="text-slate-500 dark:text-slate-400 text-base mt-1.5">
               Centralized alerts across all your facility departments.
             </p>
           </div>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAll}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-xl text-sm font-semibold transition-all border border-blue-500/30 shadow-lg"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-600/20 dark:hover:bg-blue-600/30 dark:text-blue-400 rounded-xl text-sm font-semibold transition-all border border-blue-200 dark:border-blue-500/30 shadow-sm dark:shadow-lg"
             >
               <CheckCheck className="w-5 h-5" />
               Mark all read
@@ -125,11 +127,11 @@ export default function Notifications() {
           <div className="mt-12 text-center">
             <button
               disabled={loading}
-              className="group relative px-10 py-4 bg-slate-800/50 hover:bg-slate-700/60 text-white rounded-2xl text-base font-semibold transition-all border border-white/10 disabled:opacity-50 overflow-hidden shadow-2xl"
+              className="group relative px-10 py-4 bg-white hover:bg-slate-50 text-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-700/60 dark:text-white rounded-2xl text-base font-semibold transition-all border border-slate-200 dark:border-white/10 disabled:opacity-50 overflow-hidden shadow-sm dark:shadow-2xl"
               onClick={() => loadNextPage()}
             >
               {/* Hover Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-600/20 dark:to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
               <span className="relative flex items-center justify-center gap-3">
                 {loading ? (

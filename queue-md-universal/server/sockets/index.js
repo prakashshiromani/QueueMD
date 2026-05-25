@@ -32,6 +32,13 @@ const initSocket = (server) => {
       console.log(`🔔 Socket ${socket.id} joined notification room: ${room}`);
     });
 
+    // 🌍 NEW: Public Tracking Room
+    socket.on("join_public_room", ({ facilityId }) => {
+      const room = `${facilityId}_public`;
+      socket.join(room);
+      console.log(`🌍 Socket ${socket.id} joined public tracking room: ${room}`);
+    });
+
     socket.on("disconnect", (reason) => {
       console.log(`❌ Client disconnected: ${socket.id} | Reason: ${reason}`);
     });
