@@ -33,7 +33,8 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6)
+  password: z.string().min(6),
+  remember: z.boolean().optional()
 });
 
 // ✅ REGISTER (Auto-Create Facility if needed)
@@ -86,7 +87,7 @@ exports.register = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
     res.status(201).json({
@@ -139,12 +140,17 @@ exports.login = async (req, res, next) => {
     // Generate Tokens
     const tokens = createTokens(user);
 
-    res.cookie('refreshToken', tokens.refreshToken, {
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+      sameSite: 'strict'
+    };
+
+    if (validation.data.remember !== false) {
+      cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+    }
+
+    res.cookie('refreshToken', tokens.refreshToken, cookieOptions);
 
     res.json({
       success: true,

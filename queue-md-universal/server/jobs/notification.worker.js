@@ -6,9 +6,21 @@ const { FACILITY_TYPES } = require('../utils/facilityTypeConfig');
 
 // Worker background me chalta rahega
 const worker = new Worker('notificationQueue', async (job) => {
-  const { facilityType, patientName, tokenNumber, phone, customData } = job.data;
+  const { facilityId, facilityType, patientName, tokenNumber, phone, customData } = job.data;
   
-  const config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
+  let config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
+  if (facilityId) {
+    try {
+      const Facility = require('../models/Facility');
+      const facility = await Facility.findById(facilityId);
+      const customTypes = (facility && facility.customFields && facility.customFields.get("customFacilityTypes")) || {};
+      if (customTypes[facilityType]) {
+        config = { ...config, ...customTypes[facilityType] };
+      }
+    } catch (e) {
+      logger.error(`Error loading custom notification config: ${e.message}`);
+    }
+  }
   let message = config.notificationTemplate;
   
   // 🔧 Dynamic Placeholders Replace

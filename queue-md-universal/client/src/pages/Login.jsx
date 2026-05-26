@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginApi, forgotPasswordApi, resetPasswordApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -10,12 +10,19 @@ import { z } from 'zod';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters")
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  remember: z.boolean().optional()
 });
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { login, isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
   const { setFacility } = useFacilityStore();
 
   const [error, setError] = useState('');
@@ -255,7 +262,7 @@ export default function Login() {
               </div>
 
               <div className="flex items-center gap-3 px-1">
-                <input type="checkbox" id="remember" className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-blue-500/20" />
+                <input type="checkbox" id="remember" {...register('remember')} className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-blue-500/20" />
                 <label htmlFor="remember" className="text-[13px] font-bold text-text-secondary cursor-pointer select-none">Remember this device</label>
               </div>
 

@@ -21,7 +21,6 @@ import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useFacilityStore } from './store/facilityStore';
 import { connectSocket } from './services/socket';
-import { Toaster } from "react-hot-toast";
 
 export default function App() {
   const { isAuthenticated, user } = useAuthStore();
@@ -57,22 +56,6 @@ export default function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: "rgba(15, 23, 42, 0.85)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            padding: "12px 16px"
-          },
-          success: { iconTheme: { primary: "#10B981", secondary: "#fff" } },
-          error: { iconTheme: { primary: "#EF4444", secondary: "#fff" } }
-        }}
-      />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

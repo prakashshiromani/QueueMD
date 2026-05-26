@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
 import { useBillingStore } from '../store/billingStore';
-import { FACILITY_TYPES, getFacilityConfig } from '../utils/facilityTypeConfig';
+import { FACILITY_TYPES, getFacilityConfig, saveCustomFacilityTypes } from '../utils/facilityTypeConfig';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ImageUploader from '../components/ui/ImageUploader';
@@ -765,36 +765,7 @@ const AppearanceTab = ({ config }) => {
         </div>
       </div>
 
-      {/* Brand Accent Color */}
-      <div className="space-y-3">
-        <label className="text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary">
-          Brand Accent Color
-        </label>
-        <div className="flex gap-3">
-          {colors.map((color) => (
-            <button
-              key={color.value}
-              onClick={() => {
-                setAccentColor(color.value);
-                toast.success(`Accent updated to ${color.name}`);
-              }}
-              className={`w-12 h-12 rounded-xl border-2 transition transform hover:scale-105 ${
-                accentColor === color.value
-                  ? 'border-text-primary scale-105 shadow-lg'
-                  : 'border-transparent hover:scale-105'
-              }`}
-              style={{ backgroundColor: color.value }}
-              title={color.name}
-            >
-              {accentColor === color.value && (
-                <span className="material-symbols-outlined text-white text-[18px] flex items-center justify-center w-full">
-                  check
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+
 
       {/* Font Accessibility Size */}
       <div className="space-y-3">
@@ -1073,6 +1044,388 @@ const DangerZoneTab = ({ user, facility }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// FACILITY TYPES TAB (DYNAMIC DEPARTMENTS)
+// ─────────────────────────────────────────────────────────────
+
+const FacilityTypesTab = ({ facility }) => {
+  const facilityId = facility?.facilityId || facility?._id;
+  const [customTypes, setCustomTypes] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`queue-md-custom-facility-types-${facilityId}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [deletedTypes, setDeletedTypes] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`queue-md-deleted-facility-types-${facilityId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Watch for server facility data updates and synchronize component state dynamically
+  useEffect(() => {
+    if (facility && facility.customFields) {
+      const custom = facility.customFields.customFacilityTypes || {};
+      const deleted = facility.customFields.deletedFacilityTypes || [];
+
+      setCustomTypes(custom);
+      setDeletedTypes(deleted);
+
+      // Sync localStorage and global memory configs immediately
+      localStorage.setItem(`queue-md-custom-facility-types-${facilityId}`, JSON.stringify(custom));
+      localStorage.setItem(`queue-md-deleted-facility-types-${facilityId}`, JSON.stringify(deleted));
+      saveCustomFacilityTypes(facilityId, custom, deleted);
+    }
+  }, [facility, facilityId]);
+
+  const [editingKey, setEditingKey] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    label: '',
+    icon: '🏥',
+    primaryColor: '#2563EB',
+    secondaryColor: '#10B981',
+    tokenPrefix: 'TKN',
+    baseConsultTime: 15,
+    notificationTemplate: 'Hello #{patientName}, your token #{token} is called.',
+    statusFlow: ['waiting', 'in-progress', 'completed'],
+    roles: ['Admin', 'Receptionist', 'Doctor', 'Patient']
+  });
+
+  const defaults = ['clinic', 'pathlab', 'dental', 'physio', 'hospital'];
+  const allMergedTypes = { ...FACILITY_TYPES, ...customTypes };
+
+  const handleFieldChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+    if (!formData.label.trim()) return toast.error('Label is required');
+    if (!formData.tokenPrefix.trim() || formData.tokenPrefix.length < 2) {
+      return toast.error('Token prefix must be at least 2 characters');
+    }
+
+    const key = editingKey || formData.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key) return toast.error('Invalid department name');
+
+    const updatedConfig = {
+      label: formData.label,
+      icon: formData.icon,
+      theme: { primary: formData.primaryColor, secondary: formData.secondaryColor },
+      notificationTemplate: formData.notificationTemplate,
+      statusFlow: formData.statusFlow,
+      roles: formData.roles,
+      tokenPrefix: formData.tokenPrefix.toUpperCase(),
+      baseConsultTime: parseInt(formData.baseConsultTime),
+      customFields: []
+    };
+
+    const newCustomTypes = { ...customTypes, [key]: updatedConfig };
+    
+    // If the department was previously marked as deleted, restore it!
+    const newDeletedTypes = deletedTypes.filter(d => d !== key);
+
+    try {
+      // Sync with localStorage
+      saveCustomFacilityTypes(facilityId, newCustomTypes, newDeletedTypes);
+      setCustomTypes(newCustomTypes);
+      setDeletedTypes(newDeletedTypes);
+
+      // Sync with backend database
+      await api.put('/facility/update', {
+        facilityId,
+        customFacilityTypes: newCustomTypes,
+        deletedFacilityTypes: newDeletedTypes
+      });
+
+      toast.success(editingKey ? 'Department updated successfully!' : 'New Department created!');
+      setEditingKey(null);
+      setShowAddForm(false);
+      
+      // Reload page to propagate changes dynamically to all pages!
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      toast.error('Failed to sync department to server');
+    }
+  };
+
+  const handleDelete = async (key) => {
+    if (Object.keys(allMergedTypes).length <= 1) {
+      return toast.error('At least one department must remain active');
+    }
+
+    if (!window.confirm(`Are you sure you want to delete the "${allMergedTypes[key]?.label}" department?`)) {
+      return;
+    }
+
+    const isDefault = defaults.includes(key);
+    let newDeletedTypes = [...deletedTypes];
+    if (isDefault && !newDeletedTypes.includes(key)) {
+      newDeletedTypes.push(key);
+    }
+
+    const newCustomTypes = { ...customTypes };
+    if (!isDefault) {
+      delete newCustomTypes[key];
+    }
+
+    try {
+      saveCustomFacilityTypes(facilityId, newCustomTypes, newDeletedTypes);
+      setCustomTypes(newCustomTypes);
+      setDeletedTypes(newDeletedTypes);
+
+      await api.put('/facility/update', {
+        facilityId,
+        customFacilityTypes: newCustomTypes,
+        deletedFacilityTypes: newDeletedTypes
+      });
+
+      toast.success('Department deleted successfully');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      toast.error('Failed to delete department from server');
+    }
+  };
+
+  const startEdit = (key) => {
+    const config = allMergedTypes[key];
+    setEditingKey(key);
+    setFormData({
+      label: config.label,
+      icon: config.icon || '🏥',
+      primaryColor: config.theme?.primary || '#2563EB',
+      secondaryColor: config.theme?.secondary || '#10B981',
+      tokenPrefix: config.tokenPrefix || 'TKN',
+      baseConsultTime: config.baseConsultTime || 15,
+      notificationTemplate: config.notificationTemplate || '',
+      statusFlow: config.statusFlow || ['waiting', 'in-progress', 'completed'],
+      roles: config.roles || ['Admin', 'Receptionist', 'Doctor', 'Patient']
+    });
+    setShowAddForm(true);
+  };
+
+  const startAdd = () => {
+    setEditingKey(null);
+    setFormData({
+      label: '',
+      icon: '🏥',
+      primaryColor: '#2563EB',
+      secondaryColor: '#10B981',
+      tokenPrefix: 'TKN',
+      baseConsultTime: 15,
+      notificationTemplate: 'Hello #{patientName}, your token #{token} is called.',
+      statusFlow: ['waiting', 'in-progress', 'completed'],
+      roles: ['Admin', 'Receptionist', 'Doctor', 'Patient']
+    });
+    setShowAddForm(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="font-bold text-text-primary text-lg">Facility Types & Departments</h3>
+          <p className="text-xs text-text-secondary mt-1">Configure and manage dynamic department types for QueueMD</p>
+        </div>
+        {!showAddForm && (
+          <button
+            onClick={startAdd}
+            className="px-5 h-[38px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span> Add Department
+          </button>
+        )}
+      </div>
+
+      {showAddForm && (
+        <form onSubmit={handleSave} className="p-6 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5 space-y-5">
+          <h4 className="text-sm font-bold text-text-primary uppercase tracking-wider">
+            {editingKey ? 'Modify Department Configuration' : 'Register New Department'}
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Department Name</label>
+              <input
+                type="text"
+                disabled={editingKey && defaults.includes(editingKey)}
+                value={formData.label}
+                onChange={(e) => handleFieldChange('label', e.target.value)}
+                placeholder="e.g. Cardiology"
+                className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none focus:border-border-muted"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Token Prefix</label>
+              <input
+                type="text"
+                disabled={editingKey && defaults.includes(editingKey)}
+                value={formData.tokenPrefix}
+                onChange={(e) => handleFieldChange('tokenPrefix', e.target.value.toUpperCase().slice(0, 4))}
+                placeholder="e.g. CAR"
+                className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm font-mono focus:outline-none focus:border-border-muted"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Emoji Icon</label>
+              <select
+                value={formData.icon}
+                onChange={(e) => handleFieldChange('icon', e.target.value)}
+                className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
+              >
+                {['🏥', '🔬', '🦷', '🧘', '🏨', '❤️', '🩺', '👁️', '👶', '🧠', '🦴', '🧪', '💊'].map(emoji => (
+                  <option key={emoji} value={emoji}>{emoji}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Primary Theme Color</label>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="color"
+                  value={formData.primaryColor}
+                  onChange={(e) => handleFieldChange('primaryColor', e.target.value)}
+                  className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent"
+                />
+                <input
+                  type="text"
+                  value={formData.primaryColor}
+                  onChange={(e) => handleFieldChange('primaryColor', e.target.value)}
+                  className="flex-1 bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Secondary Theme Color</label>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="color"
+                  value={formData.secondaryColor}
+                  onChange={(e) => handleFieldChange('secondaryColor', e.target.value)}
+                  className="w-10 h-10 border-0 rounded-lg cursor-pointer bg-transparent"
+                />
+                <input
+                  type="text"
+                  value={formData.secondaryColor}
+                  onChange={(e) => handleFieldChange('secondaryColor', e.target.value)}
+                  className="flex-1 bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Base Consult Time: {formData.baseConsultTime} mins</label>
+            <input
+              type="range"
+              min="5"
+              max="60"
+              step="5"
+              value={formData.baseConsultTime}
+              onChange={(e) => handleFieldChange('baseConsultTime', e.target.value)}
+              className="w-full h-1.5 bg-border-muted rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Custom Notification Template</label>
+            <textarea
+              value={formData.notificationTemplate}
+              onChange={(e) => handleFieldChange('notificationTemplate', e.target.value)}
+              placeholder="e.g. Hello #{patientName}, Cardiology doctor is ready for you. Token: #{token}"
+              className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none focus:border-border-muted min-h-[80px]"
+            />
+            <p className="text-[10px] text-text-secondary">Placeholders: <code>#{'{token}'}</code>, <code>#{'{patientName}'}</code>, <code>#{'{sampleId}'}</code></p>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button type="submit" className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider">
+              {editingKey ? 'Save Changes' : 'Create Department'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(false); setEditingKey(null); }}
+              className="px-4 py-2.5 rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {Object.entries(allMergedTypes).map(([key, config]) => {
+          const isDefault = defaults.includes(key);
+          return (
+            <div key={key} className="p-5 bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl flex flex-col justify-between hover:border-border-muted transition-all">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl p-2 bg-bg-secondary rounded-xl">{config.icon}</span>
+                  <div>
+                    <h4 className="font-bold text-text-primary text-base flex items-center gap-1.5">
+                      {config.label}
+                      <span className="font-mono text-xs text-text-secondary bg-bg-secondary px-2 py-0.5 rounded border border-border-muted/50">
+                        {config.tokenPrefix}
+                      </span>
+                    </h4>
+                    <p className="text-xs text-text-secondary mt-1">Base Time: {config.baseConsultTime} mins</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => startEdit(key)}
+                    className="w-8 h-8 rounded-lg bg-bg-secondary text-text-secondary hover:text-text-primary flex items-center justify-center border border-border-muted/50"
+                    title="Edit Department"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(key)}
+                    className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/25 flex items-center justify-center border border-rose-500/20"
+                    title="Delete Department"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border-muted/30 dark:border-white/5 flex justify-between items-center text-xs">
+                <div className="flex gap-1">
+                  <span className="font-semibold text-text-secondary">Theme:</span>
+                  <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: config.theme?.primary }}></span>
+                  <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: config.theme?.secondary }}></span>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isDefault ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
+                  {isDefault ? 'System Default' : 'Custom Dept'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
 // SUBSCRIPTION TAB
 // ─────────────────────────────────────────────────────────────
 
@@ -1277,6 +1630,7 @@ export default function Settings() {
     { id: 'facility', label: 'Facility Profile', icon: 'business' },
     { id: 'branches', label: 'Branches', icon: 'map' },
     { id: 'queue', label: 'Queue & Tokens', icon: 'queue' },
+    { id: 'facilityTypes', label: 'Facility Types', icon: 'category' },
     { id: 'appearance', label: 'Appearance', icon: 'palette' },
     { id: 'notifications', label: 'Notifications', icon: 'notifications' },
     { id: 'subscription', label: 'Subscription & Billing', icon: 'credit_card' },
@@ -1294,14 +1648,27 @@ export default function Settings() {
       setLoadingFacility(true);
       const response = await api.get('/facility/me');
       if (response.data && response.data.data) {
-        setFacilityData(response.data.data);
+        const facility = response.data.data;
+        setFacilityData(facility);
+
+        // Sync custom fields from database to localStorage for cross-device consistency
+        if (facility.customFields) {
+          const customTypes = facility.customFields.customFacilityTypes || {};
+          const deletedKeys = facility.customFields.deletedFacilityTypes || [];
+
+          localStorage.setItem(`queue-md-custom-facility-types-${facilityId}`, JSON.stringify(customTypes));
+          localStorage.setItem(`queue-md-deleted-facility-types-${facilityId}`, JSON.stringify(deletedKeys));
+
+          // Apply instantly to runtime configuration
+          saveCustomFacilityTypes(facilityId, customTypes, deletedKeys);
+        }
       }
     } catch (err) {
       console.error("Fetch facility error:", err);
     } finally {
       setLoadingFacility(false);
     }
-  }, []);
+  }, [facilityId]);
 
   useEffect(() => {
     fetchFacilityData();
@@ -1373,6 +1740,7 @@ export default function Settings() {
       case 'facility': return <FacilityProfileTab facility={facility} onSave={handleFieldChange} config={config} />;
       case 'branches': return <BranchesTab facilityId={facilityId} />;
       case 'queue': return <QueueSettingsTab facility={facility} onSave={handleFieldChange} config={config} />;
+      case 'facilityTypes': return <FacilityTypesTab facility={facility} />;
       case 'appearance': return <AppearanceTab config={config} />;
       case 'notifications': return <NotificationsTab facilityId={facilityId} />;
       case 'subscription': return <SubscriptionTab />;

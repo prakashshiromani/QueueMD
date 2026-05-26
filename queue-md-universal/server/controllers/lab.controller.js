@@ -40,12 +40,45 @@ exports.getLabReports = async (req, res, next) => {
       query.status = status;
     }
 
-    // Search by patient name or sample ID
+    // Search by patient name, sample ID, test type, doctor, date, or status
     if (search) {
-      query.$or = [
-        { patientName: { $regex: search, $options: 'i' } },
-        { 'customData.sampleId': { $regex: search, $options: 'i' } }
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchLower = search.toLowerCase();
+
+      // Status mapping for user friendly terms (e.g. pending -> waiting, ready -> completed)
+      const statusMatches = [];
+      if ('pending'.includes(searchLower) || 'waiting'.includes(searchLower)) statusMatches.push('waiting');
+      if ('processing'.includes(searchLower) || 'in-progress'.includes(searchLower) || 'progress'.includes(searchLower)) statusMatches.push('in-progress');
+      if ('ready'.includes(searchLower) || 'completed'.includes(searchLower) || 'complete'.includes(searchLower)) statusMatches.push('completed');
+      if ('delivered'.includes(searchLower) || 'deliver'.includes(searchLower)) statusMatches.push('delivered');
+      if ('cancelled'.includes(searchLower) || 'cancel'.includes(searchLower)) statusMatches.push('cancelled');
+
+      const orConditions = [
+        { patientName: { $regex: safeSearch, $options: 'i' } },
+        { 'customData.sampleId': { $regex: safeSearch, $options: 'i' } },
+        { 'customData.testType': { $regex: safeSearch, $options: 'i' } },
+        { doctorName: { $regex: safeSearch, $options: 'i' } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: {
+                $dateToString: {
+                  format: "%Y-%m-%d %H:%M %d %b %Y %d %B %Y %b %d %B %d",
+                  date: "$createdAt"
+                }
+              },
+              regex: safeSearch,
+              options: "i"
+            }
+          }
+        }
       ];
+
+      if (statusMatches.length > 0) {
+        orConditions.push({ status: { $in: statusMatches } });
+      }
+
+      query.$or = orConditions;
     }
 
     // Filter by date (today, this week, etc.)
@@ -245,30 +278,10 @@ exports.createLabOrder = async (req, res, next) => {
       customData,
       doctorName,
       tokenNumber: nextToken,
-      status: 'waiting'
+      status: 'completed',
+      completedAt: new Date(),
+      isLabOrder: true
     });
-
-    // Auto-create/update patient in CRM
-    await Patient.findOneAndUpdate(
-      { phone, facilityId },
-      {
-        $set: {
-          name: patientName,
-          phone,
-          facilityId,
-          facilityType: 'pathlab',
-          lastVisit: new Date(),
-          lastVisitType: 'LAB TEST'
-        },
-        $push: {
-          medicalHistory: {
-            condition: `Lab Test: ${customData.testType}`,
-            diagnosedAt: new Date()
-          }
-        }
-      },
-      { upsert: true, new: true }
-    );
 
     // Emit socket event
     emitQueueUpdate(facilityId, 'pathlab', {

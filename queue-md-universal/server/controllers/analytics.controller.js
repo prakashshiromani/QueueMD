@@ -292,6 +292,33 @@ exports.getTopDoctors = async (req, res, next) => {
           count: { $sum: 1 }
         }
       },
+      {
+        $lookup: {
+          from: "users",
+          let: { docName: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$role", "doctor"] },
+                    { $eq: ["$facilityId", new mongoose.Types.ObjectId(facilityId)] },
+                    // ✅ Exact case-insensitive match only
+                    // Prevents false matches: 'raj' → 'raja', 'singh' → 'aman singh'
+                    { $eq: [{ $toLower: "$name" }, { $toLower: "$$docName" }] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "registeredDoctor"
+        }
+      },
+      {
+        $match: {
+          registeredDoctor: { $ne: [] }
+        }
+      },
       { $sort: { count: -1 } },
       { $limit: 5 }
     ]);

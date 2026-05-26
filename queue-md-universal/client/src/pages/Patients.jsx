@@ -87,6 +87,11 @@ export default function Patients() {
     }
   };
 
+  // Reset to first page when any search/filter criteria changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedFacility]);
+
   useEffect(() => {
     fetchPatients();
   }, [currentPage, searchQuery, selectedFacility, facilityId]);
@@ -347,65 +352,63 @@ export default function Patients() {
         </div>
 
         {/* Premium Search & Filter Bar */}
-        <div className="bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search Input */}
-            <div className="relative flex-[2]">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, ID, or phone..."
-                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)]/50 transition-all font-medium"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  <span className="material-symbols-outlined text-xl">close</span>
-                </button>
-              )}
-            </div>
-
-            {/* Facility Filter Pills */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        <div className="bg-bg-secondary/50 backdrop-blur-md p-5 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm space-y-4">
+          {/* Search Input */}
+          <div className="relative w-full">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl font-medium">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, phone, email, status, gender, or doctor..."
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)]/50 transition-all font-medium"
+            />
+            {searchQuery && (
               <button
-                onClick={() => setSelectedFacility("all")}
-                className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${selectedFacility === "all"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Facility Filter Pills */}
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-border-muted/20 dark:border-white/5">
+            <button
+              onClick={() => setSelectedFacility("all")}
+              className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${selectedFacility === "all"
+                  ? "text-white"
+                  : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
+                }`}
+              style={selectedFacility === "all" ? {
+                backgroundColor: 'var(--theme-primary)',
+                borderColor: 'var(--theme-primary)',
+                boxShadow: '0 4px 12px rgba(var(--theme-primary-rgb), 0.2)'
+              } : {}}
+            >
+              All Facilities
+            </button>
+            {Object.entries(FACILITY_TYPES).map(([type, config]) => (
+              <button
+                key={type}
+                onClick={() => setSelectedFacility(type)}
+                className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-2 border ${selectedFacility === type
                     ? "text-white"
                     : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
                   }`}
-                style={selectedFacility === "all" ? {
-                  backgroundColor: 'var(--theme-primary)',
-                  borderColor: 'var(--theme-primary)',
-                  boxShadow: '0 4px 12px rgba(var(--theme-primary-rgb), 0.2)'
+                style={selectedFacility === type ? {
+                  backgroundColor: config.theme.primary,
+                  borderColor: config.theme.primary,
+                  boxShadow: `0 4px 12px ${config.theme.primary}40`
                 } : {}}
               >
-                All Facilities
+                <span className="material-symbols-outlined text-[18px]">{config.icon}</span>
+                {config.label}
               </button>
-              {Object.entries(FACILITY_TYPES).map(([type, config]) => (
-                <button
-                  key={type}
-                  onClick={() => setSelectedFacility(type)}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-2 border ${selectedFacility === type
-                      ? "text-white"
-                      : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
-                    }`}
-                  style={selectedFacility === type ? {
-                    backgroundColor: config.theme.primary,
-                    borderColor: config.theme.primary,
-                    boxShadow: `0 4px 12px ${config.theme.primary}40`
-                  } : {}}
-                >
-                  <span className="material-symbols-outlined text-[18px]">{config.icon}</span>
-                  {config.label}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
 

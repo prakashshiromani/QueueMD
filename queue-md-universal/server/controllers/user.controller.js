@@ -15,14 +15,19 @@ exports.createStaff = async (req, res) => {
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
-    // 🔍 Determine facilityType: use body value if valid, else fall back to JWT
-    const validTypes = Object.keys(FACILITY_TYPES);
+    // Load custom types from the facility model database if any
+    const Facility = require("../models/Facility");
+    const facility = await Facility.findById(req.user.facilityId);
+    const customTypes = (facility && facility.customFields && facility.customFields.get("customFacilityTypes")) || {};
+
+    const allTypes = { ...FACILITY_TYPES, ...customTypes };
+    const validTypes = Object.keys(allTypes);
     const staffFacilityType = (bodyFacilityType && validTypes.includes(bodyFacilityType))
       ? bodyFacilityType
       : req.user.facilityType;
 
     // 🔍 Validate final facilityType
-    if (!FACILITY_TYPES[staffFacilityType]) {
+    if (!allTypes[staffFacilityType]) {
       return res.status(400).json({ success: false, message: "Invalid department / facility type" });
     }
 

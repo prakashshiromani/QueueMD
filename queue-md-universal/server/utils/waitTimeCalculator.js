@@ -13,7 +13,17 @@ const getBaseConsultTime = (facilityType) => {
 
 // 🚀 Main Prediction Engine
 exports.calculateWaitPredictions = async (Queue, facilityId, facilityType) => {
-  const baseTime = getBaseConsultTime(facilityType);
+  let baseTime = getBaseConsultTime(facilityType);
+  try {
+    const Facility = require("../models/Facility");
+    const facility = await Facility.findById(facilityId);
+    const customTypes = (facility && facility.customFields && facility.customFields.get("customFacilityTypes")) || {};
+    if (customTypes[facilityType]?.baseConsultTime !== undefined) {
+      baseTime = parseInt(customTypes[facilityType].baseConsultTime);
+    }
+  } catch (e) {
+    console.error("Failed to load custom consult time in waitTimeCalculator:", e.message);
+  }
 
   // Last 15 completed patients fetch karo (window bada kiya for stability)
   const recent = await Queue.find(

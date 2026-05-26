@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useFacilityStore } from "../../store/facilityStore";
+import { FACILITY_TYPES } from "../../utils/facilityTypeConfig";
 
 export default function DayView({ date, appointments, onAppointmentClick, onAdd, loading }) {
   const { facilityType } = useFacilityStore();
@@ -20,19 +21,16 @@ export default function DayView({ date, appointments, onAppointmentClick, onAdd,
       scheduled: "bg-blue-500/10 text-blue-400 border-blue-500/20",
       confirmed: "bg-green-500/10 text-green-400 border-green-500/20",
       "checked-in": "bg-purple-500/10 text-purple-400 border-purple-500/20",
-      completed: "bg-gray-500/10 text-gray-400 border-gray-400/20",
+      completed: "bg-green-500/10 text-green-400 border-green-500/20",
       cancelled: "bg-red-500/10 text-red-400 border-red-500/20"
     };
     return map[status] || map.scheduled;
   };
 
-  const getTypeColor = (type) => ({
-    clinic: "border-l-blue-500",
-    dental: "border-l-pink-500",
-    pathlab: "border-l-purple-500",
-    physio: "border-l-green-500",
-    pathology: "border-l-purple-500"
-  }[type?.toLowerCase()] || "border-l-blue-500");
+  const getTypeColor = (type) => {
+    const key = Object.keys(FACILITY_TYPES).find(k => k.toLowerCase() === type?.toLowerCase());
+    return FACILITY_TYPES[key]?.theme?.primary || "#2563EB";
+  };
 
   if (loading) return <div className="p-12 text-center text-text-secondary animate-pulse">
     <span className="material-symbols-outlined text-[48px] animate-spin">progress_activity</span>
@@ -76,49 +74,63 @@ export default function DayView({ date, appointments, onAppointmentClick, onAdd,
             <p className="text-[12px] mt-1">Enjoy your free time or schedule a new one!</p>
           </div>
         ) : (
-          dayAppts.map((apt) => (
-            <div
-              key={apt._id}
-              onClick={() => onAppointmentClick(apt)}
-              className={`group p-5 hover:bg-surface-variant/30 cursor-pointer transition-all border-l-[4px] ${getTypeColor(apt.appointmentType)} active:scale-[0.99]`}
-            >
-              <div className="flex items-start justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-primary rounded-lg border border-border-muted/50 shadow-sm">
-                      <span className="material-symbols-outlined text-[16px] text-blue-500">schedule</span>
-                      <span className="text-[13px] font-black text-text-primary tracking-wide">
-                        {apt.startTime} - {apt.endTime}
+          dayAppts.map((apt) => {
+            const primaryColor = getTypeColor(apt.appointmentType);
+            const key = Object.keys(FACILITY_TYPES).find(k => k.toLowerCase() === apt.appointmentType?.toLowerCase());
+            const prefix = FACILITY_TYPES[key]?.tokenPrefix || "APPT";
+            const displayToken = (() => {
+              if (!apt.tokenNumber) return "N/A";
+              if (apt.tokenNumber.startsWith("APPT-")) {
+                return apt.tokenNumber.replace("APPT-", `${prefix}-`);
+              }
+              return apt.tokenNumber;
+            })();
+
+            return (
+              <div
+                key={apt._id}
+                onClick={() => onAppointmentClick(apt)}
+                className="group p-5 hover:bg-surface-variant/30 cursor-pointer transition-all border-l-[4px] active:scale-[0.99]"
+                style={{ borderLeftColor: primaryColor }}
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-primary rounded-lg border border-border-muted/50 shadow-sm">
+                        <span className="material-symbols-outlined text-[16px]" style={{ color: primaryColor }}>schedule</span>
+                        <span className="text-[13px] font-black text-text-primary tracking-wide">
+                          {apt.startTime} - {apt.endTime}
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${getStatusBadge(apt.status)} shadow-sm`}>
+                        {apt.status}
                       </span>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${getStatusBadge(apt.status)} shadow-sm`}>
-                      {apt.status}
-                    </span>
-                  </div>
-                  <h4 className="text-[17px] font-black text-text-primary tracking-tight mb-1">{apt.patientName}</h4>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-text-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[16px]">confirmation_number</span>
-                      Token: <span className="font-bold text-text-primary">{apt.tokenNumber}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 uppercase font-bold tracking-tighter">
-                      <span className="material-symbols-outlined text-[16px]">category</span>
-                      {apt.appointmentType}
-                    </span>
-                    {apt.doctorName && (
+                    <h4 className="text-[17px] font-black text-text-primary tracking-tight mb-1">{apt.patientName}</h4>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-text-secondary">
                       <span className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[16px]">medical_services</span>
-                        Dr. {apt.doctorName}
+                        <span className="material-symbols-outlined text-[16px]" style={{ color: primaryColor }}>confirmation_number</span>
+                        Token: <span className="font-bold" style={{ color: primaryColor }}>{displayToken}</span>
                       </span>
-                    )}
+                      <span className="flex items-center gap-1.5 uppercase font-bold tracking-tighter" style={{ color: primaryColor }}>
+                        <span className="material-symbols-outlined text-[16px]">category</span>
+                        {apt.appointmentType}
+                      </span>
+                      {apt.doctorName && (
+                        <span className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">medical_services</span>
+                          Dr. {apt.doctorName}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-bg-primary border border-border-muted/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm">
-                  <span className="material-symbols-outlined text-[20px] text-blue-500">edit</span>
+                  <div className="w-10 h-10 rounded-full bg-bg-primary border border-border-muted/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm">
+                    <span className="material-symbols-outlined text-[20px] text-blue-500">edit</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

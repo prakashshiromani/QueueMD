@@ -1,7 +1,34 @@
 import { useMemo } from "react";
+import { FACILITY_TYPES } from "../../utils/facilityTypeConfig";
 
 export default function CalendarView({ view, currentDate, appointments, onDateClick, onAppointmentClick, onDelete, onViewChange, loading }) {
   const calendarDays = useMemo(() => {
+    if (view === "week") {
+      const startOfWeek = new Date(currentDate);
+      const dayOfWeek = currentDate.getDay(); // 0 (Sun) to 6 (Sat)
+      startOfWeek.setDate(currentDate.getDate() - dayOfWeek);
+
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + i);
+        
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        const dateStr = `${y}-${m}-${d}`;
+        
+        const dayAppointments = appointments.filter(apt => {
+          const aptDate = apt.appointmentDate.split("T")[0];
+          return aptDate === dateStr;
+        });
+
+        days.push({ date, day: date.getDate(), appointments: dayAppointments });
+      }
+      return days;
+    }
+
+    // Default: Month View
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -30,16 +57,12 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
       days.push({ date, day, appointments: dayAppointments });
     }
     return days;
-  }, [currentDate, appointments]);
+  }, [view, currentDate, appointments]);
 
-  const getAppointmentColor = (type) => ({
-    clinic: "bg-blue-500", 
-    dental: "bg-pink-500", 
-    pathlab: "bg-purple-500", 
-    physio: "bg-green-500",
-    general: "bg-blue-500",
-    pathology: "bg-purple-500"
-  }[type?.toLowerCase()] || "bg-blue-500");
+  const getAppointmentColor = (type) => {
+    const key = Object.keys(FACILITY_TYPES).find(k => k.toLowerCase() === type?.toLowerCase());
+    return FACILITY_TYPES[key]?.theme?.primary || "#2563EB";
+  };
 
   if (loading) return (
     <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 p-8 animate-pulse">
@@ -93,18 +116,15 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
               {/* Appointments Container */}
               <div className="flex flex-col gap-1 overflow-hidden mt-0.5">
                 {/* Show max 3 items safely with fixed height */}
-                {day.appointments.slice(0, 3).map(apt => (
+                 {day.appointments.slice(0, 3).map(apt => (
                   <div
                     key={apt._id}
                     onClick={(e) => {
                       e.stopPropagation();
                       onAppointmentClick(apt);
                     }}
-                    className={`
-                      ${getAppointmentColor(apt.appointmentType)} 
-                      text-white text-[10px] px-2 py-1 rounded-md 
-                      truncate cursor-pointer hover:brightness-110 flex justify-between items-center group/item transition-all hover:scale-[1.02] shadow-sm
-                    `}
+                    className="text-white text-[10px] px-2 py-1 rounded-md truncate cursor-pointer hover:brightness-110 flex justify-between items-center group/item transition-all hover:scale-[1.02] shadow-sm"
+                    style={{ backgroundColor: getAppointmentColor(apt.appointmentType) }}
                   >
                     <span className="truncate">{apt.startTime} - {apt.patientName}</span>
                     <button

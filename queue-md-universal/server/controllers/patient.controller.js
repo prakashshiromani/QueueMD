@@ -196,7 +196,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
 exports.getPatients = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { page = 1, limit = 10, search = "", facility = "", status = "" } = req.query;
+    const { page = 1, limit = 10, search = "", facility = "", status = "", gender = "", doctor = "" } = req.query;
 
     let query = { facilityId };
 
@@ -205,7 +205,11 @@ exports.getPatients = async (req, res, next) => {
       const phoneRegex = getPhoneRegex(search.toString(), false);
       query.$or = [
         { name: { $regex: safeSearch, $options: "i" } },
-        { phone: phoneRegex ? { $regex: phoneRegex } : { $regex: safeSearch, $options: "i" } }
+        { phone: phoneRegex ? { $regex: phoneRegex } : { $regex: safeSearch, $options: "i" } },
+        { email: { $regex: safeSearch, $options: "i" } },
+        { status: { $regex: safeSearch, $options: "i" } },
+        { gender: { $regex: safeSearch, $options: "i" } },
+        { doctorName: { $regex: safeSearch, $options: "i" } }
       ];
     }
 
@@ -214,7 +218,17 @@ exports.getPatients = async (req, res, next) => {
     }
 
     if (status && status !== "all") {
-      query.status = status;
+      const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+      query.status = capStatus;
+    }
+
+    if (gender && gender !== "all") {
+      const capGender = gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+      query.gender = capGender;
+    }
+
+    if (doctor && doctor !== "all") {
+      query.doctorName = doctor;
     }
 
     // 📅 SMART FILTER: Only show patients whose directory visibility is enabled

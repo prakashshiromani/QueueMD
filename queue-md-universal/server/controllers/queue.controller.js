@@ -187,7 +187,8 @@ exports.getQueue = async (req, res, next) => {
     const queue = await Queue.find({
       facilityId,
       facilityType,
-      status
+      status,
+      isLabOrder: { $ne: true }
     })
     .sort(status === "waiting" ? { tokenNumber: 1 } : { updatedAt: -1 })
     .limit(parseInt(limit));
@@ -219,7 +220,8 @@ exports.getCompletedCount = async (req, res, next) => {
       facilityId,
       facilityType,
       status: "completed",
-      completedAt: { $gte: startOfDay }
+      completedAt: { $gte: startOfDay },
+      isLabOrder: { $ne: true }
     });
 
     res.json({
@@ -382,7 +384,8 @@ exports.getQueue = async (req, res, next) => {
     const queue = await Queue.find({
       facilityId,
       facilityType,
-      status
+      status,
+      isLabOrder: { $ne: true }
     })
     .sort(status === "waiting" ? { tokenNumber: 1 } : { updatedAt: -1 })
     .limit(parseInt(limit));
@@ -414,7 +417,8 @@ exports.getCompletedCount = async (req, res, next) => {
       facilityId,
       facilityType,
       status: "completed",
-      completedAt: { $gte: startOfDay }
+      completedAt: { $gte: startOfDay },
+      isLabOrder: { $ne: true }
     });
 
     res.json({

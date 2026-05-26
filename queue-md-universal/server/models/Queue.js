@@ -53,7 +53,8 @@ const queueSchema = new mongoose.Schema({
   doctorName: { type: String },    // ✅ Name of the doctor who attended
   consultationNotes: { type: String },
   prescription: { type: Mixed },
-  estimatedWaitTime: { type: Number, default: 0 } // In minutes (stored for quick fetch)
+  estimatedWaitTime: { type: Number, default: 0 }, // In minutes (stored for quick fetch)
+  isLabOrder: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // 🔥 COMPOUND INDEXES (Critical for Performance)

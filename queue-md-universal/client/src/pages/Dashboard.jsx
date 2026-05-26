@@ -281,9 +281,9 @@ export default function Dashboard() {
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
-          <div className="flex items-center gap-3 w-full md:w-auto overflow-hidden">
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">UI Preview:</span>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide w-full pb-1">
+            <div className="flex flex-wrap gap-2 w-full pb-1">
               {Object.entries(FACILITY_TYPES).map(([type, config]) => (
                 <button
                   key={type}

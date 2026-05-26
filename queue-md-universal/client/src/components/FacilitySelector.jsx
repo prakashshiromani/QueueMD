@@ -17,7 +17,7 @@ const FacilitySelector = () => {
   };
 
   return (
-    <div className="flex items-center space-x-2 mb-space-6 bg-bg-secondary p-1 rounded-lg inline-flex border border-border-muted">
+    <div className="flex flex-wrap items-center gap-1.5 mb-space-6 bg-bg-secondary p-1 rounded-lg inline-flex border border-border-muted">
       {Object.entries(FACILITY_TYPES).map(([key, config]) => {
         const isActive = facilityType === key;
 

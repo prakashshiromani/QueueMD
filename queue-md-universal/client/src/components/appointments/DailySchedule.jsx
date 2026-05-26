@@ -1,9 +1,11 @@
+import { FACILITY_TYPES } from "../../utils/facilityTypeConfig";
+
 export default function DailySchedule({ appointments, stats, onStatusChange, onEdit, onDelete, loading }) {
   const badge = (s) => ({
     scheduled: "bg-blue-500/10 text-blue-400 border-blue-400/20",
     confirmed: "bg-green-500/10 text-green-400 border-green-400/20",
     "checked-in": "bg-purple-500/10 text-purple-400 border-purple-400/20",
-    completed: "bg-gray-500/10 text-gray-400 border-gray-400/20"
+    completed: "bg-green-500/10 text-green-400 border-green-400/20"
   }[s] || "bg-blue-500/10 text-blue-400 border-blue-400/20");
 
   if (loading) return <div className="bg-bg-secondary rounded-2xl border border-border-muted/50 p-5 animate-pulse space-y-4"><div className="h-6 bg-surface-variant rounded w-3/4"></div>{[...Array(4)].map((_,i)=><div key={i} className="h-20 bg-surface-variant rounded"></div>)}</div>;
@@ -36,10 +38,24 @@ export default function DailySchedule({ appointments, stats, onStatusChange, onE
             <div className="space-y-3">
               {activeAppointments.map(a => {
                 const isLatest = latestThreeIds.includes(a._id);
+                const configKey = Object.keys(FACILITY_TYPES).find(k => k.toLowerCase() === a.appointmentType?.toLowerCase());
+                const facilityConfig = configKey ? FACILITY_TYPES[configKey] : null;
+                const primaryColor = facilityConfig?.theme?.primary || '#2563EB';
+
+                const displayToken = (() => {
+                  if (!a.tokenNumber) return "N/A";
+                  const prefix = facilityConfig?.tokenPrefix || "APPT";
+                  if (a.tokenNumber.startsWith("APPT-")) {
+                    return a.tokenNumber.replace("APPT-", `${prefix}-`);
+                  }
+                  return a.tokenNumber;
+                })();
+
                 return (
                   <div 
                     key={a._id} 
-                    className={`group bg-surface-variant/30 rounded-xl p-4 border transition-all ${isLatest ? "border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/10" : "border-border-muted/50 hover:border-blue-500/30"}`}
+                    className={`group bg-surface-variant/30 rounded-xl p-4 border transition-all ${isLatest ? "border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/10" : "border-border-muted/50"}`}
+                    style={!isLatest ? { borderColor: 'rgba(255,255,255,0.03)' } : {}}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -49,11 +65,14 @@ export default function DailySchedule({ appointments, stats, onStatusChange, onE
                         </div>
                         <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${badge(a.status)}`}>{a.status}</span>
                       </div>
-                      <span className="text-[10px] font-black text-text-secondary uppercase">{a.appointmentType?.toUpperCase()}</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: primaryColor }}>{a.appointmentType}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-[12px] text-text-secondary mb-3">
+                    <div className="flex items-center gap-4 text-[12px] text-text-secondary mb-3">
                       <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span>{a.startTime}</div>
-                      <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">confirmation_number</span>{a.tokenNumber}</div>
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px]" style={{ color: primaryColor }}>confirmation_number</span>
+                        Token: <span className="font-bold" style={{ color: primaryColor }}>{displayToken}</span>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       {a.status==="scheduled" && <button onClick={()=>onStatusChange(a._id,"confirmed")} className="flex-1 px-3 py-1.5 rounded-lg bg-green-600/10 text-green-400 text-[11px] font-bold hover:bg-green-600/20 transition active:scale-[0.98]">Confirm</button>}

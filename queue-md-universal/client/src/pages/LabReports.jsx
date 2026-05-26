@@ -268,7 +268,7 @@ export default function LabReports() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
             <input
               type="text"
-              placeholder="Search by Patient Name or Sample ID..."
+              placeholder="Search by Sample ID, Patient Name, Test Type, Doctor, Date, or Status..."
               className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all placeholder:text-text-secondary/50 shadow-inner"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
