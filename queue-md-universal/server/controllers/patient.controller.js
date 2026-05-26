@@ -217,6 +217,10 @@ exports.getPatients = async (req, res, next) => {
       query.status = status;
     }
 
+    // 📅 SMART FILTER: Only show patients whose directory visibility is enabled
+    // Future-dated appointment patients are hidden until their appointment day arrives
+    query.isDirectoryVisible = { $ne: false }; // Shows patients where field is true OR not set (backward compat)
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const patients = await Patient.find(query)

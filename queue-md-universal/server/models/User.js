@@ -41,7 +41,9 @@ const userSchema = new mongoose.Schema({
     enum: ["clinic", "hospital", "pathlab", "dental", "physio", "other"], 
     required: true, 
     index: true 
-  }
+  },
+  resetPasswordOTP: { type: String, default: "" },
+  resetPasswordExpires: { type: Date }
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },

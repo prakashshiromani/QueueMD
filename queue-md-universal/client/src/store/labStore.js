@@ -55,6 +55,15 @@ export const useLabStore = create((set, get) => ({
     get().fetchStats(); // Refresh stats as status changed
   },
 
+  // Real-time Remove Handler (Called from Socket)
+  removeReportRealtime: (reportId) => {
+    set((state) => {
+      const newReports = state.reports.filter(r => r._id !== reportId);
+      return { reports: newReports };
+    });
+    get().fetchStats();
+  },
+
   // Update Filter
   setFilters: (newFilters) => {
     set({ filters: { ...get().filters, ...newFilters } });

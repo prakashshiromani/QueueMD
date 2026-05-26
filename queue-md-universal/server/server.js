@@ -46,7 +46,15 @@ app.use(helmet());
 
 // Configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const isLocalhost = origin.startsWith("http://localhost:") || origin === "http://localhost" || origin.startsWith("http://127.0.0.1:");
+    const isClientUrl = process.env.CLIENT_URL && origin === process.env.CLIENT_URL;
+    if (isLocalhost || isClientUrl) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS policy blocked this request"), false);
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true
 }));
@@ -132,6 +140,10 @@ const startServer = async () => {
     // Start Subscription Expiry Cron Job
     const { startSubscriptionExpiryCron } = require("./jobs/subscriptionExpiryCron");
     startSubscriptionExpiryCron();
+
+    // Start Directory Sync Cron Job
+    const { startDirectorySyncCron } = require("./jobs/directorySync.job");
+    startDirectorySyncCron();
 
     // 2. Initialize Socket.IO
     console.log("🔌 Initializing Socket.IO...");

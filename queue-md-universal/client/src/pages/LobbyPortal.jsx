@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { socket } from '../services/socket';
 import toast from 'react-hot-toast';
-import { Upload, Lock, FileText, LogOut, Calendar, Activity, RefreshCcw } from 'lucide-react';
+import { Upload, Lock, FileText, LogOut, Calendar, Activity, RefreshCcw, Download } from 'lucide-react';
 import UploadPrescriptionModal from '../components/UploadPrescriptionModal';
 import ViewPrescriptionsModal from '../components/ViewPrescriptionsModal';
+import { createPortal } from 'react-dom';
 
 const patientApi = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -40,6 +41,7 @@ const LobbyPortal = () => {
     const [historyData, setHistoryData] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [activeTab, setActiveTab] = useState('timeline'); // timeline | documents
+    const [previewDoc, setPreviewDoc] = useState(null);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString("en-IN", {
@@ -99,6 +101,32 @@ const LobbyPortal = () => {
             formatted = `${numbers.slice(0, 5)} ${numbers.slice(5)}`;
         }
         setPhone(formatted);
+    };
+
+    const handleDownloadOnly = async (e, url, fileName) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        toast.promise(
+            (async () => {
+                const response = await axios.get(url, { responseType: 'blob' });
+                const blob = new Blob([response.data], { type: response.headers['content-type'] });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = fileName || 'document';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(blobUrl);
+            })(),
+            {
+                loading: 'Downloading file...',
+                success: 'File downloaded successfully!',
+                error: 'Download failed. Please try again.'
+            }
+        );
     };
 
     // 1. Verify & Fetch Initial Data
@@ -168,35 +196,13 @@ const LobbyPortal = () => {
         }
     };
 
-    const handleViewAndDownload = async (e, url, fileName) => {
+    const handleView = (e, doc) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        // 1. Open in new tab for viewing
-        window.open(url, '_blank', 'noopener,noreferrer');
-        
-        // 2. Fetch and download
-        toast.promise(
-            (async () => {
-                const response = await axios.get(url, { responseType: 'blob' });
-                const blob = new Blob([response.data], { type: response.headers['content-type'] });
-                const blobUrl = URL.createObjectURL(blob);
-                
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = fileName || 'document';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(blobUrl);
-            })(),
-            {
-                loading: 'Downloading file...',
-                success: 'File downloaded successfully!',
-                error: 'Auto-download failed. You can view the file in the opened tab.'
-            }
-        );
+        console.log("🔍 handleView clicked in LobbyPortal. Document data:", doc);
+        setPreviewDoc(doc);
     };
+
 
     // Auto-restore Session on Mount
     useEffect(() => {
@@ -547,9 +553,9 @@ const LobbyPortal = () => {
                                                                         {visit.documents.map((doc) => (
                                                                             <button
                                                                                 key={doc._id}
-                                                                                onClick={(e) => handleViewAndDownload(e, doc.url, doc.fileName)}
+                                                                                onClick={(e) => handleView(e, doc)}
                                                                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-semibold text-gray-300 transition-colors"
-                                                                                title="View & Download"
+                                                                                title="View Attachment"
                                                                             >
                                                                                 <FileText className="w-3.5 h-3.5 text-blue-400" />
                                                                                 <span className="truncate max-w-[120px]">{doc.fileName}</span>
@@ -572,20 +578,26 @@ const LobbyPortal = () => {
                                                 ) : (
                                                     historyData.flatMap((visit) => 
                                                         (visit.documents || []).map((doc) => (
-                                                            <button
+                                                            <div
                                                                 key={doc._id}
-                                                                onClick={(e) => handleViewAndDownload(e, doc.url, doc.fileName)}
-                                                                className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 rounded-xl transition-all block overflow-hidden text-left w-full cursor-pointer group"
+                                                                onClick={(e) => handleView(e, doc)}
+                                                                className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 rounded-xl transition-all flex items-center justify-between overflow-hidden cursor-pointer group"
                                                             >
-                                                                <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
+                                                                <div className="flex items-center gap-2 overflow-hidden mr-2">
                                                                     <FileText className="w-4 h-4 text-blue-400 flex-shrink-0 group-hover:text-blue-400 transition-colors" />
-                                                                    <span className="text-[11px] font-bold text-gray-200 truncate group-hover:text-blue-400 transition-colors">{doc.fileName}</span>
+                                                                    <div className="overflow-hidden">
+                                                                        <span className="text-[11px] font-bold text-gray-200 truncate block group-hover:text-blue-400 transition-colors">{doc.fileName}</span>
+                                                                        <span className="text-[9px] text-gray-500 block uppercase tracking-wide">{doc.uploadedBy === "patient" ? "Patient" : "Doctor"}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-[9px] text-gray-500 uppercase tracking-wide">
-                                                                    <span>{doc.uploadedBy === "patient" ? "Patient" : "Doctor"}</span>
-                                                                    <span>{new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' })}</span>
-                                                                </div>
-                                                            </button>
+                                                                <button
+                                                                    onClick={(e) => handleDownloadOnly(e, doc.url, doc.fileName)}
+                                                                    className="bg-white/5 hover:bg-white/10 p-1.5 rounded-lg text-gray-400 hover:text-white transition-colors flex-shrink-0"
+                                                                    title="Download"
+                                                                >
+                                                                    <Download className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
                                                         ))
                                                     )
                                                 )}
@@ -614,7 +626,62 @@ const LobbyPortal = () => {
                     tokenNumber={liveData?.myToken || token}
                     phone={phone}
                     onClose={() => setShowViewModal(false)}
+                    onView={(doc) => {
+                        setShowViewModal(false);
+                        setPreviewDoc(doc);
+                    }}
                 />
+            )}
+
+            {/* Inline Preview Overlay */}
+            {previewDoc && createPortal(
+                <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[9999] flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative w-full max-w-2xl h-[80vh] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+                        {/* Header */}
+                        <div className="flex justify-between items-center p-4 border-b border-slate-800/50 bg-slate-950/50 flex-shrink-0">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <button
+                                    onClick={() => {
+                                        setPreviewDoc(null);
+                                        setShowViewModal(true);
+                                    }}
+                                    className="p-2 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded-xl transition-colors flex-shrink-0"
+                                    title="Back to Documents"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <span className="text-sm font-bold text-white truncate">{previewDoc.fileName || 'Preview'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={(e) => handleDownloadOnly(e, previewDoc.url, previewDoc.fileName)}
+                                    className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
+                                    title="Download File"
+                                >
+                                    <Download className="w-5 h-5" />
+                                </button>
+                                <button 
+                                    onClick={() => setPreviewDoc(null)}
+                                    className="p-2 bg-slate-800 hover:bg-red-600/80 text-white rounded-xl transition-colors"
+                                    title="Close Preview"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-4">
+                            {previewDoc.type?.includes('pdf') || previewDoc.url?.toLowerCase().endsWith('.pdf') ? (
+                                <iframe src={previewDoc.url} className="w-full h-full border-0 rounded-2xl bg-white" title="Document Preview" />
+                            ) : (
+                                <img src={previewDoc.url} alt="Preview" className="max-w-full max-h-full object-contain rounded-2xl" />
+                            )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );

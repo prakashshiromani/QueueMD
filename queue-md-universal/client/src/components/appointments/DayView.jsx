@@ -6,7 +6,10 @@ export default function DayView({ date, appointments, onAppointmentClick, onAdd,
 
   // Filter & Sort appointments for selected date
   const dayAppts = useMemo(() => {
-    const targetDate = date.toISOString().split("T")[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const targetDate = `${y}-${m}-${d}`;
     return appointments
       .filter(a => a.appointmentDate.split("T")[0] === targetDate)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));

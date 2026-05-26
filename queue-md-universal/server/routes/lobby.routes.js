@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 // Strict Rate Limiting (Public Endpoint)
 const lobbyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 30, // limit each IP to 30 requests per windowMs
+    max: 500, // limit each IP to 500 requests per windowMs (relaxed for shared lobby networks)
     message: { success: false, message: "Too many tracking requests, please try again later." }
 });
 

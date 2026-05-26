@@ -19,6 +19,18 @@ export const labApi = {
     return res.data;
   },
 
+  // Update lab order details (Edit)
+  updateOrder: async (id, data) => {
+    const res = await api.put(`/lab/${id}`, data);
+    return res.data;
+  },
+
+  // Delete lab order
+  deleteOrder: async (id) => {
+    const res = await api.delete(`/lab/${id}`);
+    return res.data;
+  },
+
   // Create new lab order
   createOrder: async (data) => {
     const res = await api.post('/lab/create', data);

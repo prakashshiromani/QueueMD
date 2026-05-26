@@ -1,7 +1,7 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const { register, login, refreshToken } = require("../controllers/auth.controller");
+const { register, login, refreshToken, forgotPassword, resetPassword } = require("../controllers/auth.controller");
 
 // 🔒 Rate Limiter Setup
 const authLimiter = rateLimit({
@@ -105,5 +105,51 @@ router.post("/login", authLimiter, login);
  *       403: { description: Invalid or expired refresh token }
  */
 router.post("/refresh", refreshToken);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset verification code
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200: { description: OTP code generated and sent }
+ *       404: { description: User not found }
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password with OTP code
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, code, newPassword]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               code: { type: string }
+ *               newPassword: { type: string }
+ *     responses:
+ *       200: { description: Password reset successful }
+ *       400: { description: Invalid OTP or expired }
+ */
+router.post("/reset-password", resetPassword);
 
 module.exports = router;

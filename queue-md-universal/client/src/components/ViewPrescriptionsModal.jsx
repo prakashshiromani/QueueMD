@@ -3,8 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShieldCheck, FileText, Download } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { createPortal } from 'react-dom';
 
-const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone }) => {
+const sendLog = (msg, data) => {
+  axios.post('/api/public/debug-log', { msg, data }).catch(() => {});
+};
+
+const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone, onView }) => {
   const [step, setStep] = useState(initialPhone ? 'VIEW' : 'VERIFY'); 
   const [phone, setPhone] = useState('');
   const [uploadToken, setUploadToken] = useState('');
@@ -13,28 +18,33 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
   const [maskedName, setMaskedName] = useState('');
 
   useEffect(() => {
+    sendLog("👀 [ViewPrescriptionsModal] Mount / Dependency change effect triggered", { initialPhone, tokenNumber, facilityId });
+    
     if (initialPhone && tokenNumber && facilityId) {
       const autoVerify = async () => {
+        sendLog("👀 [ViewPrescriptionsModal] starting autoVerify");
         setLoading(true);
         try {
           const formattedPhone = initialPhone.startsWith('+91') 
             ? initialPhone 
             : `+91 ${initialPhone.replace(/\D/g, '').slice(-10)}`;
           
+          sendLog("👀 [ViewPrescriptionsModal] calling /verify API with phone: " + formattedPhone + " tokenNumber: " + tokenNumber);
           const res = await axios.post(`/api/public/lobby/${facilityId}/verify`, {
             phone: formattedPhone,
             tokenNumber: Number(tokenNumber)
           });
 
+          sendLog("👀 [ViewPrescriptionsModal] verify API response: ", res.data);
           if (res.data.success) {
             setUploadToken(res.data.data.uploadToken);
             setMaskedName(res.data.data.patientNameMasked);
-            fetchDocuments(res.data.data.uploadToken);
+            await fetchDocuments(res.data.data.uploadToken);
           } else {
             setStep('VERIFY');
           }
         } catch (err) {
-          console.error("Auto verification failed", err);
+          sendLog("👀 [ViewPrescriptionsModal] Auto verification failed", err.response?.data || err.message);
           setStep('VERIFY');
         } finally {
           setLoading(false);
@@ -42,7 +52,18 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
       };
       autoVerify();
     }
+
+    return () => {
+      sendLog("👀 [ViewPrescriptionsModal] Cleanup/Unmount of verification effect");
+    };
   }, [initialPhone, tokenNumber, facilityId]);
+
+  useEffect(() => {
+    sendLog("👀 [ViewPrescriptionsModal] Initial Component Mount");
+    return () => {
+      sendLog("👀 [ViewPrescriptionsModal] Component Unmounted");
+    };
+  }, []);
 
   const handlePhoneChange = (val) => {
     let numbers = val.replace(/\D/g, "");
@@ -71,7 +92,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
       if (res.data.success) {
         setUploadToken(res.data.data.uploadToken);
         setMaskedName(res.data.data.patientNameMasked);
-        fetchDocuments(res.data.data.uploadToken);
+        await fetchDocuments(res.data.data.uploadToken);
         toast.success("Identity verified successfully!");
       } else {
         toast.error("Identity not verified. Check details.");
@@ -103,14 +124,23 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
     }
   };
 
-  const handleViewAndDownload = async (e, url, fileName) => {
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  const handleView = (e, doc) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sendLog("🔍 handleView clicked in ViewPrescriptionsModal. Document data:", doc);
+    if (onView) {
+      onView(doc);
+    } else {
+      setPreviewDoc(doc);
+    }
+  };
+
+  const handleDownloadOnly = async (e, url, fileName) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // 1. Open in new tab for viewing
-    window.open(url, '_blank', 'noopener,noreferrer');
-    
-    // 2. Fetch and download
     toast.promise(
       (async () => {
         const response = await axios.get(url, { responseType: 'blob' });
@@ -128,10 +158,12 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
       {
         loading: 'Downloading file...',
         success: 'File downloaded successfully!',
-        error: 'Auto-download failed. You can view the file in the opened tab.'
+        error: 'Download failed. Please try again.'
       }
     );
   };
+
+  sendLog("👀 [ViewPrescriptionsModal] Render states:", { step, loading, uploadToken: !!uploadToken, previewDoc: !!previewDoc });
 
   return (
     <AnimatePresence>
@@ -152,7 +184,12 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
             <X className="w-6 h-6" />
           </button>
 
-          {step === 'VERIFY' && (
+          {loading && !uploadToken ? (
+            <div className="flex flex-col items-center justify-center py-12 flex-1">
+              <div className="w-8 h-8 rounded-full border-4 border-slate-800 border-t-blue-500 animate-spin mb-4"></div>
+              <p className="text-slate-400 text-sm">Verifying your identity...</p>
+            </div>
+          ) : step === 'VERIFY' ? (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="bg-blue-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
@@ -196,9 +233,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
                 </button>
               </div>
             </div>
-          )}
-
-          {step === 'VIEW' && (
+          ) : (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="text-center mb-6 flex-shrink-0">
                 <h3 className="text-xl font-black text-white uppercase tracking-wider">Your Documents</h3>
@@ -221,7 +256,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
                     documents.map((doc, i) => (
                         <div 
                             key={i} 
-                            onClick={(e) => handleViewAndDownload(e, doc.url, doc.fileName)}
+                            onClick={(e) => handleView(e, doc)}
                             className="flex items-center justify-between bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 hover:border-blue-500/30 transition-colors cursor-pointer group"
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
@@ -234,8 +269,9 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
                                 </div>
                             </div>
                             <button 
+                                onClick={(e) => handleDownloadOnly(e, doc.url, doc.fileName)}
                                 className="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl text-slate-300 transition-colors flex-shrink-0"
-                                title="View & Download"
+                                title="Download"
                             >
                                 <Download className="w-4 h-4" />
                             </button>
@@ -256,6 +292,43 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
           )}
 
         </motion.div>
+
+        {/* Inline Preview Overlay */}
+        {previewDoc && createPortal(
+          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="relative w-full max-w-2xl h-[70vh] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+              {/* Header */}
+              <div className="flex justify-between items-center p-4 border-b border-slate-800/50 bg-slate-950/50 flex-shrink-0">
+                <span className="text-sm font-bold text-white truncate max-w-[70%]">{previewDoc.fileName || 'Preview'}</span>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={(e) => handleDownloadOnly(e, previewDoc.url, previewDoc.fileName)}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
+                    title="Download File"
+                  >
+                    <Download className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setPreviewDoc(null)}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
+                    title="Close Preview"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              {/* Content */}
+              <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-4">
+                {previewDoc.type?.includes('pdf') || previewDoc.url?.toLowerCase().endsWith('.pdf') ? (
+                  <iframe src={previewDoc.url} className="w-full h-full border-0 rounded-2xl bg-white" />
+                ) : (
+                  <img src={previewDoc.url} alt="Preview" className="max-w-full max-h-full object-contain rounded-2xl" />
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     </AnimatePresence>
   );

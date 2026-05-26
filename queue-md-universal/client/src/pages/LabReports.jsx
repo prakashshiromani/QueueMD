@@ -1,41 +1,91 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { useLabStore } from '../store/labStore';
 import { useAuthStore } from '../store/authStore';
+import { useFacilityStore } from '../store/facilityStore';
 import { socket } from '../services/socket';
 import { labApi } from '../services/labApi';
-import { Beaker, Search, Filter, Calendar, Plus, X, FlaskConical, Clock, User, Phone, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { staffApi } from '../services/staffApi';
+import { Beaker, Search, Filter, Calendar, Plus, X, FlaskConical, Clock, User, Phone, CheckCircle2, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 export default function LabReports() {
-  const { reports, stats, loading, filters, fetchReports, fetchStats, setFilters, updateReportRealtime, pagination } = useLabStore();
+  const { facilityId } = useFacilityStore();
+  const { reports, stats, loading, filters, fetchReports, fetchStats, setFilters, updateReportRealtime, removeReportRealtime, pagination } = useLabStore();
   const [searchInput, setSearchInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingReport, setEditingReport] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     patientName: '',
     phone: '',
-    testType: 'CBC',
-    sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`
+    testType: '',
+    sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`,
+    doctorName: ''
   });
+
+  // Format phone number (Indian format, max 10 digits)
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.startsWith("91")) {
+      const sliced = numbers.slice(2);
+      return `+91 ${sliced.slice(0, 5)}${sliced.length > 5 ? ' ' + sliced.slice(5, 10) : sliced.slice(5)}`;
+    }
+    if (numbers.length > 0) {
+      return `+91 ${numbers.slice(0, 5)}${numbers.length > 5 ? ' ' + numbers.slice(5, 10) : numbers.slice(5)}`;
+    }
+    return "";
+  };
 
   // Initial Load
   useEffect(() => {
     fetchReports();
     fetchStats();
+
+    const fetchDoctors = async () => {
+      try {
+        setLoadingDoctors(true);
+        const res = await staffApi.getAll();
+        const staffList = res.data || res.users || [];
+        const activeDoctors = staffList.filter(s => s.role === "doctor" && s.isActive && s.facilityType === "pathlab");
+        if (activeDoctors.length === 0) {
+          setDoctors(staffList.filter(s => s.role === "doctor" && s.isActive));
+        } else {
+          setDoctors(activeDoctors);
+        }
+      } catch (err) {
+        console.error("Failed to fetch doctors:", err);
+      } finally {
+        setLoadingDoctors(false);
+      }
+    };
+    fetchDoctors();
   }, []);
+
+  // Join Socket Room
+  useEffect(() => {
+    if (!facilityId) return;
+    socket.emit("join_facility", { facilityId, facilityType: 'pathlab' });
+  }, [facilityId]);
 
   // Socket Listener for Real-time Updates
   useEffect(() => {
     const handleSocketUpdate = (data) => {
-      // Backend emits { action, report }
-      if (data.facilityType === 'pathlab' && data.report) {
-        updateReportRealtime(data.report);
-        if (data.action === 'add') {
-          toast.success(`New lab order: ${data.report.customData?.sampleId || 'Created'}`);
+      // Backend emits { action, report, reportId }
+      if (data.facilityType === 'pathlab') {
+        if (data.action === 'delete' && data.reportId) {
+          removeReportRealtime(data.reportId);
+          toast.success("Lab order deleted by staff");
+        } else if (data.report) {
+          updateReportRealtime(data.report);
+          if (data.action === 'add') {
+            toast.success(`New lab order: ${data.report.customData?.sampleId || 'Created'}`);
+          }
         }
       }
     };
@@ -62,25 +112,74 @@ export default function LabReports() {
       const payload = {
         patientName: formData.patientName,
         phone: formData.phone,
+        doctorName: formData.doctorName,
         customData: {
           sampleId: formData.sampleId,
           testType: formData.testType
         }
       };
-      await labApi.createOrder(payload);
+
+      if (editingReport) {
+        await labApi.updateOrder(editingReport._id, payload);
+        toast.success("Lab order updated successfully");
+      } else {
+        await labApi.createOrder(payload);
+        toast.success("Lab order created successfully");
+        setFilters({ status: 'all', search: '', page: 1 }); // Force reset filters so new order is instantly shown!
+      }
+
       setIsModalOpen(false);
+      setEditingReport(null);
       setFormData({
         patientName: '',
         phone: '',
-        testType: 'CBC',
-        sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`
+        testType: '',
+        sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`,
+        doctorName: ''
       });
-      // No need to fetchReports manually, socket will handle it or store will unshift
+      fetchReports();
+      fetchStats();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create lab order");
+      toast.error(err.response?.data?.message || "Failed to save lab order");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteOrder = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this lab order?")) return;
+    try {
+      await labApi.deleteOrder(id);
+      toast.success("Lab order deleted successfully");
+      fetchReports();
+      fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete lab order");
+    }
+  };
+
+  const openEditModal = (report) => {
+    setEditingReport(report);
+    setFormData({
+      patientName: report.patientName || '',
+      phone: report.phone || '',
+      testType: report.customData?.testType || '',
+      sampleId: report.customData?.sampleId || '',
+      doctorName: report.doctorName || ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const openCreateModal = () => {
+    setEditingReport(null);
+    setFormData({
+      patientName: '',
+      phone: '',
+      testType: '',
+      sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`,
+      doctorName: ''
+    });
+    setIsModalOpen(true);
   };
 
   const handleStatusUpdate = async (id, currentStatus) => {
@@ -128,7 +227,7 @@ export default function LabReports() {
             <p className="text-text-secondary text-sm mt-1 ml-1">Manage and track patient test results</p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openCreateModal}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 h-[46px] rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2"
           >
             <Plus className="w-5 h-5" /> New Lab Order
@@ -216,6 +315,7 @@ export default function LabReports() {
                   <th className="px-6 py-5">Sample ID</th>
                   <th className="px-6 py-5">Patient Name</th>
                   <th className="px-6 py-5">Test Type</th>
+                  <th className="px-6 py-5">Doctor</th>
                   <th className="px-6 py-5">Date & Time</th>
                   <th className="px-6 py-5">Status</th>
                   <th className="px-6 py-5 text-right">Actions</th>
@@ -224,7 +324,7 @@ export default function LabReports() {
               <tbody className="divide-y divide-border-muted/30">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center">
+                    <td colSpan="7" className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
                         <p className="text-text-secondary text-sm font-medium">Fetching reports...</p>
@@ -233,7 +333,7 @@ export default function LabReports() {
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center">
+                    <td colSpan="7" className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 bg-bg-primary rounded-2xl flex items-center justify-center text-3xl">📭</div>
                         <div>
@@ -269,6 +369,9 @@ export default function LabReports() {
                         <span className="text-sm text-text-secondary font-medium">{report.customData?.testType || 'N/A'}</span>
                       </td>
                       <td className="px-6 py-5">
+                        <span className="text-sm text-text-secondary font-medium">{report.doctorName || 'Not Assigned'}</span>
+                      </td>
+                      <td className="px-6 py-5">
                         <div className="text-sm text-text-primary font-bold">{new Date(report.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                         <div className="text-[10px] text-text-secondary uppercase tracking-widest mt-0.5">{new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
@@ -279,12 +382,31 @@ export default function LabReports() {
                         </span>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <button
-                          onClick={() => handleStatusUpdate(report._id, report.status)}
-                          className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50 dark:border-white/5"
-                        >
-                          NEXT STEP
-                        </button>
+                        <div className="flex justify-end items-center gap-2">
+                          <button
+                            onClick={() => handleStatusUpdate(report._id, report.status)}
+                            disabled={report.status === 'delivered'}
+                            className="px-3 py-1.5 bg-bg-primary hover:bg-surface-variant text-text-primary text-[10px] font-black rounded-lg transition-all border border-border-muted/50 dark:border-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            NEXT STEP
+                          </button>
+                          
+                          <button
+                            onClick={() => openEditModal(report)}
+                            title="Edit Lab Order"
+                            className="p-1.5 bg-bg-primary hover:bg-blue-600/10 text-text-secondary hover:text-blue-500 rounded-lg transition-all border border-border-muted/50 dark:border-white/5"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDeleteOrder(report._id)}
+                            title="Delete Lab Order"
+                            className="p-1.5 bg-bg-primary hover:bg-red-600/10 text-text-secondary hover:text-red-500 rounded-lg transition-all border border-border-muted/50 dark:border-white/5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </motion.tr>
                   ))
@@ -334,118 +456,228 @@ export default function LabReports() {
 
       {/* New Lab Order Modal */}
       <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-bg-primary/90 backdrop-blur-md"
-              onClick={() => setIsModalOpen(false)}
-            />
+        {isModalOpen && (() => {
+          const inputCls = "w-full h-[50px] bg-bg-primary border border-border-muted/50 rounded-xl px-11 text-[14px] text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm";
+          const labelCls = "text-[12px] font-black text-text-secondary uppercase tracking-widest mb-2 block pl-1";
+          const iconCls = "absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary w-[18px] h-[18px] transition-colors group-focus-within:text-blue-500";
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-3xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-8 border-b border-border-muted/30 dark:border-white/5 flex justify-between items-center bg-bg-primary/30">
-                <div>
-                  <h2 className="text-2xl font-black text-text-primary tracking-tight">New Lab Order</h2>
-                  <p className="text-text-secondary text-xs mt-1">Register a new sample for clinical testing</p>
-                </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-10 h-10 rounded-xl bg-bg-primary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/75 backdrop-blur-md"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingReport(null);
+                }}
+              />
 
-              <form onSubmit={handleCreateOrder} className="p-8 space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Patient Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                      <input
-                        required
-                        type="text"
-                        placeholder="e.g. Rahul Sharma"
-                        className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
-                        value={formData.patientName}
-                        onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                      />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-3xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
+              >
+                {/* Header */}
+                <div className="shrink-0 bg-bg-secondary/95 backdrop-blur-md border-b border-border-muted/50 px-6 py-5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-600/10 text-blue-500">
+                      <FlaskConical className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-text-primary tracking-tight">
+                        {editingReport ? 'Edit Lab Order' : 'New Lab Order'}
+                      </h2>
+                      <p className="text-xs text-text-secondary mt-0.5">
+                        {editingReport ? 'Modify existing sample details or category' : 'Register a new sample for clinical testing'}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Phone Number (Optional)</label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                      <input
-                        type="tel"
-                        placeholder="e.g. +91 9876543210"
-                        className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner placeholder:text-text-secondary/30"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Test Category</label>
-                      <div className="relative">
-                        <Beaker className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                        <select
-                          className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner appearance-none cursor-pointer"
-                          value={formData.testType}
-                          onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
-                        >
-                          <option value="Blood">Blood Test</option>
-                          <option value="Urine">Urine Test</option>
-                          <option value="X-Ray">X-Ray</option>
-                          <option value="MRI">MRI Scan</option>
-                          <option value="CBC">CBC</option>
-                          <option value="HbA1c">HbA1c</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Sample ID</label>
-                      <div className="relative">
-                        <FlaskConical className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                        <input
-                          required
-                          type="text"
-                          className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-blue-600 transition-all shadow-inner"
-                          value={formData.sampleId}
-                          onChange={(e) => setFormData({ ...formData, sampleId: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <button 
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingReport(null);
+                    }} 
+                    className="p-2 rounded-lg hover:bg-surface-variant text-text-secondary transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <div className="pt-4">
+                {/* Form Body (Scrollable) */}
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <form id="lab-order-form" onSubmit={handleCreateOrder} className="space-y-6">
+                    
+                    {/* Section 1: Patient Details */}
+                    <div className="bg-bg-primary/20 backdrop-blur-xl border border-border-muted/30 rounded-2xl p-5 shadow-sm space-y-4">
+                      <h3 className="text-[14px] font-black text-text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                        <span className="w-6 h-[2px] rounded-full bg-blue-500"></span>
+                        Patient Details
+                      </h3>
+
+                      {/* Patient Name */}
+                      <div className="group relative">
+                        <label className={labelCls}>
+                          Patient Full Name *
+                        </label>
+                        <div className="relative">
+                          <User className={iconCls} />
+                          <input
+                            required
+                            type="text"
+                            placeholder="e.g. Rahul Sharma"
+                            className={inputCls}
+                            value={formData.patientName}
+                            onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Phone Number */}
+                      <div className="group relative">
+                        <label className={labelCls}>
+                          Phone Number (Optional)
+                        </label>
+                        <div className="relative">
+                          <Phone className={iconCls} />
+                          <input
+                            type="tel"
+                            placeholder="e.g. +91 98765 43210"
+                            className={inputCls}
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Order & Test Details */}
+                    <div className="bg-bg-primary/20 backdrop-blur-xl border border-border-muted/30 rounded-2xl p-5 shadow-sm space-y-4">
+                      <h3 className="text-[14px] font-black text-text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                        <span className="w-6 h-[2px] rounded-full bg-blue-500"></span>
+                        Order & Test Details
+                      </h3>
+
+                      {/* Test Category & Sample ID Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="group relative">
+                          <label className={labelCls}>
+                            Test Category *
+                          </label>
+                          <div className="relative">
+                            <Beaker className={`${iconCls} pointer-events-none`} />
+                            <input
+                              required
+                              type="text"
+                              placeholder="e.g. CBC, HbA1c, Urine"
+                              className={inputCls}
+                              value={formData.testType}
+                              onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="group relative">
+                          <label className={labelCls}>
+                            Sample ID *
+                          </label>
+                          <div className="relative">
+                            <FlaskConical className={iconCls} />
+                            <input
+                              required
+                              type="text"
+                              placeholder="e.g. SAM-101"
+                              className={inputCls}
+                              value={formData.sampleId}
+                              onChange={(e) => {
+                                let val = e.target.value;
+                                if (!val.startsWith("SAM-")) {
+                                  if ("SAM-".startsWith(val)) {
+                                    val = "SAM-";
+                                  } else {
+                                    val = "SAM-" + val.replace(/^SAM-?/i, "");
+                                  }
+                                }
+                                setFormData({ ...formData, sampleId: val });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Doctor Assignment */}
+                      <div className="group relative mt-4">
+                        <label className={labelCls}>
+                          Assign Doctor (Optional)
+                        </label>
+                        <div className="relative">
+                          <User className={iconCls} />
+                          <select
+                            className={inputCls}
+                            value={formData.doctorName}
+                            onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
+                          >
+                            <option value="">Select Doctor (Not Assigned)</option>
+                            {doctors.map((doc) => (
+                              <option key={doc._id} value={doc.name}>
+                                {doc.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                  </form>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="shrink-0 px-6 py-5 border-t border-border-muted/50 bg-bg-secondary flex items-center gap-3">
+                  {editingReport && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        handleDeleteOrder(editingReport._id);
+                      }}
+                      className="px-4 h-[50px] rounded-xl bg-red-600/10 border border-red-600/20 text-red-400 font-bold text-[14px] hover:bg-red-600/20 flex items-center gap-2 transition-all active:scale-[0.98] mr-auto"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  )}
+
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingReport(null);
+                    }} 
+                    className="w-[100px] h-[50px] rounded-xl bg-bg-primary border border-border-muted/50 text-[14px] font-bold text-text-secondary hover:text-text-primary hover:bg-surface-variant transition-all active:scale-[0.98]"
+                  >
+                    Cancel
+                  </button>
                   <button
+                    type="submit"
+                    form="lab-order-form"
                     disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                    className="flex-1 h-[50px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[14px] shadow-lg shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                     ) : (
                       <CheckCircle2 className="w-5 h-5" />
                     )}
-                    {isSubmitting ? 'GENERATING...' : 'GENERATE LAB ORDER'}
+                    {isSubmitting ? 'SAVING...' : (editingReport ? 'SAVE CHANGES' : 'GENERATE LAB ORDER')}
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
+
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
     </Layout>
   );

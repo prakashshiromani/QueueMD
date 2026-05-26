@@ -38,7 +38,7 @@ export default function Register() {
       <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-500/10 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
 
-      <div className="w-full max-w-[540px] relative z-10">
+      <div className="w-full max-w-[860px] relative z-10">
         {/* Logo / Brand Section */}
         <div className="text-center mb-10 group cursor-default">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-bg-secondary/50 backdrop-blur-xl border border-white/10 rounded-[24px] shadow-2xl mb-6 group-hover:scale-105 transition-transform duration-500">
@@ -77,106 +77,114 @@ export default function Register() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Section Header */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-1 h-4 bg-teal-500 rounded-full"></span>
-              <span className="text-[11px] font-black text-text-primary uppercase tracking-widest">Account Admin</span>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+              
+              {/* Left Column: Account Admin */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                  <span className="w-1.5 h-4 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.6)]"></span>
+                  <span className="text-[12px] font-black text-text-primary uppercase tracking-widest">Account Admin</span>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Full Name</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">person</span>
-                  <input
-                    type="text" name="name" value={form.name} onChange={handleChange} required
-                    placeholder="Dr. Rahul Sharma"
-                    className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-inner"
-                  />
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Full Name</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">person</span>
+                    <input
+                      type="text" name="name" value={form.name} onChange={handleChange} required
+                      placeholder="Dr. Rahul Sharma"
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Email</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">alternate_email</span>
+                    <input
+                      type="email" name="email" value={form.email} onChange={handleChange} required
+                      placeholder="admin@facility.com"
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Password</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">lock</span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password" value={form.password} onChange={handleChange} required
+                      placeholder="••••••••"
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-12 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all shadow-inner"
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors">
+                      <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Email</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">alternate_email</span>
-                  <input
-                    type="email" name="email" value={form.email} onChange={handleChange} required
-                    placeholder="admin@facility.com"
-                    className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-inner"
-                  />
+
+              {/* Right Column: Facility Details */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                  <span className="w-1.5 h-4 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]"></span>
+                  <span className="text-[12px] font-black text-text-primary uppercase tracking-widest">Facility Details</span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Facility Name</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-purple-500 transition-colors">domain</span>
+                    <input
+                      type="text" name="facilityName" value={form.facilityName} onChange={handleChange} required
+                      placeholder="e.g. City Health Clinic"
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Facility Type</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">local_hospital</span>
+                    <select
+                      name="facilityType" value={form.facilityType} onChange={handleChange}
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-10 text-[14px] text-text-primary appearance-none focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                    >
+                      {Object.entries(FACILITY_TYPES).map(([key, config]) => (
+                        <option key={key} value={key} className="bg-bg-secondary">{config.label}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[20px]">keyboard_arrow_down</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Your Role</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">badge</span>
+                    <select
+                      name="role" value={form.role} onChange={handleChange}
+                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-10 text-[14px] text-text-primary appearance-none focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                    >
+                      {(FACILITY_TYPES[form.facilityType]?.roles || ['Receptionist']).map(role => (
+                        <option key={role} value={role.toLowerCase().replace(' ', '_')} className="bg-bg-secondary">{role}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[20px]">keyboard_arrow_down</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Password</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">lock</span>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password" value={form.password} onChange={handleChange} required
-                  placeholder="••••••••"
-                  className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-12 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-inner"
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Facility Section Header */}
-            <div className="flex items-center gap-2 mb-2 pt-2">
-              <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
-              <span className="text-[11px] font-black text-text-primary uppercase tracking-widest">Facility Details</span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Facility Name</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-purple-500 transition-colors">domain</span>
-                <input
-                  type="text" name="facilityName" value={form.facilityName} onChange={handleChange} required
-                  placeholder="e.g. City Health Clinic"
-                  className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all shadow-inner"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Facility Type</label>
-                <div className="relative">
-                  <select
-                    name="facilityType" value={form.facilityType} onChange={handleChange}
-                    className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-4 pr-10 text-[14px] text-text-primary appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                  >
-                    {Object.entries(FACILITY_TYPES).map(([key, config]) => (
-                      <option key={key} value={key} className="bg-bg-secondary">{config.label}</option>
-                    ))}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[20px]">keyboard_arrow_down</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Your Role</label>
-                <div className="relative">
-                  <select
-                    name="role" value={form.role} onChange={handleChange}
-                    className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-4 pr-10 text-[14px] text-text-primary appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                  >
-                    {(FACILITY_TYPES[form.facilityType]?.roles || ['Receptionist']).map(role => (
-                      <option key={role} value={role.toLowerCase().replace(' ', '_')} className="bg-bg-secondary">{role}</option>
-                    ))}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[20px]">keyboard_arrow_down</span>
-                </div>
-              </div>
             </div>
 
             <button
               type="submit" disabled={loading}
-              className="w-full h-[56px] bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-[15px] rounded-2xl transition-all duration-300 shadow-[0_8px_30px_rgba(20,184,166,0.4)] hover:shadow-[0_12px_40px_rgba(20,184,166,0.6)] active:scale-[0.98] mt-4 flex items-center justify-center gap-3 relative overflow-hidden group"
+              className="w-full h-[56px] bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-[15px] rounded-2xl transition-all duration-300 shadow-[0_8px_30px_rgba(20,184,166,0.3)] hover:shadow-[0_12px_40px_rgba(20,184,166,0.5)] active:scale-[0.98] mt-4 flex items-center justify-center gap-3 relative overflow-hidden group"
             >
               {loading ? (
                 <>

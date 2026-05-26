@@ -10,27 +10,28 @@ exports.getLiveLobbyStatus = async (req, res, next) => {
             return res.status(400).json({ success: false, message: "Phone and Token Number are required" });
         }
 
-        // 🕒 Aaj ki subah 00:00:00 ka time nikalo
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
         const phoneRegex = getPhoneRegex(phone, true);
 
-        // 1. Patient ka aaj ka visit dhundo
+        // 1. Patient ka visit dhundo - facilityId + phone + tokenNumber se match karo
+        // Date restriction hataya gaya - midnight ke baad bhi kaam kare
         const myVisit = await Queue.findOne({
             facilityId,
             phone: phoneRegex || phone,
             tokenNumber: Number(tokenNumber),
-            createdAt: { $gte: startOfDay }
-        }).lean();
+            status: { $in: ['waiting', 'in-progress', 'in-room', 'completed'] }
+        }).sort({ createdAt: -1 }).lean();
 
         if (!myVisit) {
-            return res.status(404).json({ success: false, message: "No active visit found for today." });
+            return res.status(404).json({ success: false, message: "Token not found. Check your phone number and token number." });
         }
 
-        // 2. Aaj ki total waiting list nikalo (People Ahead calculate karne ke liye)
+        // 2. Aaj ki waiting list (People Ahead calculate karne ke liye)
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
         const todaysWaitingList = await Queue.find({
             facilityId,
+            facilityType: myVisit.facilityType,
             status: 'waiting',
             createdAt: { $gte: startOfDay }
         }).sort({ createdAt: 1 }).lean();
@@ -39,19 +40,19 @@ exports.getLiveLobbyStatus = async (req, res, next) => {
         const myPosition = todaysWaitingList.findIndex(p => p._id.toString() === myVisit._id.toString());
         const peopleAhead = myPosition !== -1 ? myPosition : 0;
 
-        // 4. Currently Serving Token (Aaj ka)
+        // 4. Currently Serving Token
         const currentlyServing = await Queue.findOne({
             facilityId,
-            status: { $in: ['in-progress', 'in-room'] },
-            createdAt: { $gte: startOfDay }
-        }).select('tokenNumber');
+            facilityType: myVisit.facilityType,
+            status: { $in: ['in-progress', 'in-room'] }
+        }).sort({ updatedAt: -1 }).select('tokenNumber').lean();
 
         res.status(200).json({
             success: true,
             data: {
                 myToken: myVisit.tokenNumber,
                 myStatus: myVisit.status,
-                peopleAhead: peopleAhead,
+                peopleAhead: ['in-progress', 'in-room', 'completed'].includes(myVisit.status) ? 0 : peopleAhead,
                 currentlyServing: currentlyServing?.tokenNumber || "None",
                 estimatedWait: peopleAhead * 7 // Avg 7 mins
             }

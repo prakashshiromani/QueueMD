@@ -252,6 +252,7 @@ export default function StaffPage() {
         onClose={() => setEditingStaff(null)} 
         onSave={handleSave} 
         loading={saving} 
+        isDark={document.documentElement.classList.contains('dark')}
       />
     </Layout>
   );

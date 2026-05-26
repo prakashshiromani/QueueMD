@@ -17,7 +17,10 @@ export default function CalendarView({ view, currentDate, appointments, onDateCl
     // Actual days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split("T")[0];
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${y}-${m}-${d}`;
       
       const dayAppointments = appointments.filter(apt => {
         const aptDate = apt.appointmentDate.split("T")[0];

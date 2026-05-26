@@ -81,15 +81,25 @@ exports.createAppointment = async (req, res, next) => {
     }
     const tokenNumber = `APPT-${String(nextSeq).padStart(3, '0')}`;
 
-    // 👤 Upsert Patient (FIXED ✅)
+    // 📅 SMART DATE CHECK: Aaj ki appointment hai ya future ki?
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const apptDate = new Date(appointmentDate);
+    apptDate.setHours(0, 0, 0, 0);
+    const isToday = apptDate.getTime() === todayStart.getTime();
+
+    logger.debug(`Appointment date check: apptDate=${apptDate.toISOString()}, isToday=${isToday}`);
+
+    // 👤 Upsert Patient with smart directory visibility
     let patient = await Patient.findOne({ 
       phone, 
       facilityId,
-      facilityType // ✅ Added for strict isolation
+      facilityType
     });
     
     if (!patient) {
-      // ✅ NEW PATIENT - Create in Directory
+      // ✅ NEW PATIENT
+      // Aaj ki appointment → immediately visible, future → hidden until that day
       patient = await Patient.create({ 
         facilityId, 
         facilityType,
@@ -98,26 +108,30 @@ exports.createAppointment = async (req, res, next) => {
         email,
         gender: req.body.gender || undefined,
         age: req.body.age || undefined,
-        lastVisit: new Date(appointmentDate) // ✅ Track last visit
+        lastVisit: new Date(appointmentDate),
+        isDirectoryVisible: isToday  // ✅ KEY LOGIC: aaj = true, future = false
       });
       
-      logger.info(`New patient created in directory: ${patient._id}`);
+      logger.info(`New patient created: ${patient._id} | isDirectoryVisible: ${isToday}`);
     } else {
       // ✅ EXISTING PATIENT - Update details
       patient.name = patientName; 
       patient.email = email || patient.email;
-      patient.lastVisit = new Date(appointmentDate); // ✅ Update last visit
-      // Ensure facilityType is set if it was somehow missing
+      patient.lastVisit = new Date(appointmentDate);
       if (!patient.facilityType) patient.facilityType = facilityType;
+      // If patient was hidden (future appt) and now books for today → make visible
+      if (isToday && !patient.isDirectoryVisible) {
+        patient.isDirectoryVisible = true;
+      }
       await patient.save();
       
-      logger.info(`Existing patient updated in directory: ${patient._id}`);
+      logger.info(`Existing patient updated: ${patient._id} | isDirectoryVisible: ${patient.isDirectoryVisible}`);
     }
 
-    // ✅ Create Appointment
+    // ✅ Create Appointment with pendingDirectorySync flag
     const newAppointment = await Appointment.create({
       facilityId,
-      facilityType, // ✅ Already there
+      facilityType,
       patientId: patient._id,
       patientName,
       phone,
@@ -129,7 +143,8 @@ exports.createAppointment = async (req, res, next) => {
       doctorName,
       notes,
       tokenNumber,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      pendingDirectorySync: !isToday  // ✅ Future appointments need sync on that day
     });
 
     // 🔥 Real-time Socket Emit
@@ -443,7 +458,7 @@ exports.deleteAppointment = async (req, res, next) => {
   }
 };
 
-// ✅ 7. Manual Sync (Emergency CRM Fix)
+// ✅ 7. Manual Sync (Emergency CRM Fix) — with Smart Date Logic
 exports.syncToDirectory = async (req, res, next) => {
   try {
     const { facilityId, facilityType } = req.user;
@@ -455,9 +470,20 @@ exports.syncToDirectory = async (req, res, next) => {
       $or: [{ patientId: null }, { patientId: { $exists: false } }]
     });
 
+    // 📅 Date check
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     let synced = 0;
 
     for (const apt of appointments) {
+      const apptDate = new Date(apt.appointmentDate);
+      apptDate.setHours(0, 0, 0, 0);
+      const isToday = apptDate.getTime() === todayStart.getTime();
+      const isPast = apptDate.getTime() < todayStart.getTime();
+      // Visible if appointment is today or in the past
+      const shouldBeVisible = isToday || isPast;
+
       // Find or create patient
       let patient = await Patient.findOne({ 
         phone: apt.phone, 
@@ -472,12 +498,18 @@ exports.syncToDirectory = async (req, res, next) => {
           name: apt.patientName,
           phone: apt.phone,
           email: apt.email,
-          lastVisit: apt.appointmentDate
+          lastVisit: apt.appointmentDate,
+          isDirectoryVisible: shouldBeVisible  // ✅ Smart visibility
         });
+      } else if (shouldBeVisible && !patient.isDirectoryVisible) {
+        // Make visible if appt is today/past but patient was hidden
+        patient.isDirectoryVisible = true;
+        await patient.save();
       }
 
       // Link appointment to patient
       apt.patientId = patient._id;
+      apt.pendingDirectorySync = !shouldBeVisible;
       await apt.save();
       
       synced++;

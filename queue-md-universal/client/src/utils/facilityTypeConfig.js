@@ -16,7 +16,7 @@ export const FACILITY_TYPES = {
     theme: { primary: "#7C3AED", secondary: "#F59E0B" },
     customFields: [
       { name: "sampleId", type: "string", required: true, label: "Sample ID", placeholder: "SAM-001" },
-      { name: "testType", type: "select", options: ["Blood", "Urine", "X-Ray", "MRI"], required: true, label: "Test Type" }
+      { name: "testType", type: "string", required: true, label: "Test Type", placeholder: "e.g. CBC, HbA1c, Urine" }
     ],
     notificationTemplate: "Sample #{sampleId} ready hai",
     statusFlow: ["waiting", "processing", "ready"],
@@ -51,6 +51,20 @@ export const FACILITY_TYPES = {
     roles: ["Admin", "Physiotherapist", "Receptionist", "Nurse", "Patient"],
     tokenPrefix: "PHY",
     baseConsultTime: 25
+  },
+  hospital: {
+    label: "Hospital",
+    icon: "🏨",
+    theme: { primary: "#EF4444", secondary: "#F97316" },
+    customFields: [
+      { name: "ward", type: "string", required: true, label: "Ward Number", placeholder: "Ward A-1" },
+      { name: "department", type: "select", options: ["General", "ICU", "Emergency", "Pediatrics"], required: true, label: "Department" }
+    ],
+    notificationTemplate: "Patient #{token} please report to #{department} - #{ward}",
+    statusFlow: ["waiting", "admitted", "discharged"],
+    roles: ["Admin", "Doctor", "Nurse", "Receptionist", "Patient"],
+    tokenPrefix: "HSP",
+    baseConsultTime: 20
   }
 };
 

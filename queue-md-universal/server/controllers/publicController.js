@@ -15,8 +15,8 @@ exports.getLiveTrackingStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Token not found." });
         }
 
-        // If completed, verify it was completed today to avoid showing old ones
-        if (patient.status === 'completed') {
+        // If completed, verify it was completed today to avoid showing old ones (Bypassed in development for easier testing)
+        if (patient.status === 'completed' && process.env.NODE_ENV !== 'development') {
             const completedDate = new Date(patient.completedAt || patient.updatedAt).toDateString();
             const today = new Date().toDateString();
             if (completedDate !== today) {

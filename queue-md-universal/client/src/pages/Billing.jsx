@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { 
@@ -167,7 +167,26 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
     }
   };
 
+  // Keyboard accessibility: Escape key closes the modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+
+  const inputCls = "w-full h-[50px] bg-bg-primary border border-border-muted/50 rounded-xl pl-11 pr-4 text-[14px] text-text-primary placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)] transition-all shadow-sm";
+  const labelCls = "text-[12px] font-black text-text-secondary uppercase tracking-widest mb-2 block pl-1";
+  const iconCls = "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 transition-colors group-focus-within:text-[var(--theme-primary)]";
 
   return (
     <AnimatePresence>
@@ -177,7 +196,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-bg-primary/95 backdrop-blur-md"
+          className="absolute inset-0 bg-black/70 backdrop-blur-md"
           onClick={onClose}
         />
 
@@ -186,11 +205,17 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-3xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-bg-secondary border border-border-muted/50 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          style={{
+            '--theme-primary': config.theme.primary,
+            '--theme-primary-rgb': hexToRgb(config.theme.primary),
+            '--theme-secondary': config.theme.secondary
+          }}
         >
           {loading && (
-            <div className="loading-overlay rounded-3xl">
+            <div className="loading-overlay rounded-2xl">
               <div 
                 className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin" 
                 style={{ borderColor: `rgba(${primaryRgb}, 0.2)`, borderTopColor: config.theme.primary }}
@@ -199,134 +224,160 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
           )}
 
           {/* Header */}
-          <div className="p-8 border-b border-border-muted/30 dark:border-white/5 flex justify-between items-center bg-bg-primary/30">
-            <div>
-              <h2 className="text-2xl font-black text-text-primary tracking-tight">Create New Invoice</h2>
-              <p className="text-text-secondary text-xs mt-1">Generate a billing invoice for patient consultation</p>
+          <div className="shrink-0 bg-bg-secondary/95 backdrop-blur-md border-b border-border-muted/50 px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  backgroundColor: `rgba(var(--theme-primary-rgb), 0.1)`,
+                  color: 'var(--theme-primary)'
+                }}
+              >
+                <span className="material-symbols-outlined text-2xl">receipt_long</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-text-primary tracking-tight">Create New Invoice</h2>
+                <p className="text-xs text-text-secondary mt-0.5">Generate a billing invoice for patient consultation</p>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-xl bg-bg-primary flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              className="p-2 rounded-lg hover:bg-surface-variant text-text-secondary transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            <div className="space-y-4">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <form id="create-invoice-form" onSubmit={handleSubmit} className="space-y-6">
               
-              {/* Patient Name */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Patient Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                  <input
-                    type="text"
-                    required
-                    value={formData.patientName}
-                    onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
-                    placeholder="e.g. Rahul Sharma"
-                    style={{ '--theme-primary': config.theme.primary }}
-                  />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
-                    placeholder="e.g. +91 9876543210"
-                    style={{ '--theme-primary': config.theme.primary }}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Amount */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Amount (₹)</label>
+              {/* Form Input Glass Card Section */}
+              <div className="bg-bg-primary/20 backdrop-blur-xl border border-border-muted/30 rounded-2xl p-5 shadow-sm space-y-4">
+                
+                {/* Patient Name */}
+                <div className="group relative">
+                  <label className={labelCls}>Patient Full Name</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
+                    <User className={iconCls} />
                     <input
-                      type="number"
+                      type="text"
                       required
-                      min="1"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30"
-                      placeholder="0.00"
-                      style={{ '--theme-primary': config.theme.primary }}
+                      value={formData.patientName}
+                      onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                      className={inputCls}
+                      placeholder="e.g. Rahul Sharma"
                     />
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Status</label>
+                {/* Phone */}
+                <div className="group relative">
+                  <label className={labelCls}>Phone Number</label>
                   <div className="relative">
-                    <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50" />
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-8 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner appearance-none cursor-pointer billing-select"
-                      style={{ '--theme-primary': config.theme.primary }}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Paid">Paid</option>
-                      <option value="Overdue">Overdue</option>
-                    </select>
+                    <Phone className={iconCls} />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        if (val.length <= 10) setFormData({ ...formData, phone: val });
+                      }}
+                      className={inputCls}
+                      placeholder="e.g. 9876543210"
+                    />
                   </div>
                 </div>
-              </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest ml-1">Description</label>
-                <div className="relative">
-                  <FileText className="absolute left-4 top-4 w-4 h-4 text-text-secondary/50" />
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="3"
-                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-text-primary focus:outline-none focus:border-[var(--theme-primary)] transition-all shadow-inner placeholder:text-text-secondary/30 resize-none"
-                    placeholder="Add notes about this invoice..."
-                    style={{ '--theme-primary': config.theme.primary }}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Amount */}
+                  <div className="group relative">
+                    <label className={labelCls}>Amount (₹)</label>
+                    <div className="relative">
+                      <IndianRupee className={iconCls} />
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="0.01"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        className={inputCls}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="group relative">
+                    <label className={labelCls}>Status</label>
+                    <div className="relative">
+                      <CheckCircle2 className={iconCls} />
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className={`${inputCls} pr-10 appearance-none cursor-pointer`}
+                      >
+                        <option value="Pending" className="bg-bg-secondary text-text-primary">Pending</option>
+                        <option value="Paid" className="bg-bg-secondary text-text-primary">Paid</option>
+                        <option value="Overdue" className="bg-bg-secondary text-text-primary">Overdue</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Description */}
+                <div className="group relative">
+                  <label className={labelCls}>Description</label>
+                  <div className="relative">
+                    <FileText className="absolute left-4 top-4 w-4 h-4 text-text-secondary/50 transition-colors group-focus-within:text-[var(--theme-primary)]" />
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows="3"
+                      className="w-full bg-bg-primary border border-border-muted/50 rounded-xl pl-11 pr-4 py-3.5 text-[14px] text-text-primary placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)] transition-all shadow-sm resize-none"
+                      placeholder="Add notes about this invoice..."
+                    />
+                  </div>
+                </div>
+
               </div>
+            </form>
+          </div>
 
-            </div>
-
-            <div className="flex gap-4 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 h-[54px] border border-border-muted rounded-2xl text-text-primary hover:bg-surface-variant font-bold text-sm transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 h-[54px] rounded-2xl text-white font-black text-sm transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: config.theme.primary,
-                  boxShadow: `0 4px 14px rgba(${primaryRgb}, 0.4)`
-                }}
-              >
-                {loading ? 'CREATING...' : 'CREATE INVOICE'}
-              </button>
-            </div>
-          </form>
+          {/* Footer */}
+          <div className="shrink-0 px-6 py-5 border-t border-border-muted/50 bg-bg-secondary flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-[100px] h-[50px] rounded-xl bg-bg-primary border border-border-muted/50 text-[14px] font-bold text-text-secondary hover:text-text-primary hover:bg-surface-variant transition-all active:scale-[0.98]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-invoice-form"
+              disabled={loading}
+              className="flex-1 h-[50px] rounded-xl text-white font-bold text-[14px] shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: 'var(--theme-primary)',
+                boxShadow: `0 4px 14px rgba(var(--theme-primary-rgb), 0.4)`
+              }}
+            >
+              {loading ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-xl">add_task</span>
+                  Create Invoice
+                </>
+              )}
+            </button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

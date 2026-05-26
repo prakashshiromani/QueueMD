@@ -229,9 +229,12 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
             <input
               type="tel"
               value={formData.contact}
-              onChange={(e) => handleChange('contact', e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                if (val.length <= 10) handleChange('contact', val);
+              }}
               className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
-              placeholder="+91 XXXXX XXXXX"
+              placeholder="e.g. 9876543210"
             />
           </div>
         </div>

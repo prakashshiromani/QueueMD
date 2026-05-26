@@ -6,7 +6,8 @@ exports.createStaff = async (req, res) => {
   try {
     const { 
       name, email, password, role, 
-      specialization, phone, shift, workingDays, profileImage 
+      specialization, phone, shift, workingDays, profileImage,
+      facilityType: bodyFacilityType  // ✅ Allow admin to set department
     } = req.body;
 
     // 🔐 RBAC Check
@@ -14,24 +15,30 @@ exports.createStaff = async (req, res) => {
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
-    // 🔍 Validate facilityType
-    if (!FACILITY_TYPES[req.user.facilityType]) {
-      return res.status(400).json({ success: false, message: "Invalid facility type" });
+    // 🔍 Determine facilityType: use body value if valid, else fall back to JWT
+    const validTypes = Object.keys(FACILITY_TYPES);
+    const staffFacilityType = (bodyFacilityType && validTypes.includes(bodyFacilityType))
+      ? bodyFacilityType
+      : req.user.facilityType;
+
+    // 🔍 Validate final facilityType
+    if (!FACILITY_TYPES[staffFacilityType]) {
+      return res.status(400).json({ success: false, message: "Invalid department / facility type" });
     }
 
     // ✅ Create new staff with ALL fields + facility isolation
     const newStaff = await User.create({
       name,
       email,
-      password, // ✅ Password field added - secure login possible
+      password,
       role: role || "receptionist",
       specialization: specialization || "",
       phone: phone || "",
       shift: shift || "09:00 AM - 05:00 PM",
       workingDays: workingDays || ["Mon", "Tue", "Wed", "Thu", "Fri"],
       profileImage: profileImage || "",
-      facilityId: req.user.facilityId, // 🔒 Auto-inject from JWT
-      facilityType: req.user.facilityType // 🔒 Auto-inject from JWT
+      facilityId: req.user.facilityId,   // 🔒 Always from JWT (facility isolation)
+      facilityType: staffFacilityType    // ✅ From form (department choice)
     });
 
     // 📡 Real-time emit to facility room
@@ -80,7 +87,7 @@ exports.updateStaff = async (req, res) => {
 
     // 🔍 Find & update with facility isolation
     const updatedStaff = await User.findOneAndUpdate(
-      { _id: id, facilityId: req.user.facilityId, facilityType: req.user.facilityType },
+      { _id: id, facilityId: req.user.facilityId },
       {
         name,
         email,

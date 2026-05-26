@@ -9,9 +9,10 @@ const { emitQueueUpdate } = require('../sockets/queue.socket');
 const labOrderSchema = z.object({
   patientName: z.string().min(2),
   phone: z.string().optional(),
+  doctorName: z.string().optional(),
   customData: z.object({
     sampleId: z.string().min(1, "Sample ID required"),
-    testType: z.enum(["Blood", "Urine", "X-Ray", "MRI", "CT Scan", "CBC", "Lipid Profile", "Thyroid Panel", "HbA1c"]),
+    testType: z.string().min(1, "Test Type required"),
     reportStatus: z.enum(["pending", "processing", "ready", "delivered"]).optional()
   })
 });
@@ -209,12 +210,13 @@ exports.updateLabStatus = async (req, res, next) => {
 exports.createLabOrder = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { patientName, phone, customData } = req.body;
+    const { patientName, phone, customData, doctorName } = req.body;
 
     // Validate input
     const validation = labOrderSchema.safeParse({
       patientName,
       phone,
+      doctorName,
       customData
     });
 
@@ -241,6 +243,7 @@ exports.createLabOrder = async (req, res, next) => {
       patientName,
       phone,
       customData,
+      doctorName,
       tokenNumber: nextToken,
       status: 'waiting'
     });
@@ -285,3 +288,202 @@ exports.createLabOrder = async (req, res, next) => {
     next(err);
   }
 };
+
+// ✅ UPDATE LAB ORDER DETAILS (EDIT)
+exports.updateLabOrder = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { id } = req.params;
+    const { patientName, phone, customData, doctorName } = req.body;
+
+    // Validate input
+    const validation = labOrderSchema.safeParse({
+      patientName,
+      phone,
+      doctorName,
+      customData
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: validation.error.errors
+      });
+    }
+
+    const report = await Queue.findOne({
+      _id: id,
+      facilityId,
+      facilityType: 'pathlab'
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab report not found'
+      });
+    }
+
+    report.patientName = patientName;
+    report.phone = phone;
+    report.doctorName = doctorName;
+    report.customData = customData;
+
+    await report.save();
+
+    // Emit socket event
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'status_update',
+      report
+    });
+
+    res.json({
+      success: true,
+      data: report,
+      message: 'Lab order updated successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ DELETE LAB ORDER
+exports.deleteLabOrder = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { id } = req.params;
+
+    const report = await Queue.findOneAndDelete({
+      _id: id,
+      facilityId,
+      facilityType: 'pathlab'
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab report not found'
+      });
+    }
+
+    // Emit socket event
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'status_update',
+      report: null
+    });
+
+    res.json({
+      success: true,
+      message: 'Lab order deleted successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ UPDATE LAB ORDER DETAILS (Edit)
+exports.updateLabOrder = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { id } = req.params;
+    const { patientName, phone, customData, doctorName } = req.body;
+
+    // Validate input
+    const validation = labOrderSchema.safeParse({
+      patientName,
+      phone,
+      doctorName,
+      customData
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: validation.error.errors
+      });
+    }
+
+    const report = await Queue.findOne({
+      _id: id,
+      facilityId,
+      facilityType: 'pathlab'
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab report not found'
+      });
+    }
+
+    // Update fields
+    report.patientName = patientName;
+    report.phone = phone;
+    report.doctorName = doctorName;
+    
+    if (customData) {
+      Object.keys(customData).forEach(key => {
+        report.customData.set(key, customData[key]);
+      });
+    }
+
+    await report.save();
+
+    // Emit socket event for real-time list update
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'update',
+      report
+    });
+
+    logger.info(`Lab order ${report.customData?.get('sampleId')} updated successfully`);
+
+    res.json({
+      success: true,
+      data: report,
+      message: 'Lab order updated successfully'
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ DELETE LAB ORDER
+exports.deleteLabOrder = async (req, res, next) => {
+  try {
+    const { facilityId } = req.user;
+    const { id } = req.params;
+
+    const report = await Queue.findOneAndDelete({
+      _id: id,
+      facilityId,
+      facilityType: 'pathlab'
+    });
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab report not found'
+      });
+    }
+
+    // Emit socket event for real-time list update
+    emitQueueUpdate(facilityId, 'pathlab', {
+      action: 'delete',
+      reportId: id
+    });
+
+    logger.info(`Lab order ${report.customData?.get('sampleId')} deleted by staff`);
+
+    res.json({
+      success: true,
+      message: 'Lab order deleted successfully'
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+

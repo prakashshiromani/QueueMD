@@ -53,6 +53,20 @@ const FACILITY_TYPES = {
     roles: ["admin", "receptionist", "therapist", "patient"],
     tokenPrefix: "PHY",
     baseConsultTime: 25
+  },
+  hospital: {
+    label: "Hospital",
+    icon: "🏨",
+    theme: { primary: "#EF4444", secondary: "#F97316" },
+    customFields: [
+      { name: "ward", type: "string", required: true, label: "Ward Number", placeholder: "Ward A-1" },
+      { name: "department", type: "select", options: ["General", "ICU", "Emergency", "Pediatrics"], required: true, label: "Department" }
+    ],
+    notificationTemplate: "Hello #{patientName}, please report to #{department} - #{ward}. Token: #{token}",
+    statusFlow: ["waiting", "admitted", "discharged"],
+    roles: ["admin", "doctor", "nurse", "receptionist", "patient"],
+    tokenPrefix: "HSP",
+    baseConsultTime: 20
   }
 };
 
@@ -96,6 +110,17 @@ const getValidationSchema = (type) => {
         customData: z.object({
           sessionType: z.enum(["Initial", "Follow-up", "Recovery"]),
           bodyPart: z.string().optional()
+        })
+      });
+
+    case "hospital":
+      return z.object({
+        ...baseSchema,
+        customData: z.object({
+          ward: z.string().min(1, "Ward number is required"),
+          department: z.enum(["General", "ICU", "Emergency", "Pediatrics"], {
+            errorMap: () => ({ message: "Invalid department" })
+          })
         })
       });
 

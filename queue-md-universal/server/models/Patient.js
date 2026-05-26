@@ -18,7 +18,9 @@ const patientSchema = new mongoose.Schema({
   doctorName: { type: String },
   totalVisits: { type: Number, default: 0 },
   status: { type: String, enum: ["Active", "Inactive", "Archived"], default: "Active" },
-  customData: { type: mongoose.Schema.Types.Mixed, default: {} }
+  customData: { type: mongoose.Schema.Types.Mixed, default: {} },
+  // 📅 Smart Directory Sync: false = future appointment, not visible yet in directory
+  isDirectoryVisible: { type: Boolean, default: true, index: true }
 }, { timestamps: true });
 
 // Compound index for unique patients per facility

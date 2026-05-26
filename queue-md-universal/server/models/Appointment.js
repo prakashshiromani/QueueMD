@@ -65,6 +65,9 @@ const appointmentSchema = new mongoose.Schema({
     required: true
   },
   
+  // 📅 Smart Directory Sync: true = future appt, patient hidden from directory until appt day
+  pendingDirectorySync: { type: Boolean, default: false, index: true },
+  
   // 🕒 Timestamps
   checkedInAt: Date,
   completedAt: Date,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFacilityStore } from '../store/facilityStore';
 import { FACILITY_TYPES } from '../utils/facilityTypeConfig';
 import { addPatientApi, searchPatientsApi } from '../services/api';
@@ -21,6 +21,10 @@ const AddPatientForm = ({ handleAddPatient }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+
+  useEffect(() => {
+    setCustomData(facilityType === 'pathlab' ? { sampleId: 'SAM-' } : {});
+  }, [facilityType]);
 
   const handleSearch = async (query) => {
     if (query.length < 2) {
@@ -262,7 +266,19 @@ const AddPatientForm = ({ handleAddPatient }) => {
                     <input
                       type={field.type || 'text'}
                       value={customData[field.name] || ''}
-                      onChange={(e) => setCustomData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (field.name === "sampleId") {
+                          if (!val.startsWith("SAM-")) {
+                            if ("SAM-".startsWith(val)) {
+                              val = "SAM-";
+                            } else {
+                              val = "SAM-" + val.replace(/^SAM-?/i, "");
+                            }
+                          }
+                        }
+                        setCustomData(prev => ({ ...prev, [field.name]: val }));
+                      }}
                       placeholder={field.placeholder || `e.g. ${field.label}`}
                       className="w-full bg-white/5 border border-white/10 rounded-md py-2 px-3 text-[14px] text-text-primary focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all backdrop-blur-md shadow-inner"
                       required={field.required}

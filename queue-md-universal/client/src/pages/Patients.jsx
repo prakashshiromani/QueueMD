@@ -2,10 +2,18 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import AddPatientModal from "../components/AddPatientModal";
 import PatientHistoryDrawer from "../components/PatientHistoryDrawer";
-import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi } from "../services/api";
+import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi, createInvoiceApi } from "../services/api";
 import { useFacilityStore } from "../store/facilityStore";
 import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
+import { staffApi } from "../services/staffApi";
+import { X, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+
+// Helper to convert hex to RGB string
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
+}
 
 export default function Patients() {
   const { facilityId, facilityType } = useFacilityStore();
@@ -25,8 +33,27 @@ export default function Patients() {
   const [deletePatient, setDeletePatient] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewHistoryPatient, setViewHistoryPatient] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
   const patientsPerPage = 10;
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        setLoadingDoctors(true);
+        const res = await staffApi.getAll();
+        const staffList = res.data || res.users || [];
+        const activeDoctors = staffList.filter(s => s.role === "doctor" && s.isActive);
+        setDoctors(activeDoctors);
+      } catch (err) {
+        console.error("Failed to fetch doctors:", err);
+      } finally {
+        setLoadingDoctors(false);
+      }
+    };
+    fetchDoctors();
+  }, []);
 
   // ✅ Close menu on outside click
   useEffect(() => {
@@ -66,6 +93,12 @@ export default function Patients() {
 
   // ✅ Add patient to queue
   const handleAddToQueue = async (patient) => {
+    // 🚫 Block inactive patients from being added to the queue
+    if (patient.status?.toLowerCase() !== "active") {
+      toast.error(`${patient.name} is INACTIVE and cannot be added to the queue.`, { icon: "🚫" });
+      return;
+    }
+
     try {
       setActionLoading(prev => ({ ...prev, [patient._id]: true }));
 
@@ -101,6 +134,25 @@ export default function Patients() {
       toast.success(res.message || "New patient registered successfully!");
       setShowAddModal(false);
       fetchPatients(); // Refresh list
+
+      // 💳 Auto-create invoice if visit fees were entered
+      if (payload.visitFees && payload.visitFees > 0) {
+        try {
+          await createInvoiceApi({
+            patientName: payload.patientName,
+            phone: payload.phone || "",
+            amount: payload.visitFees,
+            status: "Pending",
+            description: "Visit Consultation Fee",
+          });
+          toast.success(`Invoice of ₹${payload.visitFees} created in Billing!`, { icon: "🧾" });
+        } catch (billingErr) {
+          console.error("Billing invoice creation failed:", billingErr);
+          toast("Patient registered, but invoice creation failed. Please add it manually in Billing.", {
+            icon: "⚠️",
+          });
+        }
+      }
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to register patient";
       toast.error(msg);
@@ -163,7 +215,21 @@ export default function Patients() {
   const handleEditOpen = (patient) => {
     setOpenMenuId(null);
     setEditPatient(patient);
-    setEditForm({ name: patient.name, phone: patient.phone || '', email: patient.email || '' });
+    setEditForm({ 
+      name: patient.name, 
+      phone: patient.phone || '', 
+      email: patient.email || '',
+      facilityType: patient.facilityType || '',
+      doctorName: patient.doctorName || '',
+      customData: patient.customData || {}
+    });
+  };
+
+  const handleEditCustomChange = (name, value) => {
+    setEditForm(prev => ({
+      ...prev,
+      customData: { ...(prev.customData || {}), [name]: value }
+    }));
   };
 
   // ✅ Open Delete Confirm
@@ -293,7 +359,7 @@ export default function Patients() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, ID, or phone..."
-                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all font-medium"
+                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)]/50 transition-all font-medium"
               />
               {searchQuery && (
                 <button
@@ -310,9 +376,14 @@ export default function Patients() {
               <button
                 onClick={() => setSelectedFacility("all")}
                 className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${selectedFacility === "all"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
+                    ? "text-white"
                     : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
                   }`}
+                style={selectedFacility === "all" ? {
+                  backgroundColor: 'var(--theme-primary)',
+                  borderColor: 'var(--theme-primary)',
+                  boxShadow: '0 4px 12px rgba(var(--theme-primary-rgb), 0.2)'
+                } : {}}
               >
                 All Facilities
               </button>
@@ -378,7 +449,7 @@ export default function Patients() {
                   </tr>
                 ) : (
                   patients.map((patient) => (
-                    <tr key={patient._id} className="group hover:bg-surface-variant/40 transition-all border-l-4 border-l-transparent hover:border-l-blue-500">
+                    <tr key={patient._id} className="group hover:bg-surface-variant/40 transition-all border-l-4 border-l-transparent hover:border-l-[var(--theme-primary)]">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div
@@ -430,18 +501,39 @@ export default function Patients() {
 
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleAddToQueue(patient)}
-                            disabled={actionLoading[patient._id]}
-                            className="px-4 py-2 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 font-black text-[11px] tracking-widest uppercase transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm"
-                          >
-                            {actionLoading[patient._id] ? (
-                              <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
-                            ) : (
-                              <span className="material-symbols-outlined text-[16px]">bolt</span>
-                            )}
-                            ADD TO QUEUE
-                          </button>
+                          {(() => {
+                            const rowConfig = FACILITY_TYPES[patient.facilityType] || FACILITY_TYPES.clinic;
+                            const rowPrimary = rowConfig.theme.primary;
+                            return (
+                              <button
+                                onClick={() => handleAddToQueue(patient)}
+                                disabled={actionLoading[patient._id]}
+                                className="px-4 py-2 rounded-xl font-black text-[11px] tracking-widest uppercase transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm border"
+                                style={{
+                                  backgroundColor: `${rowPrimary}10`,
+                                  color: rowPrimary,
+                                  borderColor: `${rowPrimary}30`
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = rowPrimary;
+                                  e.currentTarget.style.color = '#fff';
+                                  e.currentTarget.style.borderColor = rowPrimary;
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = `${rowPrimary}10`;
+                                  e.currentTarget.style.color = rowPrimary;
+                                  e.currentTarget.style.borderColor = `${rowPrimary}30`;
+                                }}
+                              >
+                                {actionLoading[patient._id] ? (
+                                  <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+                                ) : (
+                                  <span className="material-symbols-outlined text-[16px]">bolt</span>
+                                )}
+                                ADD TO QUEUE
+                              </button>
+                            );
+                          })()}
                           {/* ⋮ Three-dot dropdown */}
                           <div className="relative" data-menu>
                             <button
@@ -457,7 +549,12 @@ export default function Patients() {
                                   onClick={() => handleEditOpen(patient)}
                                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-text-primary hover:bg-surface-variant transition-all group"
                                 >
-                                  <span className="material-symbols-outlined text-[18px] text-blue-400 group-hover:text-blue-500">edit</span>
+                                  <span 
+                                    className="material-symbols-outlined text-[18px] group-hover:opacity-80 transition-opacity"
+                                    style={{ color: (FACILITY_TYPES[patient.facilityType] || FACILITY_TYPES.clinic).theme.primary }}
+                                  >
+                                    edit
+                                  </span>
                                   Edit Patient
                                 </button>
                                 <button
@@ -497,7 +594,7 @@ export default function Patients() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-[var(--theme-primary)]/50 transition-all shadow-sm"
                 >
                   Prev
                 </button>
@@ -508,9 +605,14 @@ export default function Patients() {
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
                       className={`w-9 h-9 rounded-xl font-black text-[11px] transition-all flex items-center justify-center border shadow-sm ${currentPage === i + 1
-                          ? "bg-blue-600 text-white border-blue-600 scale-110"
-                          : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-blue-500/50"
+                          ? "text-white scale-110"
+                          : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-[var(--theme-primary)]/50"
                         }`}
+                      style={currentPage === i + 1 ? {
+                        backgroundColor: 'var(--theme-primary)',
+                        borderColor: 'var(--theme-primary)',
+                        boxShadow: '0 4px 10px rgba(var(--theme-primary-rgb), 0.2)'
+                      } : {}}
                     >
                       {i + 1}
                     </button>
@@ -520,7 +622,7 @@ export default function Patients() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalPatients / patientsPerPage), p + 1))}
                   disabled={currentPage >= Math.ceil(totalPatients / patientsPerPage)}
-                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-blue-500/50 transition-all shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-black text-[11px] uppercase tracking-widest disabled:opacity-30 hover:border-[var(--theme-primary)]/50 transition-all shadow-sm"
                 >
                   Next
                 </button>
@@ -539,65 +641,224 @@ export default function Patients() {
       />
 
       {/* ✅ Edit Patient Modal */}
-      {editPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[18px] font-black text-text-primary">Edit Patient</h2>
-              <button onClick={() => setEditPatient(null)} className="p-2 rounded-xl hover:bg-surface-variant text-text-secondary transition">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
+      {editPatient && (() => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const patientFacilityType = editForm.facilityType || facilityType || 'clinic';
+        const modalConfig = FACILITY_TYPES[patientFacilityType] || FACILITY_TYPES.clinic;
+        const primaryRgb = hexToRgb(modalConfig.theme.primary);
+        
+        const editFilteredDoctors = editForm.facilityType
+          ? doctors.filter(d => d.facilityType === editForm.facilityType)
+          : doctors;
+        
+        const theme = {
+          overlay: "bg-black/70 backdrop-blur-md",
+          modalBg: "bg-bg-secondary border border-border-muted/50 dark:border-white/5 shadow-2xl",
+          text: "text-text-primary",
+          label: "text-text-secondary font-medium",
+          inputBg: "bg-bg-primary border border-border-muted/50",
+          inputText: "text-text-primary placeholder:text-text-secondary/50",
+          optionBg: "bg-bg-primary text-text-primary",
+          closeBtn: "text-text-secondary hover:text-text-primary hover:bg-surface-variant"
+        };
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-black text-text-secondary uppercase tracking-widest mb-1.5">Full Name</label>
-                <input
-                  type="text"
-                  value={editForm.name || ''}
-                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
-                />
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditPatient(null)}>
+            <div
+              className={`${theme.modalBg} border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl backdrop-blur-xl m-4 flex flex-col`}
+              style={{
+                '--theme-primary': modalConfig.theme.primary,
+                '--theme-primary-rgb': primaryRgb,
+                '--theme-secondary': modalConfig.theme.secondary
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-inherit p-6 border-b border-border-muted/50 dark:border-white/5 flex justify-between items-center z-10">
+                <h2 className={`text-xl font-semibold ${theme.text}`}>Edit Patient Profile</h2>
+                <button onClick={() => setEditPatient(null)} className={`p-1 rounded-lg transition ${theme.closeBtn}`}>
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <div>
-                <label className="block text-[11px] font-black text-text-secondary uppercase tracking-widest mb-1.5">Phone</label>
-                <input
-                  type="text"
-                  value={editForm.phone || ''}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-black text-text-secondary uppercase tracking-widest mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={editForm.email || ''}
-                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl px-4 py-3 text-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
-                />
-              </div>
-            </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setEditPatient(null)}
-                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
+              {/* Form Body */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleEditSave();
+                }} 
+                className="p-6 space-y-6 flex-1 overflow-y-auto"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSave}
-                disabled={editLoading}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[13px] uppercase tracking-widest transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {editLoading ? <span className="material-symbols-outlined animate-spin text-[18px]">refresh</span> : <span className="material-symbols-outlined text-[18px]">save</span>}
-                Save Changes
-              </button>
+                
+                {/* 👤 Personal Details */}
+                <div>
+                  <h3 className={`text-sm font-medium ${theme.label} mb-3 uppercase tracking-wider`}>Personal Details</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm mb-1 ${theme.label}`}>Full Name *</label>
+                      <input
+                        type="text"
+                        value={editForm.name || ''}
+                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm mb-1 ${theme.label}`}>Email Address</label>
+                      <input
+                        type="email"
+                        value={editForm.email || ''}
+                        onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                        className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
+                        placeholder="patient@email.com"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={`block text-sm mb-1 ${theme.label}`}>Phone Number *</label>
+                      <input
+                        type="text"
+                        value={editForm.phone || ''}
+                        onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                        className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🏥 Visit Details */}
+                <div>
+                  <h3 className={`text-sm font-medium ${theme.label} mb-3 uppercase tracking-wider`}>Visit Details</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-sm mb-1 ${theme.label}`}>Facility Type *</label>
+                      <div className="relative">
+                        <select
+                          value={editForm.facilityType || ''}
+                          onChange={e => setEditForm(f => ({ ...f, facilityType: e.target.value, customData: {}, doctorName: "" }))}
+                          className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all appearance-none cursor-pointer [&>option]:${theme.optionBg}`}
+                          required
+                        >
+                          <option value="" disabled>Select Facility Type</option>
+                          {Object.entries(FACILITY_TYPES).map(([type, cfg]) => (
+                            <option key={type} value={type} className={theme.optionBg}>
+                              {cfg.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className={`block text-sm mb-1 ${theme.label}`}>Assign Doctor</label>
+                      <div className="relative">
+                        <select
+                          value={editForm.doctorName || ''}
+                          onChange={e => setEditForm(f => ({ ...f, doctorName: e.target.value }))}
+                          disabled={!editForm.facilityType}
+                          className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all appearance-none cursor-pointer [&>option]:${theme.optionBg} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <option value="">Select Doctor (Optional)</option>
+                          {loadingDoctors ? (
+                            <option disabled className={theme.optionBg}>Loading doctors...</option>
+                          ) : editFilteredDoctors.length === 0 ? (
+                            <option disabled className={theme.optionBg}>No active doctors found for this department</option>
+                          ) : (
+                            editFilteredDoctors.map((doc) => (
+                              <option key={doc._id} value={doc.name} className={theme.optionBg}>
+                                {doc.name} {doc.specialization ? `(${doc.specialization})` : ""}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                        <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl pointer-events-none">
+                          expand_more
+                        </span>
+                      </div>
+                      {editForm.facilityType && editFilteredDoctors.length === 0 && (
+                        <p className="text-xs text-amber-400 mt-1.5 flex items-center gap-1 pl-1">
+                          <span className="material-symbols-outlined text-[14px] leading-none">warning</span>
+                          No doctors registered for this department
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📋 Facility-Specific Custom Fields */}
+                {modalConfig.customFields && modalConfig.customFields.length > 0 && (
+                  <div>
+                    <h3 className={`text-sm font-medium ${theme.label} mb-3 uppercase tracking-wider`}>{modalConfig.label} Specific Details</h3>
+                    <div className="border border-border-muted/50 dark:border-white/5 rounded-2xl p-5 bg-bg-primary/20 space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {modalConfig.customFields.map((field) => (
+                          <div key={field.name} className={field.type === "select" ? "" : "md:col-span-2"}>
+                            <label className={`block text-sm mb-1 ${theme.label}`}>
+                              {field.label} {field.required && <span className="text-red-500">*</span>}
+                            </label>
+                            {field.type === "select" ? (
+                              <div className="relative">
+                                <select
+                                  value={(editForm.customData && editForm.customData[field.name]) || ""}
+                                  onChange={(e) => handleEditCustomChange(field.name, e.target.value)}
+                                  className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all appearance-none cursor-pointer [&>option]:${theme.optionBg}`}
+                                  required={field.required}
+                                >
+                                  <option value="">Select {field.label}</option>
+                                  {field.options?.map(opt => (
+                                    <option key={opt} value={opt} className={theme.optionBg}>{opt}</option>
+                                  ))}
+                                </select>
+                                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+                              </div>
+                            ) : (
+                              <input
+                                type={field.type || "text"}
+                                value={(editForm.customData && editForm.customData[field.name]) || ""}
+                                onChange={(e) => handleEditCustomChange(field.name, e.target.value)}
+                                placeholder={field.placeholder || `Enter ${field.label}`}
+                                className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
+                                required={field.required}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit / Cancel Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-border-muted/50 dark:border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setEditPatient(null)}
+                    className={`px-5 py-2.5 rounded-xl border border-border-muted/50 dark:border-white/5 ${theme.label} hover:bg-surface-variant transition`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="flex items-center gap-2 px-6 py-2.5 text-white rounded-xl font-medium transition active:scale-95 disabled:opacity-50"
+                    style={{
+                      backgroundColor: modalConfig.theme.primary,
+                      boxShadow: `0 4px 14px rgba(${primaryRgb}, 0.4)`
+                    }}
+                  >
+                    {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {editLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ✅ Delete Confirm Modal */}
       {deletePatient && (

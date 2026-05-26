@@ -4,7 +4,9 @@ const {
   getLabReports, 
   getLabStats, 
   updateLabStatus,
-  createLabOrder 
+  createLabOrder,
+  updateLabOrder,
+  deleteLabOrder
 } = require('../controllers/lab.controller');
 const { auth } = require('../middleware/auth.middleware');
 
@@ -19,6 +21,12 @@ router.get('/stats', getLabStats);
 
 // UPDATE status (pending → processing → ready → delivered)
 router.put('/:id/status', updateLabStatus);
+
+// UPDATE lab order details (Edit)
+router.put('/:id', updateLabOrder);
+
+// DELETE lab order
+router.delete('/:id', deleteLabOrder);
 
 // CREATE new lab order
 router.post('/create', createLabOrder);

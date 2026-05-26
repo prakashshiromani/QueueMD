@@ -4,6 +4,14 @@ import { X, Save, Loader2, Calendar, Phone, Building2, Clock, User } from "lucid
 import { z } from "zod";
 import toast from "react-hot-toast";
 import ImageUploader from "./ui/ImageUploader";
+import { useFacilityStore } from "../store/facilityStore";
+import { getFacilityConfig } from "../utils/facilityTypeConfig";
+
+// Helper to convert hex to RGB string
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
+}
 
 const staffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -27,6 +35,10 @@ const SHIFTS = [
 ];
 
 export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading, isDark = true }) {
+  const { facilityType } = useFacilityStore();
+  const config = getFacilityConfig(facilityType);
+  const primaryRgb = hexToRgb(config.theme.primary);
+
   const [form, setForm] = useState({
     name: "", email: "", role: "receptionist", isActive: true,
     specialization: "", phone: "", shift: "09:00 AM - 05:00 PM",
@@ -71,20 +83,18 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
   };
 
   const theme = {
-    overlay: isDark ? "bg-black/60 backdrop-blur-sm" : "bg-gray-900/40 backdrop-blur-sm",
-    modalBg: isDark ? "bg-slate-900/90 border-white/10" : "bg-white border-gray-200",
-    text: isDark ? "text-white" : "text-slate-900",
-    label: isDark ? "text-white/60" : "text-slate-600",
-    inputBg: isDark ? "bg-black/30 border-white/10" : "bg-gray-50 border-gray-200",
-    inputText: isDark ? "text-white" : "text-slate-900",
-    optionBg: isDark ? "bg-slate-800" : "bg-white",
-    toggleOn: "bg-green-500",
-    toggleOff: isDark ? "bg-slate-600" : "bg-gray-300",
-    toggleKnob: isDark ? "bg-white" : "bg-slate-900",
-    buttonPrimary: "bg-blue-600 hover:bg-blue-500 text-white",
-    closeBtn: isDark ? "hover:bg-white/10 text-white/70" : "hover:bg-gray-100 text-slate-600",
-    daySelected: "bg-blue-600 text-white shadow-lg shadow-blue-500/30",
-    dayUnselected: isDark ? "bg-white/5 text-white/70 hover:bg-white/10 border border-white/10" : "bg-gray-100 text-slate-700 hover:bg-gray-200 border border-gray-200"
+    overlay: "bg-black/60 backdrop-blur-md",
+    modalBg: "bg-bg-secondary border border-border-muted/50 shadow-2xl",
+    text: "text-text-primary",
+    label: "text-text-secondary",
+    inputBg: "bg-bg-primary border border-border-muted/50",
+    inputText: "text-text-primary",
+    optionBg: "bg-bg-secondary text-text-primary",
+    toggleOn: "bg-emerald-500",
+    toggleOff: "bg-surface-variant border border-border-muted/50",
+    toggleKnob: "bg-bg-secondary shadow-md",
+    closeBtn: "hover:bg-surface-variant text-text-secondary hover:text-text-primary",
+    dayUnselected: "bg-bg-primary text-text-secondary hover:bg-surface-variant border border-border-muted/50"
   };
 
   return (
@@ -98,9 +108,14 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
           <motion.div
             initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
             className={`${theme.modalBg} border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl backdrop-blur-xl m-4`}
+            style={{
+              '--theme-primary': config.theme.primary,
+              '--theme-primary-rgb': primaryRgb,
+              '--theme-secondary': config.theme.secondary
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-inherit p-6 border-b border-white/10 flex justify-between items-center z-10">
+            <div className="sticky top-0 bg-inherit p-6 border-b border-border-muted/50 flex justify-between items-center z-10">
               <h2 className={`text-xl font-semibold ${theme.text}`}>Edit Staff Profile</h2>
               <button onClick={onClose} className={`p-1 rounded-lg transition ${theme.closeBtn}`}>
                 <X className="w-5 h-5" />
@@ -119,7 +134,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                       type="text"
                       value={form.name}
                       onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                     />
                     {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name[0]}</p>}
                   </div>
@@ -129,7 +144,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                     />
                     {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email[0]}</p>}
                   </div>
@@ -145,7 +160,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                         if (val.length <= 10) setForm(p => ({ ...p, phone: val }));
                       }}
                       maxLength="10"
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                       placeholder="9876543210"
                     />
                     {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone[0]}</p>}
@@ -155,7 +170,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                     <select
                       value={form.role}
                       onChange={(e) => setForm(p => ({ ...p, role: e.target.value }))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 [&>option]:${theme.optionBg}`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all [&>option]:${theme.optionBg}`}
                     >
                       {["admin", "doctor", "receptionist", "nurse", "lab_tech", "patient"].map(r => (
                         <option key={r} value={r} className={theme.optionBg}>{r.replace("_", " ")}</option>
@@ -177,7 +192,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                       type="text"
                       value={form.specialization}
                       onChange={(e) => setForm(p => ({ ...p, specialization: e.target.value }))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                       placeholder="e.g., Cardiology"
                     />
                   </div>
@@ -188,7 +203,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                     <select
                       value={form.shift}
                       onChange={(e) => setForm(p => ({ ...p, shift: e.target.value }))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 [&>option]:${theme.optionBg}`}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all [&>option]:${theme.optionBg}`}
                     >
                       {SHIFTS.map(shift => (
                         <option key={shift} value={shift} className={theme.optionBg}>{shift}</option>
@@ -213,8 +228,12 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleToggleDay(day)}
                         className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                          isSelected ? theme.daySelected : theme.dayUnselected
+                          isSelected ? "text-white shadow-lg" : theme.dayUnselected
                         }`}
+                        style={isSelected ? {
+                          backgroundColor: config.theme.primary,
+                          boxShadow: `0 10px 15px -3px rgba(${primaryRgb}, 0.3), 0 4px 6px -4px rgba(${primaryRgb}, 0.3)`
+                        } : {}}
                       >
                         {day}
                       </motion.button>
@@ -240,25 +259,35 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                 <button
                   type="button"
                   onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))}
-                  className={`w-12 h-6 rounded-full transition relative ${form.isActive ? theme.toggleOn : theme.toggleOff}`}
+                  className={`w-12 h-6 rounded-full transition relative flex items-center ${form.isActive ? theme.toggleOn : theme.toggleOff}`}
                 >
-                  <div className={`w-4 h-4 ${theme.toggleKnob} rounded-full absolute top-1 transition ${form.isActive ? "left-7" : "left-1"}`} />
+                  <div className={`w-4 h-4 ${theme.toggleKnob} rounded-full absolute transition-all duration-200 ${form.isActive ? "left-[26px]" : "left-1"}`} />
                 </button>
               </div>
 
               {/* 🎯 Submit */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border-muted/50">
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`px-5 py-2.5 rounded-xl border border-white/10 ${theme.label} hover:bg-white/5 transition`}
+                  className={`px-5 py-2.5 rounded-xl border border-border-muted/50 ${theme.label} hover:bg-surface-variant transition`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`flex items-center gap-2 px-6 py-2.5 ${theme.buttonPrimary} rounded-xl font-medium transition active:scale-95 disabled:opacity-50`}
+                  className="flex items-center gap-2 px-6 py-2.5 text-white rounded-xl font-medium transition active:scale-95 disabled:opacity-50"
+                  style={{
+                    backgroundColor: config.theme.primary,
+                    boxShadow: `0 4px 14px rgba(${primaryRgb}, 0.4)`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = config.theme.secondary || config.theme.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = config.theme.primary;
+                  }}
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {loading ? "Saving..." : "Save Changes"}
