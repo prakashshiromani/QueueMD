@@ -38,8 +38,11 @@ export default function App() {
     const savedColor = localStorage.getItem('accentColor') || '#2563EB';
     root.style.setProperty('--primary-container', savedColor);
 
-    // 3. Font Size
+    // 3. Font Size — default to medium, always persist so CSS spacing rules apply
     const savedFontSize = localStorage.getItem('fontSize') || 'medium';
+    if (!localStorage.getItem('fontSize')) {
+      localStorage.setItem('fontSize', 'medium');
+    }
     root.setAttribute('data-font-size', savedFontSize);
 
     // 4. Compact Mode

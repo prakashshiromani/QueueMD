@@ -276,3 +276,44 @@ exports.resetPassword = async (req, res, next) => {
     next(err);
   }
 };
+
+// ✅ CHANGE PASSWORD (For authenticated users)
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Current password and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters" });
+    }
+
+    // Get user from database with password included
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Incorrect current password" });
+    }
+
+    // Set new password (this will trigger pre-save hashing)
+    user.password = newPassword;
+    await user.save();
+
+    logger.info(`[SECURITY] Password changed successfully by user: ${user.email}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

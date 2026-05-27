@@ -73,6 +73,7 @@ export const loginApi = (credentials) => api.post('/auth/login', credentials);
 export const registerApi = (data) => api.post('/auth/register', data);
 export const forgotPasswordApi = (email) => api.post('/auth/forgot-password', { email });
 export const resetPasswordApi = (email, code, newPassword) => api.post('/auth/reset-password', { email, code, newPassword });
+export const changePasswordApi = (currentPassword, newPassword) => api.put('/auth/change-password', { currentPassword, newPassword });
 
 export const getFacilitiesApi = (type) => api.get(type ? `/facility?type=${type}` : '/facility');
 export const createFacilityApi = (data) => api.post('/facility/create', data);

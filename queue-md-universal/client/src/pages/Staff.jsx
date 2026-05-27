@@ -133,7 +133,7 @@ export default function StaffPage() {
 
   return (
     <Layout>
-      <div className="w-full space-y-6 max-w-7xl mx-auto pb-32">
+      <div className="w-full space-y-6 max-w-5xl mx-auto pb-32">
         {/* 🎯 Header + Actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">

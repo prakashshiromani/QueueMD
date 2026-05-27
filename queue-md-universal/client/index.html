@@ -1,11 +1,33 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QueueMD - Universal Healthcare Queue SaaS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <!-- Apply theme + font-size BEFORE React loads to prevent layout flash -->
+    <script>
+      (function() {
+        var root = document.documentElement;
+        // Theme
+        var theme = localStorage.getItem('theme') || 'dark';
+        if (theme === 'dark') root.classList.add('dark');
+        // Font size — default to 'medium' if never set
+        var fontSize = localStorage.getItem('fontSize');
+        if (!fontSize) {
+          fontSize = 'medium';
+          localStorage.setItem('fontSize', 'medium');
+        }
+        root.setAttribute('data-font-size', fontSize);
+        // Accent color
+        var accent = localStorage.getItem('accentColor') || '#2563EB';
+        root.style.setProperty('--primary-container', accent);
+        // Compact mode
+        var compact = localStorage.getItem('compactMode') === 'true';
+        root.setAttribute('data-compact', String(compact));
+      })();
+    </script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   </head>
   <body class="bg-bg-primary text-text-primary font-body-base antialiased selection:bg-primary-container selection:text-text-primary min-h-screen flex">

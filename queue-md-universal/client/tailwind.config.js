@@ -114,49 +114,49 @@ export default {
                         },
                         "fontSize": {
                                 "label-bold": [
-                                        "14px",
+                                        "0.875rem",
                                         {
                                                 "lineHeight": "1",
                                                 "fontWeight": "600"
                                         }
                                 ],
                                 "body-base": [
-                                        "16px",
+                                        "1rem",
                                         {
                                                 "lineHeight": "1.5",
                                                 "fontWeight": "400"
                                         }
                                 ],
                                 "display-xl": [
-                                        "30px",
+                                        "1.875rem",
                                         {
                                                 "lineHeight": "1.2",
                                                 "fontWeight": "700"
                                         }
                                 ],
                                 "caption-xs": [
-                                        "12px",
+                                        "0.75rem",
                                         {
                                                 "lineHeight": "1",
                                                 "fontWeight": "400"
                                         }
                                 ],
                                 "heading-md": [
-                                        "20px",
+                                        "1.25rem",
                                         {
                                                 "lineHeight": "1.3",
                                                 "fontWeight": "600"
                                         }
                                 ],
                                 "display-lg": [
-                                        "24px",
+                                        "1.5rem",
                                         {
                                                 "lineHeight": "1.25",
                                                 "fontWeight": "600"
                                         }
                                 ],
                                 "body-sm": [
-                                        "14px",
+                                        "0.875rem",
                                         {
                                                 "lineHeight": "1.5",
                                                 "fontWeight": "400"

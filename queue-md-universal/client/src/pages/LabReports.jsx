@@ -213,7 +213,7 @@ export default function LabReports() {
 
   return (
     <Layout>
-      <div className="space-y-6 p-2 pb-[100px] max-w-7xl mx-auto w-full">
+      <div className="space-y-6 p-2 pb-[100px] max-w-5xl mx-auto w-full">
 
         {/* 1. Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

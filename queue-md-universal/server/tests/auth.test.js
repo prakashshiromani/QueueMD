@@ -173,6 +173,84 @@ describe('Password Reset Flows', () => {
   });
 });
 
+describe('PUT /api/auth/change-password', () => {
+  const changeEmail = 'change-test@queuemd.com';
+  const oldPassword = 'oldSecurePass123';
+  const newPassword = 'newSecurePass123';
+  let token;
+  let User;
+
+  beforeAll(async () => {
+    User = require('../models/User');
+    await User.deleteMany({ email: changeEmail });
+
+    const Facility = require('../models/Facility');
+    let facility = await Facility.findOne();
+    if (!facility) {
+      facility = await Facility.create({ name: 'Test Facility', facilityType: 'clinic' });
+    }
+
+    const user = await User.create({
+      name: 'Change Tester',
+      email: changeEmail,
+      password: oldPassword,
+      facilityId: facility._id,
+      facilityType: facility.facilityType,
+      role: 'receptionist'
+    });
+
+    // Login to get token
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: changeEmail, password: oldPassword });
+    token = loginRes.body.token || loginRes.body.accessToken;
+  });
+
+  afterAll(async () => {
+    await User.deleteMany({ email: changeEmail });
+  });
+
+  it('should return 401 when no token is provided', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .send({ currentPassword: oldPassword, newPassword });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should return 400 when fields are missing', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: oldPassword });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('should return 400 when current password is wrong', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'wrongCurrentPassword', newPassword });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/incorrect current password/i);
+  });
+
+  it('should successfully change password', async () => {
+    const res = await request(app)
+      .put('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: oldPassword, newPassword });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // Verify login with new password works
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: changeEmail, password: newPassword });
+    expect(loginRes.statusCode).toBe(200);
+    expect(loginRes.body.success).toBe(true);
+  });
+});
+
 describe('GET /api/health', () => {
   it('should return 200 and status ok', async () => {
     const res = await request(app).get('/api/health');
@@ -180,3 +258,4 @@ describe('GET /api/health', () => {
     expect(res.body.status).toBe('ok');
   });
 });
+

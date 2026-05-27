@@ -431,7 +431,7 @@ export default function Billing() {
 
   return (
     <Layout>
-      <AnimatePage className="space-y-6 max-w-7xl mx-auto w-full pb-32">
+      <AnimatePage className="space-y-6 max-w-5xl mx-auto w-full pb-32">
         <div className="space-y-8">
           
           {/* Header */}

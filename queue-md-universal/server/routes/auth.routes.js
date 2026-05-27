@@ -1,7 +1,8 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const { register, login, refreshToken, forgotPassword, resetPassword } = require("../controllers/auth.controller");
+const { register, login, refreshToken, forgotPassword, resetPassword, changePassword } = require("../controllers/auth.controller");
+const { auth } = require("../middleware/auth.middleware");
 
 // 🔒 Rate Limiter Setup
 const authLimiter = rateLimit({
@@ -152,4 +153,30 @@ router.post("/forgot-password", forgotPassword);
  */
 router.post("/reset-password", resetPassword);
 
+/**
+ * @swagger
+ * /auth/change-password:
+ *   put:
+ *     summary: Change password for an authenticated user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword: { type: string }
+ *               newPassword: { type: string, minLength: 6 }
+ *     responses:
+ *       200: { description: Password updated successfully }
+ *       400: { description: Invalid input or incorrect current password }
+ *       401: { description: Unauthorized }
+ */
+router.put("/change-password", auth, changePassword);
+
 module.exports = router;
+

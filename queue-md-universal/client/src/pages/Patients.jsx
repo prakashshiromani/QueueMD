@@ -321,7 +321,7 @@ export default function Patients() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto space-y-8">
+      <div className="p-6 max-w-5xl mx-auto space-y-8">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>

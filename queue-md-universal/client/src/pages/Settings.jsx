@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
 import { useBillingStore } from '../store/billingStore';
 import { FACILITY_TYPES, getFacilityConfig, saveCustomFacilityTypes } from '../utils/facilityTypeConfig';
-import api from '../services/api';
+import api, { changePasswordApi } from '../services/api';
 import toast from 'react-hot-toast';
 import ImageUploader from '../components/ui/ImageUploader';
 
@@ -26,10 +26,16 @@ const MyAccountTab = ({ user }) => {
     confirmNewPassword: ''
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const validatePassword = () => {
     const errs = {};
-    if (formData.newPassword && formData.newPassword.length < 6) {
+    if (!formData.currentPassword) {
+      errs.currentPassword = 'Current password is required';
+    }
+    if (!formData.newPassword) {
+      errs.newPassword = 'New password is required';
+    } else if (formData.newPassword.length < 6) {
       errs.newPassword = 'Min 6 characters required';
     }
     if (formData.newPassword !== formData.confirmNewPassword) {
@@ -39,10 +45,30 @@ const MyAccountTab = ({ user }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const handlePasswordUpdate = (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     if (!validatePassword()) return;
-    toast.error('Password update feature coming soon! 🔐');
+
+    setLoading(true);
+    try {
+      const response = await changePasswordApi(formData.currentPassword, formData.newPassword);
+      if (response.data?.success) {
+        toast.success('Password updated successfully! 🔐');
+        setFormData({
+          ...formData,
+          currentPassword: '',
+          newPassword: '',
+          confirmNewPassword: ''
+        });
+      } else {
+        toast.error(response.data?.message || 'Failed to update password');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Error updating password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,11 +127,10 @@ const MyAccountTab = ({ user }) => {
 
         <button
           type="submit"
-          disabled
-          className="px-5 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary/50 text-xs font-bold uppercase tracking-widest cursor-not-allowed"
-          title="Coming Soon"
+          disabled={loading}
+          className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Update Password 🔐
+          {loading ? 'Updating...' : 'Update Password 🔐'}
         </button>
       </form>
     </div>
@@ -273,7 +298,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
           <h4 className="text-sm font-bold text-text-primary">Static Lobby QR Code</h4>
           <p className="text-xs text-text-secondary mt-1">Generate a static QR code for your lobby. Patients can scan this to check their live queue status.</p>
         </div>
-        
+
         <div className="flex items-center gap-6">
           <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-border-muted/50">
             {formData.lobbyQrCode ? (
@@ -282,7 +307,7 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
               <span className="material-symbols-outlined text-4xl text-gray-400">qr_code_2</span>
             )}
           </div>
-          
+
           <div className="space-y-3">
             {!formData.lobbyQrCode ? (
               <button
@@ -698,10 +723,9 @@ const QueueSettingsTab = ({ facility, onSave, config }) => {
   );
 };
 
-const AppearanceTab = ({ config }) => {
+const AppearanceTab = ({ config, fontSize, setFontSize }) => {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || '#2563EB');
-  const [fontSize, setFontSize] = useState(() => localStorage.getItem('fontSize') || 'medium');
   const [compactMode, setCompactMode] = useState(() => localStorage.getItem('compactMode') === 'true');
 
   const colors = [
@@ -736,13 +760,13 @@ const AppearanceTab = ({ config }) => {
   }, [compactMode]);
 
   return (
-    <div className="space-y-6">
+    <div className={fontSize === 'small' ? 'space-y-3' : fontSize === 'large' ? 'space-y-6' : 'space-y-4'}>
       {/* Theme Mode */}
-      <div className="space-y-3">
+      <div className={fontSize === 'small' ? 'space-y-2' : fontSize === 'large' ? 'space-y-4' : 'space-y-3'}>
         <label className="text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary">
           Theme Mode
         </label>
-        <div className="flex gap-3">
+        <div className={`flex ${fontSize === 'small' ? 'gap-2' : fontSize === 'large' ? 'gap-4' : 'gap-3'}`}>
           {['light', 'dark'].map((mode) => (
             <button
               key={mode}
@@ -750,11 +774,10 @@ const AppearanceTab = ({ config }) => {
                 setTheme(mode);
                 toast.success(`${mode.charAt(0).toUpperCase() + mode.slice(1)} mode enabled`);
               }}
-              className={`flex-1 py-3 px-4 rounded-xl border-2 transition flex items-center justify-center gap-2 ${
-                theme === mode
+              className={`flex-1 ${fontSize === 'small' ? 'py-2 px-3' : fontSize === 'large' ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl border-2 transition flex items-center justify-center gap-2 ${theme === mode
                   ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
                   : 'border-border-muted text-text-secondary hover:border-border-muted/70'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-[18px]">
                 {mode === 'light' ? 'light_mode' : 'dark_mode'}
@@ -768,11 +791,11 @@ const AppearanceTab = ({ config }) => {
 
 
       {/* Font Accessibility Size */}
-      <div className="space-y-3">
+      <div className={fontSize === 'small' ? 'space-y-2' : fontSize === 'large' ? 'space-y-4' : 'space-y-3'}>
         <label className="text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary">
           Font Accessibility Size
         </label>
-        <div className="flex gap-3">
+        <div className={`flex ${fontSize === 'small' ? 'gap-2' : fontSize === 'large' ? 'gap-4' : 'gap-3'}`}>
           {[
             { value: 'small', label: 'Small', icon: 'text_fields', px: '12px' },
             { value: 'medium', label: 'Medium', icon: 'format_size', px: '16px' },
@@ -781,11 +804,10 @@ const AppearanceTab = ({ config }) => {
             <button
               key={size.value}
               onClick={() => setFontSize(size.value)}
-              className={`flex-1 py-3 px-4 rounded-xl border-2 transition flex flex-col items-center justify-center gap-1 ${
-                fontSize === size.value
+              className={`flex-1 ${fontSize === 'small' ? 'py-2 px-3' : fontSize === 'large' ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl border-2 transition flex flex-col items-center justify-center gap-1 ${fontSize === size.value
                   ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
                   : 'border-border-muted text-text-secondary hover:border-border-muted/70'
-              }`}
+                }`}
             >
               <span
                 className="material-symbols-outlined"
@@ -807,10 +829,10 @@ const AppearanceTab = ({ config }) => {
       </div>
 
       {/* Compact Dashboard View */}
-      <div className="flex items-center justify-between p-4 bg-bg-secondary rounded-xl border border-border-muted/50 dark:border-white/5">
+      <div className={`flex items-center justify-between ${fontSize === 'small' ? 'p-3' : fontSize === 'large' ? 'p-6' : 'p-4'} bg-bg-secondary rounded-xl border border-border-muted/50 dark:border-white/5`}>
         <div>
-          <p className="font-medium text-text-primary mb-1">Compact Dashboard View</p>
-          <p className="text-sm text-text-secondary">Reduce queue card margins for high-density lists</p>
+          <p className="font-medium text-text-primary mb-0.5 text-sm">Compact Dashboard View</p>
+          <p className="text-xs text-text-secondary">Reduce queue card margins for high-density lists</p>
         </div>
         <button
           role="switch"
@@ -833,9 +855,9 @@ const AppearanceTab = ({ config }) => {
       </div>
 
       {/* Info Banner */}
-      <div className="p-4 bg-primary-container/10 rounded-xl border border-primary-container/30">
-        <p className="text-sm text-text-secondary flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px]" style={{ color: 'var(--primary-container)' }}>info</span>
+      <div className={`${fontSize === 'small' ? 'p-3' : fontSize === 'large' ? 'p-6' : 'p-4'} bg-primary-container/10 rounded-xl border border-primary-container/30`}>
+        <p className="text-xs text-text-secondary flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--primary-container)' }}>info</span>
           Changes apply immediately across the entire application
         </p>
       </div>
@@ -895,7 +917,7 @@ const NotificationsTab = ({ facilityId }) => {
       {/* Pro Features (WhatsApp / SMS) */}
       <div className={`p-4 rounded-2xl border ${isPro ? 'bg-blue-50/50 border-blue-200' : 'bg-amber-500/5 border-amber-500/20'}`}>
         <p className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${isPro ? 'text-blue-600' : 'text-amber-500'}`}>
-          <span className="material-symbols-outlined text-[16px]">{isPro ? 'verified' : 'lock'}</span> 
+          <span className="material-symbols-outlined text-[16px]">{isPro ? 'verified' : 'lock'}</span>
           {isPro ? 'Pro Integrations Active' : 'Integrations Premium Channel'}
         </p>
         <div className="space-y-2.5 mt-3">
@@ -1085,7 +1107,7 @@ const FacilityTypesTab = ({ facility }) => {
 
   const [editingKey, setEditingKey] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     label: '',
     icon: '🏥',
@@ -1128,7 +1150,7 @@ const FacilityTypesTab = ({ facility }) => {
     };
 
     const newCustomTypes = { ...customTypes, [key]: updatedConfig };
-    
+
     // If the department was previously marked as deleted, restore it!
     const newDeletedTypes = deletedTypes.filter(d => d !== key);
 
@@ -1148,7 +1170,7 @@ const FacilityTypesTab = ({ facility }) => {
       toast.success(editingKey ? 'Department updated successfully!' : 'New Department created!');
       setEditingKey(null);
       setShowAddForm(false);
-      
+
       // Reload page to propagate changes dynamically to all pages!
       setTimeout(() => {
         window.location.reload();
@@ -1525,17 +1547,16 @@ const SubscriptionTab = () => {
             {["monthly", "yearly"].map((duration) => {
               const plan = plans[duration];
               const isSelected = selectedDuration === duration;
-              
+
               return (
                 <button
                   key={duration}
                   type="button"
                   onClick={() => setSelectedDuration(duration)}
-                  className={`relative p-6 rounded-2xl border-2 transition-all text-left overflow-hidden group ${
-                    isSelected 
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20" 
+                  className={`relative p-6 rounded-2xl border-2 transition-all text-left overflow-hidden group ${isSelected
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20"
                       : "border-border-muted/50 dark:border-white/10 bg-bg-primary hover:border-blue-500/40 dark:hover:border-blue-500/40 opacity-80 hover:opacity-100"
-                  }`}
+                    }`}
                 >
                   {duration === "yearly" && (
                     <div className="absolute top-0 right-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm">
@@ -1549,7 +1570,7 @@ const SubscriptionTab = () => {
                       <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>
                     </div>
                   )}
-                  
+
                   <div className={`text-3xl font-black transition-colors ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-text-primary group-hover:text-blue-500 dark:group-hover:text-blue-400"}`}>
                     ₹{plan.amount.toLocaleString("en-IN")}
                   </div>
@@ -1597,12 +1618,12 @@ const SubscriptionTab = () => {
           onClick={() => setShowHistory(!showHistory)}
           className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 font-bold flex items-center gap-1 transition-colors"
         >
-          {showHistory ? "Hide" : "View"} Billing History 
+          {showHistory ? "Hide" : "View"} Billing History
           <span className="material-symbols-outlined text-[18px]">
             {showHistory ? "expand_less" : "expand_more"}
           </span>
         </button>
-        
+
         {showHistory && (
           <div className="mt-4 p-5 rounded-2xl bg-bg-secondary/40 border border-border-muted/40 dark:border-white/5 text-sm text-text-secondary italic flex flex-col items-center justify-center gap-3 py-8">
             <span className="material-symbols-outlined text-[32px] opacity-30">receipt_long</span>
@@ -1642,6 +1663,15 @@ export default function Settings() {
   const [pendingChanges, setPendingChanges] = useState({});
   const [facilityData, setFacilityData] = useState(null);
   const [loadingFacility, setLoadingFacility] = useState(true);
+
+  // LIFTED FONT SIZE STATE
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('fontSize') || 'medium');
+
+  // DYNAMIC CLASSES BASED ON FONT SIZE
+  const layoutPadding = fontSize === 'small' ? 'p-3 md:p-4' : fontSize === 'large' ? 'p-6 md:p-8' : 'p-4 md:p-5';
+  const layoutGap = fontSize === 'small' ? 'gap-3' : fontSize === 'large' ? 'gap-6' : 'gap-4';
+  const sidebarWidth = fontSize === 'small' ? 'lg:w-48' : fontSize === 'large' ? 'lg:w-64' : 'lg:w-52';
+  const headerMargin = fontSize === 'small' ? 'mb-3' : fontSize === 'large' ? 'mb-6' : 'mb-4';
 
   const fetchFacilityData = useCallback(async () => {
     try {
@@ -1741,7 +1771,7 @@ export default function Settings() {
       case 'branches': return <BranchesTab facilityId={facilityId} />;
       case 'queue': return <QueueSettingsTab facility={facility} onSave={handleFieldChange} config={config} />;
       case 'facilityTypes': return <FacilityTypesTab facility={facility} />;
-      case 'appearance': return <AppearanceTab config={config} />;
+      case 'appearance': return <AppearanceTab config={config} fontSize={fontSize} setFontSize={setFontSize} />;
       case 'notifications': return <NotificationsTab facilityId={facilityId} />;
       case 'subscription': return <SubscriptionTab />;
       case 'danger': return <DangerZoneTab user={user} facility={facility} />;
@@ -1751,37 +1781,36 @@ export default function Settings() {
 
   return (
     <Layout>
-      <div className="w-full max-w-7xl mx-auto pb-32 px-4 md:px-6">
+      <div className={`w-full max-w-5xl mx-auto pb-32 px-4 md:px-5`}>
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
+        <div className={`${headerMargin} flex items-center gap-3`}>
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300"
+            className="w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-300"
             style={{
               backgroundColor: `rgba(${primaryRgb}, 0.1)`,
               color: config.theme.primary,
               borderColor: `rgba(${primaryRgb}, 0.25)`
             }}
           >
-            <span className="material-symbols-outlined text-2xl">settings</span>
+            <span className="material-symbols-outlined text-xl">settings</span>
           </div>
           <div>
-            <h1 className="text-[28px] md:text-[32px] font-black text-text-primary tracking-tight leading-none">System Settings</h1>
-            <p className="text-[14px] text-text-secondary mt-2">Manage your facility configurations and preferences.</p>
+            <h1 className="text-[22px] md:text-[26px] font-black text-text-primary tracking-tight leading-none">System Settings</h1>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className={`flex flex-col lg:flex-row ${layoutGap}`}>
           {/* Tabs Sidebar */}
-          <div className="lg:w-64 flex-shrink-0">
+          <div className={`${sidebarWidth} flex-shrink-0`}>
             {/* Desktop: Vertical */}
-            <div className="hidden lg:flex flex-col gap-1.5 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-3 shadow-sm">
+            <div className="hidden lg:flex flex-col gap-1 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-2.5 shadow-sm">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 text-sm font-bold ${isActive
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-200 text-xs font-bold ${isActive
                       ? 'text-white shadow-md'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-primary'
                       }`}
@@ -1790,7 +1819,7 @@ export default function Settings() {
                       boxShadow: `0 4px 12px rgba(${primaryRgb}, 0.25)`
                     } : {}}
                   >
-                    <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
+                    <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
                     <span>{tab.label}</span>
                   </button>
                 );
@@ -1820,7 +1849,7 @@ export default function Settings() {
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 p-6 md:p-8 shadow-sm transition-all duration-300 min-h-[400px]">
+          <div className={`flex-1 bg-bg-secondary rounded-2xl border border-border-muted/50 dark:border-white/5 ${layoutPadding} shadow-sm transition-all duration-300 min-h-[400px]`}>
             {renderTabContent()}
           </div>
         </div>
@@ -1828,7 +1857,7 @@ export default function Settings() {
         {/* Save Bar */}
         {Object.keys(pendingChanges).length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 border-t border-border-muted/30 dark:border-white/10 bg-bg-primary/95 backdrop-blur-sm p-4 z-40 shadow-lg">
-            <div className="max-w-7xl mx-auto flex items-center justify-between px-4">
+            <div className="max-w-5xl mx-auto flex items-center justify-between px-4">
               <p className="text-sm text-text-secondary font-medium">You have unsaved changes</p>
               <button
                 onClick={handleSave}

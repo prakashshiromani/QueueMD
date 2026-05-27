@@ -6,7 +6,7 @@ import { useFacilityStore } from '../store/facilityStore';
 import { getFacilityConfig } from '../utils/facilityTypeConfig';
 import { useToast } from '../utils/useToast';
 
-const Layout = ({ children, scaled = true }) => {
+const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
   const { user, logout } = useAuthStore();
   const { facilityType, facilityLogo } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
@@ -63,19 +63,19 @@ const Layout = ({ children, scaled = true }) => {
       }}
     >
       {/* SideNavBar (Desktop Only) */}
-      <aside className="w-60 flex-shrink-0 border-r border-border-muted bg-bg-primary hidden md:flex flex-col z-40 overflow-y-auto">
-        <div className="px-6 py-6 mb-2">
+      <aside className="w-60 flex-shrink-0 border-r border-border-muted bg-bg-primary hidden md:flex flex-col z-40 overflow-y-auto overflow-x-hidden scrollbar-hide">
+        <div className="px-6 py-4 mb-3 border-b border-border-muted/30">
           <h2 className="text-lg font-bold text-text-primary tracking-tight">QueueMD</h2>
-          <p className="text-text-secondary text-[12px]">Healthcare Management</p>
+          <p className="text-text-secondary text-[11px]">Healthcare Management</p>
         </div>
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-0.5">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-300 border-r-4 ${isActive
+                className={`flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-300 border-r-4 ${isActive
                     ? 'text-[var(--theme-primary)] bg-[rgba(var(--theme-primary-rgb),0.05)] border-[var(--theme-primary)]'
                     : 'text-text-secondary hover:bg-surface-variant/30 hover:text-text-primary hover:translate-x-1 border-transparent'
                   }`}
@@ -148,8 +148,8 @@ const Layout = ({ children, scaled = true }) => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto relative">
-          <main className="p-6 pb-[100px] w-full max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
+          <main className={`p-6 pb-[100px] w-full mx-auto ${maxWidth}`}>
             {children}
           </main>
 

@@ -277,7 +277,7 @@ export default function Dashboard() {
   return (
     <Layout>
       {showWizard && <OnboardingWizard onComplete={() => setShowWizard(false)} />}
-      <AnimatePage className="p-6 space-y-6 max-w-7xl mx-auto pb-32">
+      <AnimatePage className="p-6 space-y-6 max-w-5xl mx-auto pb-32">
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
