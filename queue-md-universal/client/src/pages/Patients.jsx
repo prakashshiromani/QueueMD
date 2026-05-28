@@ -220,9 +220,9 @@ export default function Patients() {
   const handleEditOpen = (patient) => {
     setOpenMenuId(null);
     setEditPatient(patient);
-    setEditForm({ 
-      name: patient.name, 
-      phone: patient.phone || '', 
+    setEditForm({
+      name: patient.name,
+      phone: patient.phone || '',
       email: patient.email || '',
       facilityType: patient.facilityType || '',
       doctorName: patient.doctorName || '',
@@ -380,8 +380,8 @@ export default function Patients() {
             <button
               onClick={() => setSelectedFacility("all")}
               className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all border ${selectedFacility === "all"
-                  ? "text-white"
-                  : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
+                ? "text-white"
+                : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
                 }`}
               style={selectedFacility === "all" ? {
                 backgroundColor: 'var(--theme-primary)',
@@ -396,8 +396,8 @@ export default function Patients() {
                 key={type}
                 onClick={() => setSelectedFacility(type)}
                 className={`px-5 py-2.5 rounded-xl font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-2 border ${selectedFacility === type
-                    ? "text-white"
-                    : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
+                  ? "text-white"
+                  : "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary hover:border-border-muted"
                   }`}
                 style={selectedFacility === type ? {
                   backgroundColor: config.theme.primary,
@@ -552,7 +552,7 @@ export default function Patients() {
                                   onClick={() => handleEditOpen(patient)}
                                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-text-primary hover:bg-surface-variant transition-all group"
                                 >
-                                  <span 
+                                  <span
                                     className="material-symbols-outlined text-[18px] group-hover:opacity-80 transition-opacity"
                                     style={{ color: (FACILITY_TYPES[patient.facilityType] || FACILITY_TYPES.clinic).theme.primary }}
                                   >
@@ -608,8 +608,8 @@ export default function Patients() {
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
                       className={`w-9 h-9 rounded-xl font-black text-[11px] transition-all flex items-center justify-center border shadow-sm ${currentPage === i + 1
-                          ? "text-white scale-110"
-                          : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-[var(--theme-primary)]/50"
+                        ? "text-white scale-110"
+                        : "bg-bg-primary border-border-muted/50 text-text-secondary hover:border-[var(--theme-primary)]/50"
                         }`}
                       style={currentPage === i + 1 ? {
                         backgroundColor: 'var(--theme-primary)',
@@ -649,11 +649,11 @@ export default function Patients() {
         const patientFacilityType = editForm.facilityType || facilityType || 'clinic';
         const modalConfig = FACILITY_TYPES[patientFacilityType] || FACILITY_TYPES.clinic;
         const primaryRgb = hexToRgb(modalConfig.theme.primary);
-        
+
         const editFilteredDoctors = editForm.facilityType
           ? doctors.filter(d => d.facilityType === editForm.facilityType)
           : doctors;
-        
+
         const theme = {
           overlay: "bg-black/70 backdrop-blur-md",
           modalBg: "bg-bg-secondary border border-border-muted/50 dark:border-white/5 shadow-2xl",
@@ -685,14 +685,14 @@ export default function Patients() {
               </div>
 
               {/* Form Body */}
-              <form 
+              <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleEditSave();
-                }} 
+                }}
                 className="p-6 space-y-6 flex-1 overflow-y-auto"
               >
-                
+
                 {/* 👤 Personal Details */}
                 <div>
                   <h3 className={`text-sm font-medium ${theme.label} mb-3 uppercase tracking-wider`}>Personal Details</h3>
@@ -755,7 +755,7 @@ export default function Patients() {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className={`block text-sm mb-1 ${theme.label}`}>Assign Doctor</label>
                       <div className="relative">
@@ -897,10 +897,10 @@ export default function Patients() {
       )}
 
       {/* ✅ Patient History Drawer */}
-      <PatientHistoryDrawer 
-        isOpen={!!viewHistoryPatient} 
-        onClose={() => setViewHistoryPatient(null)} 
-        patient={viewHistoryPatient} 
+      <PatientHistoryDrawer
+        isOpen={!!viewHistoryPatient}
+        onClose={() => setViewHistoryPatient(null)}
+        patient={viewHistoryPatient}
       />
     </Layout>
   );
