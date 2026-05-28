@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const { getStats, getCompletedConsultations, getHourlyTraffic, getDailyTrend, getFacilityTypeStats, getTopDoctors, getAIInsights, getPredictedWait } = require("../controllers/analytics.controller");
-const { auth } = require("../middleware/auth.middleware");
+const { auth, authorize } = require("../middleware/auth.middleware");
 
-// Protect all analytics routes
-router.use(auth);
+// 🔒 SECURITY: Restrict business intelligence dashboard to Doctor & Admin only (Item 9)
+router.use(auth, authorize("admin", "doctor"));
 
 router.get("/stats", getStats);
 router.get("/completed-consultations", getCompletedConsultations);

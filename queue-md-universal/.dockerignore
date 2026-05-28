@@ -1,0 +1,17 @@
+# 🔒 SECURITY: Prevent sensitive environment details & massive caches from leaking into docker context
+.git
+.gitignore
+.env
+.env.*
+node_modules
+npm-debug.log
+client/node_modules
+client/dist
+server/node_modules
+server/logs
+server/*.log
+README.md
+docs/
+docker-compose.yml
+Dockerfile
+nginx.conf

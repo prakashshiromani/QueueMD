@@ -1,9 +1,11 @@
 const ClinicalVisit = require('../models/ClinicalVisit');
 const cloudinary = require('../config/cloudinary');
 const { getCorrectedTimestamp } = require('../utils/timeSync');
+const logger = require('../utils/logger');
 
 exports.uploadPrescription = async (req, res) => {
     try {
+        const sharp = require('sharp');
         // req.patient comes from verifyUploadToken middleware
         const { phone, facilityId, visitId } = req.patient;
 
@@ -16,15 +18,36 @@ exports.uploadPrescription = async (req, res) => {
             return res.status(400).json({ success: false, message: "Only JPG, PNG, PDF allowed" });
         }
 
+        // 🔒 SECURITY: Verify magic bytes signatures (L-05) to prevent MIME spoofing (disguised malware/exes)
+        const uploadMiddleware = require('../middleware/multer');
+        const isValidFile = uploadMiddleware.validateMagicBytes(req.file.buffer, req.file.mimetype);
+        if (!isValidFile) {
+            logger.warn(`🚨 SECURITY: Patient upload rejected — magic bytes mismatch for ${req.file.mimetype}`);
+            return res.status(400).json({ success: false, message: "Invalid file content. File type mismatch detected." });
+        }
+
+        // 🔒 SECURITY: Strip EXIF metadata from uploaded images using Sharp (Item 4)
+        let processedBuffer = req.file.buffer;
+        if (req.file.mimetype.startsWith('image/')) {
+            try {
+                processedBuffer = await sharp(req.file.buffer)
+                    .rotate() // Strips EXIF tags while keeping orientation
+                    .toBuffer();
+            } catch (sharpError) {
+                console.error("[SHARP] Sanitization failed:", sharpError);
+                return res.status(400).json({ success: false, message: "Failed to sanitize uploaded file" });
+            }
+        }
+
         // Upload to Cloudinary
-        const b64 = Buffer.from(req.file.buffer).toString('base64');
+        const b64 = processedBuffer.toString('base64');
         const dataURI = `data:${req.file.mimetype};base64,${b64}`;
         const cloudinaryFolder = `QueueMD/patient-uploads/${facilityId}/${phone}`;
 
         const result = await cloudinary.uploader.upload(dataURI, {
             folder: cloudinaryFolder,
             resource_type: 'auto',
-            transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+            type: 'private', // 🔒 SECURITY: Store as private asset (Item 4)
             timestamp: getCorrectedTimestamp()
         });
 
@@ -50,7 +73,6 @@ exports.uploadPrescription = async (req, res) => {
         );
 
         if (!updatedVisit) {
-            // fallback, maybe update queue if no clinical visit
              return res.status(404).json({ success: false, message: "Visit record not found to attach file" });
         }
 
@@ -63,7 +85,8 @@ exports.uploadPrescription = async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: error.message || "Upload failed",
-            stack: error.stack 
+            // 🔒 SECURITY: Do not leak server stack trace to clients in production
+            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
         });
     }
 };
@@ -71,6 +94,7 @@ exports.uploadPrescription = async (req, res) => {
 exports.getUploadedDocuments = async (req, res) => {
     try {
         const { phone, facilityId, visitId } = req.patient;
+        const { getSignedUrl } = require('../utils/cloudinaryHelper');
         
         const visit = await ClinicalVisit.findOne({
             patientPhone: phone,
@@ -82,7 +106,14 @@ exports.getUploadedDocuments = async (req, res) => {
             return res.status(404).json({ success: false, message: "No visit found" });
         }
 
-        const patientDocs = visit.documents.filter(doc => doc.uploadedBy === 'patient');
+        const patientDocs = visit.documents
+            .filter(doc => doc.uploadedBy === 'patient')
+            .map(doc => {
+                const docObj = doc.toObject ? doc.toObject() : { ...doc };
+                // 🔒 SECURITY: Return signed URL for private asset (Item 4)
+                docObj.url = getSignedUrl(doc.url, doc.type);
+                return docObj;
+            });
 
         res.status(200).json({
             success: true,
@@ -98,6 +129,7 @@ exports.getPatientClinicalHistory = async (req, res) => {
     try {
         // req.patient comes from verifyUploadToken middleware
         const { phone, facilityId } = req.patient;
+        const { getSignedUrl } = require('../utils/cloudinaryHelper');
 
         // Fetch all clinical visits for this patient in this facility
         // Strict isolation: facilityId + patientPhone
@@ -123,7 +155,8 @@ exports.getPatientClinicalHistory = async (req, res) => {
                 type: doc.type,
                 uploadedBy: doc.uploadedBy,
                 uploadedAt: doc.uploadedAt,
-                url: doc.url,
+                // 🔒 SECURITY: Return signed URL for private asset (Item 4)
+                url: getSignedUrl(doc.url, doc.type),
             })),
         }));
 

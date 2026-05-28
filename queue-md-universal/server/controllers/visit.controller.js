@@ -1,6 +1,9 @@
 const ClinicalVisit = require('../models/ClinicalVisit');
 const Facility = require('../models/Facility');
 const User = require('../models/User');
+const { tenantQuery } = require('../utils/tenantIsolation');
+const { logAudit } = require('../utils/auditLogger');
+const logger = require('../utils/logger');
 
 // @desc    Get Patient History (EMR Lite)
 // @route   GET /api/visits/history/:patientPhone
@@ -9,17 +12,35 @@ exports.getPatientHistory = async (req, res) => {
   try {
     const { patientPhone } = req.params;
     
-    // Strict Data Partitioning (saas.md Rule)
-    const { facilityId, facilityType } = req.user; 
-
-    const visits = await ClinicalVisit.find({ 
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper (Item 2)
+    const query = tenantQuery(req, { 
       patientPhone, 
-      facilityId, 
-      facilityType 
-    })
+      facilityType: req.user.facilityType 
+    });
+
+    const visits = await ClinicalVisit.find(query)
     .sort({ createdAt: -1 }) // Latest visit first
     .populate('doctorId', 'name specialization')
     .lean();
+
+    // 🔒 SECURITY: Generate signed URLs for private medical documents (Item 4)
+    const { getSignedUrl } = require('../utils/cloudinaryHelper');
+    visits.forEach(visit => {
+      if (visit.documents && Array.isArray(visit.documents)) {
+        visit.documents.forEach(doc => {
+          doc.url = getSignedUrl(doc.url, doc.type);
+        });
+      }
+    });
+
+    // 🔒 SECURITY: EMR compliance access auditing (Item 3)
+    await logAudit(req, {
+      action: "EMR_VIEW_HISTORY",
+      facilityId: req.user.facilityId,
+      severity: "info",
+      status: "success",
+      details: { patientPhone, recordCount: visits.length }
+    });
 
     res.status(200).json({ 
       success: true, 
@@ -27,6 +48,7 @@ exports.getPatientHistory = async (req, res) => {
       data: visits 
     });
   } catch (error) {
+    logger.error(`[EMR] Error fetching history: ${error.message}`);
     res.status(500).json({ success: false, message: 'Server Error fetching history' });
   }
 };
@@ -36,10 +58,10 @@ exports.getPatientHistory = async (req, res) => {
 // @access  Private (Doctor/Staff)
 exports.getPrescriptionData = async (req, res) => {
   try {
-    const visit = await ClinicalVisit.findOne({
-      _id: req.params.id,
-      facilityId: req.user.facilityId // 🔒 Strict Isolation
-    })
+    // 🔒 SECURITY: Scope query with isolation wrapper (Item 2)
+    const query = tenantQuery(req, { _id: req.params.id });
+
+    const visit = await ClinicalVisit.findOne(query)
     .populate('doctorId', 'name specialization signatureUrl')
     .lean();
 
@@ -48,7 +70,26 @@ exports.getPrescriptionData = async (req, res) => {
     }
 
     // Fetch Facility Details (Logo, Address, Phone)
-    const facility = await Facility.findById(req.user.facilityId).select('name address phone logoUrl').lean();
+    // 🔒 SECURITY: Apply tenantQuery wrapper for Facility fetch
+    const facilityQuery = tenantQuery(req, { _id: req.user.facilityId });
+    const facility = await Facility.findOne(facilityQuery).select('name address phone logoUrl').lean();
+
+    // 🔒 SECURITY: Generate signed URLs for private medical documents (Item 4)
+    if (visit.documents && Array.isArray(visit.documents)) {
+      const { getSignedUrl } = require('../utils/cloudinaryHelper');
+      visit.documents.forEach(doc => {
+        doc.url = getSignedUrl(doc.url, doc.type);
+      });
+    }
+
+    // 🔒 SECURITY: EMR compliance access auditing (Item 3)
+    await logAudit(req, {
+      action: "EMR_VIEW_PRESCRIPTION",
+      facilityId: req.user.facilityId,
+      severity: "info",
+      status: "success",
+      details: { visitId: req.params.id }
+    });
 
     res.status(200).json({
       success: true,
@@ -59,6 +100,7 @@ exports.getPrescriptionData = async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error(`[EMR] Error fetching prescription: ${error.message}`);
     res.status(500).json({ success: false, message: 'Error fetching prescription data' });
   }
 };

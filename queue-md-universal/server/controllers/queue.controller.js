@@ -429,13 +429,9 @@ exports.nextPatient = async (req, res, next) => {
       ).sort({ tokenNumber: 1 }).limit(2);
 
       for (const patient of upcoming) {
+        // 🔒 SECURITY: Pass ONLY the queue entry ID to prevent raw patient PII in Redis payload (Item 8)
         await notificationQueue.add('notify_patient', {
-          facilityId,
-          facilityType,
-          patientName: patient.patientName,
-          tokenNumber: patient.tokenNumber,
-          phone: patient.phone,
-          customData: patient.customData || {}
+          queueEntryId: patient._id
         }, {
           priority: 1,
           attempts: 3,

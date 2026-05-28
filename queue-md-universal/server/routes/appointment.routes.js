@@ -1,7 +1,7 @@
 // server/routes/appointment.routes.js
 const express = require("express");
 const router = express.Router();
-const { auth } = require("../middleware/auth.middleware"); // Adjust path if needed
+const { auth, authorize } = require("../middleware/auth.middleware"); // Adjust path if needed
 const { 
   createAppointment, 
   getAppointments, 
@@ -22,7 +22,7 @@ router.get("/", getAppointments);
 router.get("/today", getTodaySchedule);
 router.put("/:id", updateAppointment);
 router.put("/:id/status", updateStatus);
-router.delete("/patients/:patientId", deletePatient);
+router.delete("/patients/:patientId", authorize("admin"), deletePatient);
 router.delete("/:id", deleteAppointment);
 
 module.exports = router;

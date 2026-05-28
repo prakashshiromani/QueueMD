@@ -1,5 +1,7 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
+const { connection: redis } = require("../config/redis");
 const Facility = require("../models/Facility");
 const Subscription = require("../models/Subscription");
 const logger = require("../utils/logger");
@@ -107,7 +109,14 @@ exports.verifyPayment = async (req, res, next) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     // 🧪 MOCK MODE VERIFY
+    // 🔒 SECURITY: mock_order_ prefix ONLY works in development mode (VULN-06)
+    // In production this would allow anyone to upgrade for free by crafting the orderId!
     if (razorpay_order_id?.startsWith('mock_order_')) {
+      if (process.env.NODE_ENV !== 'development') {
+        logger.warn(`🚨 SECURITY: Mock payment attempt blocked in production for facility ${facilityId}`);
+        return res.status(400).json({ success: false, message: "Invalid order ID" });
+      }
+
       logger.info(`🧪 Mock Mode: Verifying sandbox payment for ${facilityId}`);
       
       const subscription = await Subscription.findOneAndUpdate(
@@ -208,22 +217,68 @@ exports.handleWebhook = async (req, res, next) => {
     const event = req.body.payload?.payment?.entity;
     if (!event) return res.status(200).json({ received: true });
 
+    // 🔒 SECURITY: Webhook Idempotency (Item 5)
+    // Check if the Razorpay payment_id has already been processed using Redis
+    const paymentId = event.id;
+    if (paymentId) {
+      const isDuplicate = await redis.get(`razorpay_processed:${paymentId}`);
+      if (isDuplicate) {
+        logger.warn(`🚨 SECURITY: Duplicate webhook payment ${paymentId} ignored to prevent replay attack.`);
+        return res.status(200).json({ success: true, message: "Duplicate webhook processed", received: true });
+      }
+    }
+
     // payment.captured -> Auto-upgrade
     if (req.body.event === "payment.captured" && event.notes?.facilityId) {
       const { facilityId, plan, duration } = event.notes;
       
-      await Facility.findByIdAndUpdate(facilityId, {
-        subscriptionPlan: plan,
-        subscriptionStatus: "active",
-        subscriptionEnd: new Date(Date.now() + (duration === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000)
-      });
+      // 🔒 SECURITY: State Atomicity using Mongoose Session Transactions with fallback (Item 5)
+      const session = await mongoose.startSession();
+      try {
+        session.startTransaction();
 
-      await Subscription.findOneAndUpdate(
-        { razorpayOrderId: event.order_id },
-        { status: "paid", razorpayPaymentId: event.id }
-      );
+        await Facility.findByIdAndUpdate(facilityId, {
+          subscriptionPlan: plan,
+          subscriptionStatus: "active",
+          subscriptionEnd: new Date(Date.now() + (duration === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000)
+        }, { session });
 
-      logger.info(`Webhook: Facility ${facilityId} auto-upgraded via payment.captured`);
+        await Subscription.findOneAndUpdate(
+          { razorpayOrderId: event.order_id },
+          { status: "paid", razorpayPaymentId: event.id },
+          { session }
+        );
+
+        await session.commitTransaction();
+        logger.info(`Webhook: Facility ${facilityId} auto-upgraded atomically via payment.captured`);
+      } catch (txError) {
+        await session.abortTransaction();
+        
+        // Standalone MongoDB compatibility fallback
+        if (txError.message.includes("transaction") || txError.codeName === "TransactionOutcomeError" || txError.message.includes("replica set")) {
+          logger.warn(`⚠️ Transactions not supported on this MongoDB deployment. Falling back to non-transactional write: ${txError.message}`);
+          
+          await Facility.findByIdAndUpdate(facilityId, {
+            subscriptionPlan: plan,
+            subscriptionStatus: "active",
+            subscriptionEnd: new Date(Date.now() + (duration === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000)
+          });
+
+          await Subscription.findOneAndUpdate(
+            { razorpayOrderId: event.order_id },
+            { status: "paid", razorpayPaymentId: event.id }
+          );
+        } else {
+          throw txError;
+        }
+      } finally {
+        session.endSession();
+      }
+
+      // Mark event as processed in Redis (24-hour expiry to prevent immediate webhooks replay)
+      if (paymentId) {
+        await redis.set(`razorpay_processed:${paymentId}`, '1', 'EX', 86400);
+      }
     }
 
     // subscription.expired -> Auto-downgrade (future use if recurring)

@@ -10,7 +10,8 @@ import { z } from 'zod';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  // 🔒 SECURITY: Raised minimum to 8 characters (L-10)
+  password: z.string().min(8, "Password must be at least 8 characters"),
   remember: z.boolean().optional()
 });
 
@@ -108,12 +109,14 @@ export default function Login() {
     setError('');
     try {
       const res = await loginApi(data);
-      const { token, user: userData } = res.data;
+      // 🔒 SECURITY: Use accessToken field (legacy 'token' field removed) (VULN-13)
+      const { accessToken, user: userData } = res.data;
 
-      login(userData, token);
+      login(userData, accessToken);
       setFacility(userData.facilityId, userData.facilityName || '', userData.facilityType, userData.facilityLogo || '');
 
-      connectSocket(userData.facilityId, userData.facilityType);
+      // 🔒 SECURITY: Pass JWT token for WebSocket auth (VULN-04)
+      connectSocket(userData.facilityId, userData.facilityType, accessToken);
 
       navigate('/dashboard');
     } catch (err) {
@@ -413,7 +416,7 @@ export default function Login() {
                       />
                     </div>
                     <span className="text-[10px] text-text-secondary/50 font-bold ml-1 block leading-normal">
-                      Code is printed to the server terminal. You can also use code "123456".
+                      Check your registered email for the verification code.
                     </span>
                   </div>
 

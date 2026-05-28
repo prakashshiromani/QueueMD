@@ -42,23 +42,65 @@ const connectDB = require("./config/db");
 const app = express();
 const server = http.createServer(app);
 
-// Security Headers
-app.use(helmet());
+// 🔒 SECURITY: trust proxy for correct IP resolution behind reverse proxies (VULN-05)
+// This ensures req.ip returns the real client IP, not the proxy IP
+// Only trust 1 hop (your direct proxy). Do NOT set to 'true' (trusts all).
+app.set('trust proxy', 1);
 
-// Configuration
+// Security Headers with enhanced CSP (L-08, Item 2)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com", "wss:", "ws:", process.env.CLIENT_URL || ""].filter(Boolean),
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Keep false for Cloudinary image loading
+}));
+
+// 🔒 SECURITY: Environment-aware CORS with strict allowed origins array (VULN-11, Item 1)
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : (process.env.NODE_ENV === 'production' 
+     ? ['https://queuemd-client.com', 'https://admin.queuemd.com'] 
+     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174']);
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    const isLocalhost = origin.startsWith("http://localhost:") || origin === "http://localhost" || origin.startsWith("http://127.0.0.1:");
+
+    const isProduction = process.env.NODE_ENV === 'production';
     const isClientUrl = process.env.CLIENT_URL && origin === process.env.CLIENT_URL;
-    if (isLocalhost || isClientUrl) {
-      return callback(null, true);
+
+    if (isProduction) {
+      // Production: ONLY allow configured allowed origins
+      if (allowedOrigins.includes(origin) || isClientUrl) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy blocked this request"), false);
+    } else {
+      // Development: allow localhost origins + allowed origins
+      const isLocalhost = origin.startsWith("http://localhost:") || origin === "http://localhost" || origin.startsWith("http://127.0.0.1:");
+      if (isLocalhost || allowedOrigins.includes(origin) || isClientUrl) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy blocked this request"), false);
     }
-    return callback(new Error("CORS policy blocked this request"), false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true
 }));
+
+// 🔒 SECURITY: Global NoSQL Injection Prevention middleware (Item 3)
+const mongoSanitize = require('express-mongo-sanitize');
+app.use(mongoSanitize({ replaceWith: '_' }));
 
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
@@ -146,6 +188,10 @@ const startServer = async () => {
     // Start Directory Sync Cron Job
     const { startDirectorySyncCron } = require("./jobs/directorySync.job");
     startDirectorySyncCron();
+
+    // Start Data Retention Cron Job (Item 6)
+    const { startDataRetentionCron } = require("./jobs/dataRetention.job");
+    startDataRetentionCron();
 
     // 2. Initialize Socket.IO
     console.log("🔌 Initializing Socket.IO...");

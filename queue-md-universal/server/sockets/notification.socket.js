@@ -1,11 +1,10 @@
 // server/sockets/notification.socket.js
-const { getIO } = require("./index");
+const { getIO, getRoomHash } = require("./index");
 const logger = require("../utils/logger");
 
 /**
- * ✅ Centralized Notification Emitter
- * Queue isolation (${facilityId}_${facilityType}) is left untouched for privacy.
- * This helper broadcasts notifications to a facility-wide room for oversight.
+ * Centralized Notification Emitter
+ * Broadcasts notifications to a facility-wide hashed room for oversight.
  */
 const emitNotification = (facilityId, notificationData) => {
   try {
@@ -15,8 +14,8 @@ const emitNotification = (facilityId, notificationData) => {
       return;
     }
     
-    // 🔥 NEW ROOM PATTERN: Facility-wide but namespaced for safety
-    const room = `${facilityId}_notifications`;
+    // 🔒 SECURITY: Hash internal room name to prevent predictable room enumeration sniffing (Item 6)
+    const room = getRoomHash(facilityId, 'notifications');
     
     // Emit the notification data along with its DB-generated ID and timestamps
     io.to(room).emit("notification:new", notificationData);

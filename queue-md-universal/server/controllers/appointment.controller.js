@@ -526,45 +526,91 @@ exports.syncToDirectory = async (req, res, next) => {
     next(err);
   }
 };
-// ✅ DELETE PATIENT & ALL ASSOCIATED RECORDS
+// ✅ DELETE PATIENT & ALL ASSOCIATED RECORDS (Soft Delete & Anonymization — HIPAA/GDPR Right to Erasure)
 exports.deletePatient = async (req, res, next) => {
   try {
     const { patientId } = req.params;
     const { facilityId, facilityType } = req.user;
 
-    logger.debug(`DELETE PATIENT DEBUG: patientId=${patientId}, facilityId=${facilityId}, facilityType=${facilityType}`);
+    // 🔒 SECURITY: Strict RBAC check to ensure only Admins can execute medical data erasure
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Admin access required to delete patient records" });
+    }
 
-    // 1. Find and Delete Patient
-    const patient = await Patient.findOneAndDelete({
+    logger.debug(`DELETE PATIENT AUDIT: patientId=${patientId}, facilityId=${facilityId}, facilityType=${facilityType}`);
+
+    // 1. Find the active patient record
+    const patient = await Patient.findOne({
       _id: patientId,
       facilityId,
-      facilityType
+      isDeleted: { $ne: true }
     });
 
     if (!patient) {
-      logger.error(`Patient not found with these criteria in Facility: ${facilityId}`);
-      // Optional: Log if patient exists without filter to confirm isolation
-      const rawPatient = await Patient.findById(patientId);
-      if (rawPatient) {
-        logger.warn(`Patient exists but belongs to a different facility: ${rawPatient.facilityId}`);
-      } else {
-        logger.warn("Patient ID does not exist in Database at all.");
-      }
+      logger.warn(`[SECURITY] Patient deletion attempted for non-existing or already deleted record: ${patientId}`);
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
-    logger.info(`Patient found and deleted: ${patient.patientName}`);
 
-    // 2. Delete ALL Appointments associated with this Patient (Isolated by Facility)
-    await Appointment.deleteMany({ 
-      patientId: patientId,
+    const originalPhone = patient.phone;
+    const originalName = patient.name;
+    const anonymizedPhone = `ANONYMIZED_${patientId.substring(patientId.length - 4)}`;
+
+    // 2. Soft-delete and scrub PII from patient profile
+    patient.isDeleted = true;
+    patient.deletedAt = new Date();
+    patient.deletedBy = req.user.id;
+    patient.status = "Archived";
+    patient.name = "ANONYMIZED_PATIENT";
+    patient.phone = anonymizedPhone;
+    patient.email = "anonymized@queuemd.com";
+    patient.customData = {};
+    await patient.save();
+
+    logger.info(`Patient ${patientId} soft-deleted and anonymized safely.`);
+
+    // 3. Anonymize all Appointments instead of hard-deleting (preserves medical trail metadata)
+    await Appointment.updateMany(
+      { patientId, facilityId },
+      { 
+        patientName: "ANONYMIZED_PATIENT", 
+        phone: anonymizedPhone,
+        notes: "ANONYMIZED DUE TO ERASURE REQUEST",
+        email: "anonymized@queuemd.com"
+      }
+    );
+
+    // 4. Anonymize associated Queue records
+    await Queue.updateMany(
+      { phone: originalPhone, facilityId },
+      {
+        patientName: "ANONYMIZED_PATIENT",
+        phone: anonymizedPhone,
+        customData: {}
+      }
+    );
+
+    // 5. Anonymize associated ClinicalVisits
+    const ClinicalVisit = require("../models/ClinicalVisit");
+    await ClinicalVisit.updateMany(
+      { patientPhone: originalPhone, facilityId },
+      {
+        patientName: "ANONYMIZED_PATIENT",
+        patientPhone: anonymizedPhone
+      }
+    );
+
+    // 6. Write secure audit log
+    const { logAudit } = require("../utils/auditLogger");
+    await logAudit(req, {
+      action: "PATIENT_DELETE_ERASURE_APPT",
       facilityId,
-      facilityType
+      userId: req.user.id,
+      severity: "critical",
+      status: "success",
+      details: { patientId, originalName, originalPhone }
     });
 
-    // 3. Delete from Queue if they are waiting
-    await Queue.deleteMany({ phone: patient.phone, facilityId, facilityType });
-
-    // 4. Emit Socket Event (Optional: to refresh lists)
+    // 7. Emit Socket Event to refresh frontend lists
     emitAppointmentUpdate(facilityId, facilityType, {
       action: "patient_deleted",
       patientId
@@ -572,7 +618,7 @@ exports.deletePatient = async (req, res, next) => {
 
     res.json({ 
       success: true, 
-      message: "Patient and all related records deleted successfully" 
+      message: "Patient and all related records successfully anonymized (GDPR Right to Erasure completed)." 
     });
 
   } catch (err) {

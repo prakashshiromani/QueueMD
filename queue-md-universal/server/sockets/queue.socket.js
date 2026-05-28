@@ -1,10 +1,10 @@
-const { getIO } = require("./index");
+const { getIO, getRoomHash } = require("./index");
 
 const emitQueueUpdate = (facilityId, facilityType, data) => {
   try {
     const io = getIO(); 
-    // 🔥 Nuclear Option: Trim IDs to avoid invisible spaces
-    const room = `${String(facilityId).trim()}_${String(facilityType).trim()}`;
+    // 🔒 SECURITY: Hash internal room name to prevent predictable room enumeration sniffing (Item 6)
+    const room = getRoomHash(facilityId, facilityType);
     
     console.log(`📡 [BACKEND] Attempting to emit to room: ${room}, Action: ${data.action}`); 
     console.log('📦 Payload:', JSON.stringify(data.patient, null, 2));
@@ -24,7 +24,8 @@ const emitQueueUpdate = (facilityId, facilityType, data) => {
 const emitAnalyticsUpdate = (facilityId, facilityType, data) => {
   try {
     const io = getIO();
-    const room = `${String(facilityId).trim()}_${String(facilityType).trim()}`;
+    // 🔒 SECURITY: Hash internal room name (Item 6)
+    const room = getRoomHash(facilityId, facilityType);
     
     console.log(`📊 [ANALYTICS] Emitting to room: ${room}`);
 
@@ -41,7 +42,8 @@ const emitAnalyticsUpdate = (facilityId, facilityType, data) => {
 const emitPublicQueueUpdate = (facilityId) => {
   try {
     const io = getIO();
-    const room = `${String(facilityId).trim()}_public`;
+    // 🔒 SECURITY: Hash public room name (Item 6)
+    const room = getRoomHash(facilityId, 'public');
     
     console.log(`🌍 [PUBLIC] Emitting queue update to room: ${room}`);
 

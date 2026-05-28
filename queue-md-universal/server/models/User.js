@@ -43,7 +43,11 @@ const userSchema = new mongoose.Schema({
     index: true 
   },
   resetPasswordOTP: { type: String, default: "" },
-  resetPasswordExpires: { type: Date }
+  resetPasswordExpires: { type: Date },
+  
+  // 🔒 SECURITY: Multi-Factor Authentication TOTP fields (Item 2)
+  mfaEnabled: { type: Boolean, default: false },
+  mfaSecret: { type: String, select: false }
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },

@@ -4,9 +4,24 @@ const { connection } = require('../config/redis');
 const logger = require('../utils/logger');
 const { FACILITY_TYPES } = require('../utils/facilityTypeConfig');
 
+// 🔒 SECURITY: Initialize MongoDB connection for background worker process (Item 8)
+const connectDB = require('../config/db');
+connectDB();
+
 // Worker background me chalta rahega
 const worker = new Worker('notificationQueue', async (job) => {
-  const { facilityId, facilityType, patientName, tokenNumber, phone, customData } = job.data;
+  const { queueEntryId } = job.data;
+
+  // 🔒 SECURITY: Fetch clinical information directly from Mongoose to keep Redis payloads sanitised (Item 8)
+  const Queue = require('../models/Queue');
+  const queueEntry = await Queue.findById(queueEntryId);
+  
+  if (!queueEntry) {
+    logger.warn(`[WORKER] Job skipped: Queue entry ${queueEntryId} not found`);
+    return { status: 'skipped', message: 'Queue entry not found' };
+  }
+
+  const { facilityId, facilityType, patientName, tokenNumber, phone, customData } = queueEntry;
 
   let config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
   if (facilityId) {

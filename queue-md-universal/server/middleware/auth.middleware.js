@@ -10,14 +10,24 @@ exports.auth = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "No token, authorization denied" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    
+    // 🔒 SECURITY: Verify JTI against Redis blacklist (Logged-out / revoked tokens) (Item 1)
+    if (decoded.jti) {
+      const { connection: redis } = require("../config/redis");
+      const isBlacklisted = await redis.get(`jwt_blacklist:${decoded.jti}`);
+      if (isBlacklisted) {
+        return res.status(401).json({ success: false, message: "Token has been revoked" });
+      }
+    }
     
     // Attach user info to request object
     req.user = {
       id: decoded.id,
       facilityId: decoded.facilityId,
       facilityType: decoded.facilityType,
-      role: decoded.role
+      role: decoded.role,
+      jti: decoded.jti
     };
 
     // Debug log using winston

@@ -8,6 +8,7 @@ const { emitNotification } = require("../sockets/notification.socket");
 const { getPhoneRegex } = require("../utils/phoneHelper");
 const { getISTRange } = require("../utils/dateHelpers");
 const { getNextTokenPrefix } = require("../utils/facilityTypeConfig");
+const { tenantQuery, tenantData } = require("../utils/tenantIsolation");
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
@@ -33,14 +34,17 @@ exports.searchPatients = async (req, res, next) => {
     const safeQ = escapeRegex(q.toString());
     const phoneRegex = getPhoneRegex(q.toString(), false);
 
-    // Search by name or phone
-    const patients = await Patient.find({
-      facilityId,
+    // 🔒 SECURITY: Scope with multi-tenant isolation query wrapper (Item 2)
+    const query = tenantQuery(req, {
+      isDeleted: { $ne: true }, // 🔒 SECURITY: Exclude soft-deleted records
       $or: [
         { name: { $regex: safeQ, $options: "i" } },
         { phone: phoneRegex ? { $regex: phoneRegex } : { $regex: safeQ, $options: "i" } }
       ]
-    }).limit(10);
+    });
+
+    // 🔒 SECURITY: Enforce strict query field projection to prevent PII/audit leaks (Item 3)
+    const patients = await Patient.find(query, 'name phone email gender age status doctorName lastVisit totalVisits isDirectoryVisible').limit(10);
 
     res.json({ success: true, data: patients });
   } catch (err) {
@@ -51,16 +55,19 @@ exports.searchPatients = async (req, res, next) => {
 
 exports.addPatientToDirectory = async (req, res, next) => {
   try {
-    const { facilityId, facilityType } = req.user;
-    logger.debug(`addPatientToDirectory body: ${JSON.stringify(req.body)}`);
-    const { name, patientName, phone, email, gender, age, status, customData, doctorName, facilityType: bodyFacilityType } = req.body;
+    // 🔒 SECURITY: Enforce multi-tenant isolation input sanitisation (Item 2)
+    const sanitized = tenantData(req, req.body);
+    logger.debug(`addPatientToDirectory sanitized body: ${JSON.stringify(sanitized)}`);
+    
+    const { name, patientName, phone, email, gender, age, status, customData, doctorName, facilityType: bodyFacilityType, consentGiven } = sanitized;
+    const { facilityId } = req.user;
     const finalName = name || patientName;
 
     if (!finalName || !phone) {
       return res.status(400).json({ success: false, message: "Name and phone are required" });
     }
 
-    const assignedFacilityType = bodyFacilityType || facilityType || "clinic";
+    const assignedFacilityType = bodyFacilityType || req.user.facilityType || "clinic";
     const phoneRegex = getPhoneRegex(phone, true);
 
     // 1. Check if patient already exists in the same facility
@@ -101,6 +108,13 @@ exports.addPatientToDirectory = async (req, res, next) => {
       patient.lastVisit = new Date();
       patient.lastVisitType = assignedFacilityType.toUpperCase();
       patient.facilityType = assignedFacilityType; // Use the most recently registered department
+      
+      // 🔒 SECURITY: GDPR/DPDP consent logging (Item 6)
+      if (consentGiven !== undefined) {
+        patient.consentGiven = consentGiven === true;
+        patient.consentTimestamp = consentGiven === true ? new Date() : undefined;
+      }
+      
       await patient.save();
 
     } else {
@@ -117,7 +131,10 @@ exports.addPatientToDirectory = async (req, res, next) => {
         customData: customData || {},
         status: status ? (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) : "Active",
         lastVisit: new Date(),
-        lastVisitType: assignedFacilityType.toUpperCase()
+        lastVisitType: assignedFacilityType.toUpperCase(),
+        // 🔒 SECURITY: GDPR/DPDP consent logging (Item 6)
+        consentGiven: consentGiven === true,
+        consentTimestamp: consentGiven === true ? new Date() : undefined
       });
     }
 
@@ -197,6 +214,17 @@ exports.addPatientToDirectory = async (req, res, next) => {
       logger.error(`Notification error during registration: ${notifErr.message}`);
     }
 
+    // 🔒 SECURITY: EMR compliance access auditing for registration (Item 3)
+    const { logAudit } = require("../utils/auditLogger");
+    await logAudit(req, {
+      action: alreadyExists ? "PATIENT_REVISIT" : "PATIENT_REGISTER",
+      facilityId,
+      userId: req.user.id,
+      severity: "info",
+      status: "success",
+      details: { patientId: patient._id, patientName: finalName, phone }
+    });
+
     res.status(201).json({ 
       success: true, 
       alreadyExists,
@@ -214,10 +242,10 @@ exports.addPatientToDirectory = async (req, res, next) => {
 
 exports.getPatients = async (req, res, next) => {
   try {
-    const { facilityId } = req.user;
     const { page = 1, limit = 10, search = "", facility = "", status = "", gender = "", doctor = "" } = req.query;
 
-    let query = { facilityId };
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper (Item 2)
+    let query = tenantQuery(req, { isDeleted: { $ne: true } });
 
     if (search) {
       const safeSearch = escapeRegex(search.toString());
@@ -256,7 +284,8 @@ exports.getPatients = async (req, res, next) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const patients = await Patient.find(query)
+    // 🔒 SECURITY: Enforce strict query field projection to prevent PII/audit leaks (Item 3)
+    const patients = await Patient.find(query, 'name phone email gender age status doctorName lastVisit totalVisits isDirectoryVisible')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -278,9 +307,10 @@ exports.getPatients = async (req, res, next) => {
 exports.togglePatientStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { facilityId } = req.user;
 
-    const patient = await Patient.findOne({ _id: id, facilityId });
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper (Item 2)
+    const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });
+    const patient = await Patient.findOne(query);
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
@@ -305,11 +335,12 @@ exports.togglePatientStatus = async (req, res, next) => {
 exports.updatePatient = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { facilityId } = req.user;
     const { name, phone, email } = req.body;
 
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper (Item 2)
+    const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });
     const patient = await Patient.findOneAndUpdate(
-      { _id: id, facilityId },
+      query,
       { name, phone, email },
       { new: true, runValidators: true }
     );
@@ -318,25 +349,175 @@ exports.updatePatient = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
 
+    // 🔒 SECURITY: EMR compliance access auditing for update (Item 3)
+    await logAudit(req, {
+      action: "PATIENT_UPDATE",
+      facilityId: req.user.facilityId,
+      userId: req.user.id,
+      severity: "info",
+      status: "success",
+      details: { patientId: patient._id, patientName: patient.name }
+    });
+
     res.json({ success: true, message: "Patient updated", data: patient });
   } catch (err) {
     next(err);
   }
 };
 
-// ✅ DELETE PATIENT
+// ✅ DELETE PATIENT (Soft Delete & Recursive Anonymization — HIPAA/GDPR Right to Erasure)
+// 🔒 SECURITY: Medical records MUST NOT be hard deleted.
+// isDeleted=true hides the patient, and we scrub/anonymize all PII from linked visits and queues.
 exports.deletePatient = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { facilityId } = req.user;
+    const { logAudit } = require("../utils/auditLogger");
 
-    const patient = await Patient.findOneAndDelete({ _id: id, facilityId });
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper
+    const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });
+    const patient = await Patient.findOne(query);
 
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
 
-    res.json({ success: true, message: "Patient deleted successfully" });
+    const originalPhone = patient.phone;
+    const originalName = patient.name;
+    const anonymizedPhone = `ANONYMIZED_${id.substring(id.length - 4)}`;
+
+    // 1. Soft-delete and anonymize patient profile
+    patient.isDeleted = true;
+    patient.deletedAt = new Date();
+    patient.deletedBy = req.user.id;
+    patient.status = "Archived";
+    patient.name = "ANONYMIZED_PATIENT";
+    patient.phone = anonymizedPhone;
+    patient.email = "anonymized@queuemd.com";
+    patient.customData = {};
+    await patient.save();
+
+    // 2. Anonymize Linked ClinicalVisits
+    const ClinicalVisit = require("../models/ClinicalVisit");
+    await ClinicalVisit.updateMany(
+      { patientPhone: originalPhone, facilityId: req.user.facilityId },
+      {
+        patientName: "ANONYMIZED_PATIENT",
+        patientPhone: anonymizedPhone
+      }
+    );
+
+    // 3. Anonymize Linked Queue records
+    await Queue.updateMany(
+      { patientId: id, facilityId: req.user.facilityId },
+      {
+        patientName: "ANONYMIZED_PATIENT",
+        phone: anonymizedPhone,
+        customData: {}
+      }
+    );
+
+    // 🔒 SECURITY: EMR compliance access auditing for GDPR delete
+    await logAudit(req, {
+      action: "PATIENT_DELETE_ERASURE",
+      facilityId: req.user.facilityId,
+      userId: req.user.id,
+      severity: "warning",
+      status: "success",
+      details: { patientId: patient._id, originalName, originalPhone }
+    });
+
+    res.json({ success: true, message: "Patient records successfully anonymized and soft-deleted (GDPR Right to Erasure completed)." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ EXPORT PATIENT DATA (GDPR/HIPAA Data Portability)
+exports.exportPatientData = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { logAudit } = require("../utils/auditLogger");
+
+    // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper
+    const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });
+    const patient = await Patient.findOne(query);
+
+    if (!patient) {
+      return res.status(404).json({ success: false, message: "Patient not found" });
+    }
+
+    // Retrieve all linked clinical visits
+    const ClinicalVisit = require("../models/ClinicalVisit");
+    const clinicalVisits = await ClinicalVisit.find({
+      patientPhone: patient.phone,
+      facilityId: req.user.facilityId
+    }).sort({ createdAt: -1 });
+
+    // Retrieve all linked queue history records
+    const queueHistory = await Queue.find({
+      patientId: patient._id,
+      facilityId: req.user.facilityId
+    }).sort({ createdAt: -1 });
+
+    // Build the full export package
+    const exportData = {
+      exportedAt: new Date(),
+      facilityId: req.user.facilityId,
+      patientProfile: {
+        id: patient._id,
+        name: patient.name,
+        phone: patient.phone,
+        email: patient.email,
+        gender: patient.gender,
+        age: patient.age,
+        status: patient.status,
+        consentGiven: patient.consentGiven,
+        consentTimestamp: patient.consentTimestamp,
+        createdAt: patient.createdAt
+      },
+      clinicalVisits: clinicalVisits.map(visit => ({
+        visitId: visit._id,
+        date: visit.createdAt,
+        diagnosis: visit.diagnosis, // Will automatically decrypt due to mongoose field encryption plugin
+        prescriptionNotes: visit.prescriptionNotes,
+        vitals: visit.vitals,
+        status: visit.status,
+        documents: visit.documents.map(doc => ({
+          url: doc.url,
+          type: doc.type,
+          uploadedBy: doc.uploadedBy,
+          uploadedAt: doc.uploadedAt,
+          fileName: doc.fileName
+        }))
+      })),
+      queueHistory: queueHistory.map(q => ({
+        queueId: q._id,
+        date: q.createdAt,
+        tokenNumber: q.tokenNumber,
+        status: q.status,
+        waitTime: q.waitTime,
+        actualDuration: q.actualDuration,
+        doctorName: q.doctorName,
+        consultationNotes: q.consultationNotes
+      }))
+    };
+
+    // 🔒 SECURITY: HIPAA Audit log entry for PHI data export
+    await logAudit(req, {
+      action: "PATIENT_DATA_EXPORT",
+      facilityId: req.user.facilityId,
+      userId: req.user.id,
+      severity: "warning",
+      status: "success",
+      details: { patientId: patient._id, patientName: patient.name }
+    });
+
+    res.setHeader("Content-Disposition", `attachment; filename="patient_export_${id}.json"`);
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).json({
+      success: true,
+      data: exportData
+    });
   } catch (err) {
     next(err);
   }

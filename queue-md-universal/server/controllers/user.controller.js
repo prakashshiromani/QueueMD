@@ -195,7 +195,8 @@ exports.getStaff = async (req, res, next) => {
 exports.deleteStaff = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
+    // 🔒 SECURITY: Enforce facility isolation to prevent unauthorized cross-tenant deletions
+    const user = await User.findOneAndDelete({ _id: id, facilityId: req.user.facilityId });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Staff member not found" });
@@ -220,7 +221,12 @@ exports.toggleStaffStatus = async (req, res, next) => {
     const { id } = req.params;
     const { isActive } = req.body;
 
-    const user = await User.findByIdAndUpdate(id, { isActive }, { new: true }).select("-password");
+    // 🔒 SECURITY: Enforce facility isolation to prevent unauthorized cross-tenant status updates
+    const user = await User.findOneAndUpdate(
+      { _id: id, facilityId: req.user.facilityId },
+      { isActive },
+      { new: true }
+    ).select("-password");
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Staff member not found" });

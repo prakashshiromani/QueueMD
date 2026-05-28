@@ -35,4 +35,10 @@ const clinicalVisitSchema = new mongoose.Schema({
 // 🔥 SKILL.md Golden Rule: Compound Index for <200ms performance
 clinicalVisitSchema.index({ patientPhone: 1, facilityId: 1, createdAt: -1 });
 
+// 🔒 SECURITY: Enforce EMR field-level encryption for HIPAA compliance (Item 3)
+const mongooseFieldEncryption = require('../utils/mongooseFieldEncryption');
+clinicalVisitSchema.plugin(mongooseFieldEncryption, {
+  fields: ['diagnosis', 'prescriptionNotes']
+});
+
 module.exports = mongoose.model('ClinicalVisit', clinicalVisitSchema);

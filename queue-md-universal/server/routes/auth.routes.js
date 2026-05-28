@@ -1,14 +1,25 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const { register, login, refreshToken, forgotPassword, resetPassword, changePassword, verifyPassword } = require("../controllers/auth.controller");
+const { register, login, refreshToken, forgotPassword, resetPassword, changePassword, verifyPassword, logout, setupMFA, verifyAndEnableMFA, loginMFA } = require("../controllers/auth.controller");
 const { auth } = require("../middleware/auth.middleware");
 
-// 🔒 Rate Limiter Setup
+// 🔒 SECURITY: Auth limiter (login/register) — 10 attempts per 15 min
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // max 10 requests per IP
-  message: { success: false, message: "Too many attempts. Please try after 15 mins." }
+  message: { success: false, message: "Too many attempts. Please try after 15 mins." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 🔒 SECURITY: Sensitive auth limiter — 5 attempts per 15 min (forgot/reset/refresh) (L-02, L-03, L-09)
+const sensitiveAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: "Too many attempts. Please try after 15 mins." },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 /**
@@ -105,7 +116,8 @@ router.post("/login", authLimiter, login);
  *       401: { description: Refresh token missing }
  *       403: { description: Invalid or expired refresh token }
  */
-router.post("/refresh", refreshToken);
+// 🔒 SECURITY: Added rate limiting to /refresh endpoint (L-09)
+router.post("/refresh", sensitiveAuthLimiter, refreshToken);
 
 /**
  * @swagger
@@ -127,7 +139,8 @@ router.post("/refresh", refreshToken);
  *       200: { description: OTP code generated and sent }
  *       404: { description: User not found }
  */
-router.post("/forgot-password", forgotPassword);
+// 🔒 SECURITY: Added rate limiting to /forgot-password endpoint (L-02)
+router.post("/forgot-password", sensitiveAuthLimiter, forgotPassword);
 
 /**
  * @swagger
@@ -151,7 +164,8 @@ router.post("/forgot-password", forgotPassword);
  *       200: { description: Password reset successful }
  *       400: { description: Invalid OTP or expired }
  */
-router.post("/reset-password", resetPassword);
+// 🔒 SECURITY: Added rate limiting to /reset-password endpoint (L-03)
+router.post("/reset-password", sensitiveAuthLimiter, resetPassword);
 
 /**
  * @swagger
@@ -178,6 +192,13 @@ router.post("/reset-password", resetPassword);
  */
 router.put("/change-password", auth, changePassword);
 router.post("/verify-password", auth, verifyPassword);
+
+router.post("/logout", auth, logout);
+
+// 🔒 SECURITY: Multi-Factor Authentication TOTP routes (Item 2)
+router.post("/mfa/setup", auth, setupMFA);
+router.post("/mfa/verify", auth, verifyAndEnableMFA);
+router.post("/mfa/login", loginMFA);
 
 module.exports = router;
 

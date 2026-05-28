@@ -23,7 +23,7 @@ import { useFacilityStore } from './store/facilityStore';
 import { connectSocket } from './services/socket';
 
 export default function App() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, token } = useAuthStore();
   const { facilityId, facilityType } = useFacilityStore();
 
   // ── Restore user preferences on mount ─────────────────────────
@@ -50,12 +50,12 @@ export default function App() {
     root.setAttribute('data-compact', String(savedCompact));
   }, []);
 
-  // ── Socket Connection ──────────────────────────────────────────
+  // 🔒 SECURITY: Pass JWT token so server can verify facility ownership (VULN-04)
   useEffect(() => {
-    if (isAuthenticated && user?.facilityId && facilityId && facilityType) {
-      connectSocket(facilityId, facilityType);
+    if (isAuthenticated && user?.facilityId && facilityId && facilityType && token) {
+      connectSocket(facilityId, facilityType, token);
     }
-  }, [isAuthenticated, user, facilityId, facilityType]);
+  }, [isAuthenticated, user, facilityId, facilityType, token]);
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -129,7 +129,7 @@ export default function App() {
         <Route
           path="/staff"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Staff />
             </ProtectedRoute>
           }
@@ -137,7 +137,7 @@ export default function App() {
         <Route
           path="/staff/add"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <AddStaff />
             </ProtectedRoute>
           }
@@ -145,7 +145,7 @@ export default function App() {
         <Route
           path="/analytics"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'doctor']}>
               <Analytics />
             </ProtectedRoute>
           }
