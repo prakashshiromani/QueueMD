@@ -12,7 +12,7 @@ exports.getStats = async (req, res, next) => {
     
     // Auto-cleanup stale tokens from previous days
     await cleanupStaleTokens(Queue, facilityId);
-    const { page = 1, limit = 10, search = "", range = "today", branchId, startDate, endDate, type } = req.query;
+    const { page = 1, limit = 10, search = "", range = "today", branchId, facilityType, startDate, endDate, type } = req.query;
     
     const dates = getISTRange(range, startDate, endDate);
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -26,8 +26,10 @@ exports.getStats = async (req, res, next) => {
     if (branchId && branchId !== 'null' && branchId !== '') {
       summaryMatch.branchId = new mongoose.Types.ObjectId(branchId);
     }
-    if (type) {
-      summaryMatch.facilityType = type;
+    // Support both 'type' and 'facilityType' query params
+    const ftFilter = facilityType || type;
+    if (ftFilter && ftFilter !== 'all') {
+      summaryMatch.facilityType = ftFilter;
     }
 
     // 2. Table Query (for log with search)
@@ -134,7 +136,7 @@ exports.getStats = async (req, res, next) => {
 exports.getHourlyTraffic = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { range = "today", branchId } = req.query;
+    const { range = "today", branchId, facilityType } = req.query;
     const dates = getISTRange(range, req.query.startDate, req.query.endDate);
 
     const matchQuery = {
@@ -145,6 +147,9 @@ exports.getHourlyTraffic = async (req, res, next) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
 
     logger.debug(`📊 [${req.path}] Final Match Query: ${JSON.stringify(matchQuery)}`);
@@ -175,12 +180,13 @@ exports.getHourlyTraffic = async (req, res, next) => {
 exports.getDailyTrend = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { range = "7d", branchId } = req.query;
+    const { range = "7d", branchId, facilityType } = req.query;
     const dates = getISTRange(range, req.query.startDate, req.query.endDate);
 
     logger.debug('📊 Daily Trend Query: ' + JSON.stringify({ 
       facilityId, 
       branchId,
+      facilityType,
       range,
       start: dates.start,
       end: dates.end 
@@ -194,6 +200,9 @@ exports.getDailyTrend = async (req, res, next) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
 
     logger.debug(`📊 [${req.path}] Final Match Query: ${JSON.stringify(matchQuery)}`);
@@ -231,7 +240,7 @@ exports.getDailyTrend = async (req, res, next) => {
 exports.getFacilityTypeStats = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { range = "today", branchId, startDate, endDate } = req.query;
+    const { range = "today", branchId, facilityType, startDate, endDate } = req.query;
 
     const dates = getISTRange(range, startDate, endDate);
 
@@ -243,6 +252,9 @@ exports.getFacilityTypeStats = async (req, res, next) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
 
     const stats = await Queue.aggregate([
@@ -269,7 +281,7 @@ exports.getFacilityTypeStats = async (req, res, next) => {
 exports.getTopDoctors = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { range = "today", branchId, startDate, endDate } = req.query;
+    const { range = "today", branchId, facilityType, startDate, endDate } = req.query;
 
     const dates = getISTRange(range, startDate, endDate);
 
@@ -282,6 +294,9 @@ exports.getTopDoctors = async (req, res, next) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
 
     const doctors = await Queue.aggregate([
@@ -336,7 +351,7 @@ exports.getTopDoctors = async (req, res, next) => {
 // ✅ GET HISTORICAL CONSULTATIONS (Paginated Log)
 exports.getCompletedConsultations = async (req, res) => {
   try {
-    const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, q, status } = req.query;
+    const { page = 1, limit = 10, range = 'today', startDate, endDate, branchId, facilityType, q, status } = req.query;
     
     // Parse date range
     const { start, end } = getISTRange(range, startDate, endDate);
@@ -359,6 +374,9 @@ exports.getCompletedConsultations = async (req, res) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
     
     if (q && q.trim()) {
@@ -402,7 +420,7 @@ exports.getCompletedConsultations = async (req, res) => {
 exports.getAIInsights = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { branchId } = req.query;
+    const { branchId, facilityType } = req.query;
 
     // 1. Get historical hourly traffic (last 30 days)
     const thirtyDaysAgo = new Date();
@@ -416,6 +434,9 @@ exports.getAIInsights = async (req, res, next) => {
 
     if (branchId && branchId !== 'null' && branchId !== '') {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchId);
+    }
+    if (facilityType && facilityType !== 'all') {
+      matchQuery.facilityType = facilityType;
     }
 
     const trafficData = await Queue.aggregate([

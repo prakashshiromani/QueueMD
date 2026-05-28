@@ -1,7 +1,7 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const { register, login, refreshToken, forgotPassword, resetPassword, changePassword } = require("../controllers/auth.controller");
+const { register, login, refreshToken, forgotPassword, resetPassword, changePassword, verifyPassword } = require("../controllers/auth.controller");
 const { auth } = require("../middleware/auth.middleware");
 
 // 🔒 Rate Limiter Setup
@@ -177,6 +177,7 @@ router.post("/reset-password", resetPassword);
  *       401: { description: Unauthorized }
  */
 router.put("/change-password", auth, changePassword);
+router.post("/verify-password", auth, verifyPassword);
 
 module.exports = router;
 

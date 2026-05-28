@@ -54,7 +54,8 @@ exports.getLiveLobbyStatus = async (req, res, next) => {
                 myStatus: myVisit.status,
                 peopleAhead: ['in-progress', 'in-room', 'completed'].includes(myVisit.status) ? 0 : peopleAhead,
                 currentlyServing: currentlyServing?.tokenNumber || "None",
-                estimatedWait: peopleAhead * 7 // Avg 7 mins
+                estimatedWait: peopleAhead * 7, // Avg 7 mins
+                facilityType: myVisit.facilityType
             }
         });
     } catch (error) {

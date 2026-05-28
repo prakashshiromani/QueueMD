@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { formatTokenNumber } from '../utils/facilityTypeConfig';
 
-const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone }) => {
+const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone, facilityType }) => {
   const [step, setStep] = useState(initialPhone ? 'UPLOAD' : 'VERIFY'); // VERIFY | UPLOAD | SUCCESS
   const [phone, setPhone] = useState('');
   const [uploadToken, setUploadToken] = useState('');
@@ -189,7 +190,7 @@ const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: init
               <div className="text-center">
                 <h3 className="text-xl font-black text-white uppercase tracking-wider">Upload Record</h3>
                 <p className="text-slate-400 text-xs mt-1">
-                  Secure upload active for patient: <span className="text-blue-400 font-bold">{maskedName}</span> (Token #{tokenNumber})
+                  Secure upload active for patient: <span className="text-blue-400 font-bold">{maskedName}</span> (Token #{formatTokenNumber(tokenNumber, facilityType)})
                 </p>
               </div>
 

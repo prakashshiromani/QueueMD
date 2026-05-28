@@ -108,6 +108,20 @@ export const getNextTokenPrefix = (type) => {
   return FACILITY_TYPES[type]?.tokenPrefix || "TKN";
 };
 
+export const formatTokenNumber = (tokenNumber, facilityType) => {
+  if (tokenNumber === undefined || tokenNumber === null || tokenNumber === "") return "—";
+  const strToken = String(tokenNumber);
+  if (strToken.includes("-")) {
+    if (strToken.startsWith("APPT-")) {
+      const prefix = getNextTokenPrefix(facilityType);
+      return strToken.replace("APPT-", `${prefix}-`);
+    }
+    return strToken;
+  }
+  const prefix = getNextTokenPrefix(facilityType);
+  return `${prefix}-${strToken.padStart(3, "0")}`;
+};
+
 // Helpers to dynamically add, update, and delete facility types
 export const saveCustomFacilityTypes = (facilityId, customTypes, deletedKeys = []) => {
   if (!facilityId) return;

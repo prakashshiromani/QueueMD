@@ -1,21 +1,9 @@
 const Queue = require('../models/Queue');
 const Patient = require('../models/Patient');
 const mongoose = require('mongoose');
-const { z } = require('zod');
+const { labOrderSchema } = require("../schemas/lab.schema");
 const logger = require('../utils/logger');
 const { emitQueueUpdate } = require('../sockets/queue.socket');
-
-// Validation schema for lab orders
-const labOrderSchema = z.object({
-  patientName: z.string().min(2),
-  phone: z.string().optional(),
-  doctorName: z.string().optional(),
-  customData: z.object({
-    sampleId: z.string().min(1, "Sample ID required"),
-    testType: z.string().min(1, "Test Type required"),
-    reportStatus: z.enum(["pending", "processing", "ready", "delivered"]).optional()
-  })
-});
 
 // ✅ GET ALL LAB REPORTS (with pagination & filters)
 exports.getLabReports = async (req, res, next) => {

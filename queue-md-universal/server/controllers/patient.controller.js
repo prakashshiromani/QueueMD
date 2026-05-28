@@ -6,6 +6,8 @@ const { emitQueueUpdate } = require("../sockets/queue.socket");
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
 const { getPhoneRegex } = require("../utils/phoneHelper");
+const { getISTRange } = require("../utils/dateHelpers");
+const { getNextTokenPrefix } = require("../utils/facilityTypeConfig");
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
@@ -120,20 +122,37 @@ exports.addPatientToDirectory = async (req, res, next) => {
     }
 
     // 2. Automatically Add to Queue
-    // Generate next token for this specific department atomically
+    // Generate next token for this specific department atomically with daily resets
     const counterId = `token:${facilityId}:${assignedFacilityType}`;
-    let counter = await Counter.findById(counterId);
-    if (!counter) {
-      const lastToken = await Queue.findOne({ facilityId, facilityType: assignedFacilityType })
-        .sort({ tokenNumber: -1 });
-      
-      let startNum = 0;
-      if (lastToken) {
-        startNum = lastToken.tokenNumber;
+    const { start: todayStart } = getISTRange("today");
+    const todayEntry = await Queue.findOne({
+      facilityId,
+      facilityType: assignedFacilityType,
+      createdAt: { $gte: todayStart }
+    });
+
+    if (!todayEntry) {
+      // No patients today yet: reset sequence to 0
+      await Counter.findOneAndUpdate(
+        { _id: counterId },
+        { seq: 0 },
+        { upsert: true, new: true }
+      );
+    } else {
+      // Ensure counter document exists
+      let counter = await Counter.findById(counterId);
+      if (!counter) {
+        const lastToken = await Queue.findOne({ facilityId, facilityType: assignedFacilityType })
+          .sort({ tokenNumber: -1 });
+
+        let startNum = 0;
+        if (lastToken) {
+          startNum = lastToken.tokenNumber;
+        }
+        try {
+          await Counter.create({ _id: counterId, seq: startNum });
+        } catch (err) {}
       }
-      try {
-        await Counter.create({ _id: counterId, seq: startNum });
-      } catch (err) {}
     }
     const nextToken = await getNextSequence(counterId);
 
@@ -160,8 +179,8 @@ exports.addPatientToDirectory = async (req, res, next) => {
     // 3. Send Notification
     try {
       const notifMessage = alreadyExists 
-        ? `${finalName} (Existing Patient) added to queue with Token #${nextToken}.`
-        : `${finalName} has been added to the directory and queue with Token #${nextToken}.`;
+        ? `${finalName} (Existing Patient) added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`
+        : `${finalName} has been added to the directory and queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`;
 
       const newNotif = await Notification.create({
         facilityId,

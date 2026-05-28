@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFacilityStore } from '../store/facilityStore';
-import { getFacilityConfig } from '../utils/facilityTypeConfig';
+import { getFacilityConfig, getNextTokenPrefix } from '../utils/facilityTypeConfig';
 import { clsx } from 'clsx';
 import PatientHistoryDrawer from './PatientHistoryDrawer';
 
@@ -38,8 +38,8 @@ const QueueList = ({ queue, loading, onComplete }) => {
                     "border font-bold px-2 py-1.5 rounded-md flex flex-col items-center justify-center min-w-[60px]",
                     isInProgress ? "bg-status-warning/10 border-status-warning/30 text-status-warning" : "bg-status-info/10 border-status-info/30 text-status-info"
                   )}>
-                    <span className="text-[9px] opacity-70 leading-tight">TKN</span>
-                    <span className="text-[14px] leading-tight">{patient.tokenNumber}</span>
+                    <span className="text-[9px] opacity-70 leading-tight">{getNextTokenPrefix(patient.facilityType || facilityType)}</span>
+                    <span className="text-[14px] leading-tight">{String(patient.tokenNumber).padStart(3, '0')}</span>
                   </div>
                   <div>
                     <div className="flex items-center gap-2">

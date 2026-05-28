@@ -157,7 +157,7 @@ describe('PATCH /api/facility/onboarding', () => {
     const receptionistPayload = {
       step: 3,
       staffName: 'Staff Onboarding',
-      staffPhone: '88888 88888',
+      staffPhone: '8888888888',
       staffEmail: 'receptionist-onboarding@queuemd.test',
       staffPassword: 'password123'
     };
@@ -201,3 +201,93 @@ describe('PATCH /api/facility/onboarding', () => {
     expect(queueEntry.status).toBe('waiting');
   });
 });
+
+describe('PATCH /api/facility/:id/archive and restore', () => {
+  it('should return 401 if unauthorized', async () => {
+    const res = await request(app).patch(`/api/facility/${testFacility._id}/archive`);
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should return 403 if user is not admin', async () => {
+    const nonAdminUser = await User.create({
+      name: 'Dr. NonAdmin',
+      email: `nonadmin_${Date.now()}@queuemd.test`,
+      password: 'password123',
+      facilityId: testFacility._id,
+      facilityType: 'clinic',
+      role: 'receptionist'
+    });
+
+    const nonAdminToken = jwt.sign(
+      {
+        id: nonAdminUser._id,
+        facilityId: nonAdminUser.facilityId,
+        facilityType: nonAdminUser.facilityType,
+        role: nonAdminUser.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const res = await request(app)
+      .patch(`/api/facility/${testFacility._id}/archive`)
+      .set('Authorization', `Bearer ${nonAdminToken}`);
+    
+    expect(res.statusCode).toBe(403);
+
+    await User.deleteOne({ _id: nonAdminUser._id });
+  });
+
+  it('should archive and block staff, then allow restore', async () => {
+    // Archive
+    const archiveRes = await request(app)
+      .patch(`/api/facility/${testFacility._id}/archive`)
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(archiveRes.statusCode).toBe(200);
+    expect(archiveRes.body.success).toBe(true);
+
+    const archivedDbFacility = await Facility.findById(testFacility._id);
+    expect(archivedDbFacility.isActive).toBe(false);
+
+    // Login for a staff user should be blocked
+    const staffUser = await User.create({
+      name: 'Staff Member',
+      email: `staff_${Date.now()}@queuemd.test`,
+      password: 'password123',
+      facilityId: testFacility._id,
+      facilityType: 'clinic',
+      role: 'receptionist'
+    });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: staffUser.email, password: 'password123' });
+
+    expect(loginRes.statusCode).toBe(403);
+    expect(loginRes.body.success).toBe(false);
+    expect(loginRes.body.message).toMatch(/temporarily archived/i);
+
+    // Restore
+    const restoreRes = await request(app)
+      .patch(`/api/facility/${testFacility._id}/restore`)
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(restoreRes.statusCode).toBe(200);
+    expect(restoreRes.body.success).toBe(true);
+
+    const restoredDbFacility = await Facility.findById(testFacility._id);
+    expect(restoredDbFacility.isActive).toBe(true);
+
+    // Login for staff user should work now
+    const loginSuccessRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: staffUser.email, password: 'password123' });
+
+    expect(loginSuccessRes.statusCode).toBe(200);
+    expect(loginSuccessRes.body.success).toBe(true);
+
+    await User.deleteOne({ _id: staffUser._id });
+  });
+});
+

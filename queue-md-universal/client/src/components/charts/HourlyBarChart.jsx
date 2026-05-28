@@ -2,27 +2,17 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import ChartSkeleton from './ChartSkeleton';
 
 export default function HourlyBarChart({ data = [], loading }) {
-  console.log('📊 HourlyBarChart received data:', data);
-  console.log('📊 Data length:', data.length);
-  console.log('📊 First item:', data[0]);
-  console.log('📊 Has hour field?', data[0]?.hour !== undefined);
-  console.log('📊 Has count field?', data[0]?.count !== undefined);
-  
-  if (loading) return <ChartSkeleton height={250} />;
-  
-  // ✅ Data validation - Check if data is an array and has at least one valid item
-  if (!data || !Array.isArray(data)) {
-    console.warn('⚠️ Data is not an array');
-    return <ChartSkeleton height={250} />;
-  }
+  if (loading) return <ChartSkeleton height={220} />;
+
+  if (!data || !Array.isArray(data)) return <ChartSkeleton height={220} />;
 
   const hasValidData = data.length > 0 && data.some(item => item.hour !== undefined && item.value !== undefined);
 
   if (!hasValidData) {
-    console.warn('⚠️ No valid hourly data (missing hour/value fields)');
     return (
-      <div className="h-[250px] flex items-center justify-center text-text-secondary border border-border-muted/50 rounded-xl bg-bg-secondary">
-        <p className="text-[12px] font-bold">No trends available</p>
+      <div className="h-[220px] flex flex-col items-center justify-center text-text-secondary">
+        <span className="material-symbols-outlined text-3xl opacity-20 mb-2">bar_chart</span>
+        <p className="text-[12px] font-bold opacity-50">No hourly data available</p>
       </div>
     );
   }
@@ -32,9 +22,18 @@ export default function HourlyBarChart({ data = [], loading }) {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-bg-secondary border border-border-muted/50 rounded-xl px-3 py-2 shadow-lg z-50 relative">
-          <p className="text-[10px] text-text-secondary uppercase tracking-widest">{label}</p>
-          <p className="text-[16px] font-black text-text-primary">{payload[0].value} Patients</p>
+        <div
+          className="px-4 py-2.5 rounded-xl shadow-2xl border border-white/10 backdrop-blur-md"
+          style={{
+            background: 'rgba(15,23,42,0.9)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.4)'
+          }}
+        >
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{label}</p>
+          <p className="text-[18px] font-black text-white mt-0.5">
+            {payload[0].value}
+            <span className="text-[12px] font-bold text-slate-400 ml-1">patients</span>
+          </p>
         </div>
       );
     }
@@ -42,36 +41,43 @@ export default function HourlyBarChart({ data = [], loading }) {
   };
 
   return (
-    <div className="h-[250px] w-full bg-bg-secondary p-4 rounded-xl border border-border-muted/50">
-      <h3 className="text-[14px] font-black text-text-primary mb-4 tracking-tight">Hourly Traffic</h3>
-      <div className="w-full h-[calc(100%-30px)]">
-        <ResponsiveContainer width="100%" height={210} minWidth={1} minHeight={1}>
-          <BarChart data={data}>
-            <XAxis 
-              dataKey="hour" 
-              tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 900 }} 
-              axisLine={false} 
-              tickLine={false} 
-              dy={10} 
-            />
-            <Tooltip cursor={{ fill: 'var(--surface-variant)', opacity: 0.4 }} content={<CustomTooltip />} />
-            <Bar 
-              dataKey="value" 
-              radius={[4, 4, 0, 0]}
-              animationDuration={1000}
-              animationEasing="ease-out"
-            >
-              {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={entry.value === maxValue && entry.value > 0 ? "var(--primary-container)" : "var(--primary-container)"} 
-                  className={entry.value === maxValue && entry.value > 0 ? "drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]" : "opacity-30"}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="w-full" style={{ height: 220 }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+        <BarChart data={data} barCategoryGap="30%">
+          <XAxis
+            dataKey="hour"
+            tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 700, opacity: 0.6 }}
+            axisLine={false}
+            tickLine={false}
+            dy={10}
+          />
+          <YAxis hide />
+          <Tooltip
+            cursor={{ fill: 'rgba(255,255,255,0.03)', radius: 6 }}
+            content={<CustomTooltip />}
+          />
+          <Bar
+            dataKey="value"
+            radius={[6, 6, 0, 0]}
+            animationDuration={800}
+            animationEasing="ease-out"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={
+                  entry.value === maxValue && entry.value > 0
+                    ? 'var(--primary-container)'
+                    : 'rgba(var(--theme-primary-rgb, 37,99,235),0.25)'
+                }
+                style={entry.value === maxValue && entry.value > 0 ? {
+                  filter: 'drop-shadow(0 0 8px rgba(var(--theme-primary-rgb, 37,99,235),0.5))'
+                } : {}}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

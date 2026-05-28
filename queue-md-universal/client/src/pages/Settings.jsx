@@ -775,8 +775,8 @@ const AppearanceTab = ({ config, fontSize, setFontSize }) => {
                 toast.success(`${mode.charAt(0).toUpperCase() + mode.slice(1)} mode enabled`);
               }}
               className={`flex-1 ${fontSize === 'small' ? 'py-2 px-3' : fontSize === 'large' ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl border-2 transition flex items-center justify-center gap-2 ${theme === mode
-                  ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
-                  : 'border-border-muted text-text-secondary hover:border-border-muted/70'
+                ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
+                : 'border-border-muted text-text-secondary hover:border-border-muted/70'
                 }`}
             >
               <span className="material-symbols-outlined text-[18px]">
@@ -805,8 +805,8 @@ const AppearanceTab = ({ config, fontSize, setFontSize }) => {
               key={size.value}
               onClick={() => setFontSize(size.value)}
               className={`flex-1 ${fontSize === 'small' ? 'py-2 px-3' : fontSize === 'large' ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl border-2 transition flex flex-col items-center justify-center gap-1 ${fontSize === size.value
-                  ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
-                  : 'border-border-muted text-text-secondary hover:border-border-muted/70'
+                ? 'border-primary-container bg-primary-container/10 text-primary font-semibold'
+                : 'border-border-muted text-text-secondary hover:border-border-muted/70'
                 }`}
             >
               <span
@@ -937,9 +937,447 @@ const NotificationsTab = ({ facilityId }) => {
   );
 };
 
-const DangerZoneTab = ({ user, facility }) => {
+const SecurityAuditModal = ({ isOpen, onClose, user }) => {
+  const [logs, setLogs] = useState([]);
+  const [stats, setStats] = useState({ todayLogins: 0, todayFailed: 0, criticalCount: 0 });
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [clearing, setClearing] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+
+  // Filter states
+  const [search, setSearch] = useState("");
+  const [action, setAction] = useState("all");
+  const [severity, setSeverity] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedDetails, setSelectedDetails] = useState(null); // Collapsed details index/id
+
+  const isAdmin = user?.role === 'admin';
+
+  const fetchLogs = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoading(true);
+    try {
+      const response = await api.get('/audit-logs', {
+        params: {
+          page,
+          limit: 10,
+          action,
+          severity,
+          search,
+          startDate,
+          endDate
+        }
+      });
+      if (response.data?.success) {
+        setLogs(response.data.data);
+        setTotalPages(response.data.pagination.pages);
+      }
+    } catch (err) {
+      console.error("Error fetching audit logs:", err);
+      toast.error("Failed to load audit logs");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, action, severity, search, startDate, endDate, isAdmin]);
+
+  const fetchStats = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const response = await api.get('/audit-logs/stats');
+      if (response.data?.success) {
+        setStats(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLogs();
+      fetchStats();
+    }
+  }, [isOpen, fetchLogs, fetchStats]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [action, severity, search, startDate, endDate]);
+
+  const handleClearLogs = async () => {
+    setClearing(true);
+    try {
+      const response = await api.delete('/audit-logs');
+      if (response.data?.success) {
+        toast.success("Security audit logs cleared successfully! 🧹");
+        setShowConfirmClear(false);
+        setPage(1);
+        fetchLogs();
+        fetchStats();
+      } else {
+        toast.error(response.data?.message || "Failed to clear audit logs");
+      }
+    } catch (err) {
+      console.error("Error clearing audit logs:", err);
+      toast.error(err.response?.data?.message || "Failed to clear audit logs. Please try again.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-bg-secondary w-full max-w-5xl h-[90vh] rounded-3xl border border-border-muted/50 dark:border-white/5 flex flex-col shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="p-6 border-b border-border-muted/30 dark:border-white/5 flex items-center justify-between bg-bg-primary/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
+              <span className="material-symbols-outlined">shield_lock</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-text-primary flex items-center gap-2">
+                System Security Audit Logs
+              </h3>
+              <p className="text-xs text-text-secondary mt-0.5">Track administrator changes, authentication events, and suspicious behavior.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdmin && logs.length > 0 && (
+              <button
+                onClick={() => setShowConfirmClear(true)}
+                className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 hover:text-rose-600 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                Clear Logs
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl bg-bg-primary hover:bg-border-muted/20 border border-border-muted/50 dark:border-white/5 flex items-center justify-center text-text-secondary hover:text-text-primary transition-all"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Lock Screen if Not Admin */}
+        {!isAdmin ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 animate-pulse">
+              <span className="material-symbols-outlined text-4xl">lock</span>
+            </div>
+            <h4 className="text-xl font-bold text-text-primary">Administrator Authorization Required</h4>
+            <p className="text-sm text-text-secondary max-w-md leading-relaxed">
+              This panel contains highly sensitive system data, including login IPs, settings changes, and authentication logs. Only authorized Administrator accounts can access this tab.
+            </p>
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+            >
+              Go Back
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Stats Overview */}
+            <div className="p-6 bg-bg-primary/20 border-b border-border-muted/30 dark:border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-bg-primary/60 border border-border-muted/30 dark:border-white/5 rounded-2xl flex items-center gap-3.5">
+                <span className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center material-symbols-outlined">login</span>
+                <div>
+                  <p className="text-[10px] uppercase font-black text-text-secondary tracking-wider">Today's Successful Logins</p>
+                  <p className="text-xl font-black text-emerald-500 mt-0.5">{stats.todayLogins}</p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-bg-primary/60 border border-border-muted/30 dark:border-white/5 rounded-2xl flex items-center gap-3.5">
+                <span className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center material-symbols-outlined">no_accounts</span>
+                <div>
+                  <p className="text-[10px] uppercase font-black text-text-secondary tracking-wider">Today's Failed Attempts</p>
+                  <p className="text-xl font-black text-amber-500 mt-0.5">{stats.todayFailed}</p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-bg-primary/60 border border-border-muted/30 dark:border-white/5 rounded-2xl flex items-center gap-3.5">
+                <span className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center material-symbols-outlined">warning</span>
+                <div>
+                  <p className="text-[10px] uppercase font-black text-text-secondary tracking-wider">Total Critical Alerts</p>
+                  <p className="text-xl font-black text-rose-500 mt-0.5">{stats.criticalCount}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="p-6 border-b border-border-muted/30 dark:border-white/5 bg-bg-secondary grid grid-cols-1 md:grid-cols-5 gap-3">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[16px]">search</span>
+                <input
+                  type="text"
+                  placeholder="Search user, IP..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 pl-9 pr-3 text-text-primary text-xs focus:outline-none focus:border-border-muted"
+                />
+              </div>
+
+              <div>
+                <select
+                  value={action}
+                  onChange={(e) => setAction(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-xs focus:outline-none"
+                >
+                  <option value="all">All Action Types</option>
+                  <option value="LOGIN_SUCCESS">Login Success</option>
+                  <option value="LOGIN_FAILED">Login Failed</option>
+                  <option value="PASSWORD_CHANGED">Password Change</option>
+                  <option value="FACILITY_UPDATED">Facility Settings Update</option>
+                  <option value="SUSPICIOUS_ACTIVITY">Suspicious Activity</option>
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={severity}
+                  onChange={(e) => setSeverity(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-xs focus:outline-none"
+                >
+                  <option value="all">All Severities</option>
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] text-text-secondary uppercase font-bold">From</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-xs focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] text-text-secondary uppercase font-bold">To</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl py-2 px-3 text-text-primary text-xs focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Log Table / List */}
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-text-secondary">
+                  <span className="material-symbols-outlined animate-spin text-[32px]">sync</span>
+                  <p className="text-xs mt-2 font-medium">Fetching secure security log records...</p>
+                </div>
+              ) : logs.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center text-text-secondary">
+                  <span className="material-symbols-outlined text-[48px] opacity-25">gpp_maybe</span>
+                  <h4 className="text-sm font-bold text-text-primary mt-2">No Security Events Found</h4>
+                  <p className="text-xs mt-1 max-w-sm">No security logs match your current filter selection or no actions have been taken yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border-muted/30 dark:divide-white/5">
+                  {logs.map((log) => {
+                    const isCritical = log.severity === 'critical';
+                    const isWarning = log.severity === 'warning';
+
+                    let severityColor = "bg-slate-500/10 text-slate-400 border-slate-500/20";
+                    if (isCritical) severityColor = "bg-rose-500/10 text-rose-500 border-rose-500/20";
+                    else if (isWarning) severityColor = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+
+                    let actionColor = "bg-blue-500/10 text-blue-500 border-blue-500/20";
+                    if (log.action === "LOGIN_SUCCESS") actionColor = "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+                    else if (log.action === "LOGIN_FAILED") actionColor = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+                    else if (log.action === "SUSPICIOUS_ACTIVITY") actionColor = "bg-rose-500/10 text-rose-500 border-rose-500/20";
+
+                    return (
+                      <div
+                        key={log._id}
+                        className={`p-4 transition-colors hover:bg-bg-primary/30 flex flex-col space-y-2.5 ${isCritical ? "bg-rose-500/[0.02]" : isWarning ? "bg-amber-500/[0.01]" : ""
+                          }`}
+                      >
+                        {/* Upper row */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider border uppercase ${actionColor}`}>
+                              {log.action.replace("_", " ")}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider border uppercase ${severityColor}`}>
+                              {log.severity}
+                            </span>
+                            <span className="text-[11px] text-text-secondary">
+                              {new Date(log.createdAt).toLocaleString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit"
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] font-mono text-text-secondary flex items-center gap-2">
+                            <span className="bg-bg-primary border border-border-muted/50 dark:border-white/5 px-2 py-0.5 rounded">IP: {log.ipAddress || '—'}</span>
+                            <span className="max-w-[150px] truncate bg-bg-primary border border-border-muted/50 dark:border-white/5 px-2 py-0.5 rounded" title={log.userAgent}>Device: {log.userAgent || '—'}</span>
+                          </div>
+                        </div>
+
+                        {/* Lower row */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-500/10 flex items-center justify-center font-bold text-[10px] text-text-primary border border-border-muted/30">
+                              {log.userName?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                            <div>
+                              <span className="font-bold text-text-primary">{log.userName || 'Unknown User'}</span>
+                              <span className="text-text-secondary ml-1.5 text-[11px]">({log.userEmail || 'no-email'})</span>
+                              <span className="ml-1.5 text-[10px] uppercase font-bold tracking-wider text-text-secondary bg-bg-primary px-1.5 py-0.5 rounded border border-border-muted/30">{log.userRole || 'guest'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <button
+                                onClick={() => setSelectedDetails(selectedDetails === log._id ? null : log._id)}
+                                className="px-2.5 py-1 rounded bg-bg-primary hover:bg-border-muted/20 border border-border-muted/50 dark:border-white/5 text-[10px] font-black uppercase tracking-wider text-text-secondary hover:text-text-primary flex items-center gap-1 transition-all"
+                              >
+                                {selectedDetails === log._id ? 'Hide details' : 'View payload'}
+                                <span className="material-symbols-outlined text-[12px]">{selectedDetails === log._id ? 'expand_less' : 'expand_more'}</span>
+                              </button>
+                            )}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${log.status === 'success' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                              }`}>
+                              {log.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Collapsed Details Payload JSON */}
+                        {selectedDetails === log._id && log.details && (
+                          <div className="mt-2 p-3 bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-xl font-mono text-[10px] text-text-primary/95 overflow-x-auto whitespace-pre-wrap">
+                            {JSON.stringify(log.details, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Pagination Footer */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-border-muted/30 dark:border-white/5 flex items-center justify-between bg-bg-primary/30 text-xs">
+                <span className="text-text-secondary font-medium">Page {page} of {totalPages}</span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    className="px-3 py-1.5 rounded-lg bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-bold hover:bg-border-muted/20 disabled:opacity-50 transition-all flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">arrow_back</span> Prev
+                  </button>
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    className="px-3 py-1.5 rounded-lg bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-primary font-bold hover:bg-border-muted/20 disabled:opacity-50 transition-all flex items-center gap-1"
+                  >
+                    Next <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Clear Logs Confirmation Modal */}
+      {showConfirmClear && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
+          <div className="bg-bg-secondary rounded-3xl border border-border-muted/50 dark:border-white/5 p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Clear Audit Logs</h3>
+                <p className="text-xs text-text-secondary mt-0.5">This action is highly sensitive and permanent.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Are you sure you want to delete all security audit logs for this facility? This action cannot be undone. However, a new audit entry will be recorded to document that the logs were cleared.
+            </p>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmClear(false)}
+                className="px-4 py-2 rounded-xl bg-bg-primary hover:bg-border-muted/20 border border-border-muted/50 dark:border-white/5 text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearLogs}
+                disabled={clearing}
+                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {clearing ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[16px]">sync</span>
+                    Clearing...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    Permanently Clear
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DangerZoneTab = ({ user, facility, onRefresh }) => {
   const [confirmArchive, setConfirmArchive] = useState('');
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [confirmReset, setConfirmReset] = useState('');
+  const [showAuditModal, setShowAuditModal] = useState(false);
+
+  // Re-authentication states
+  const [showPasswordConfirmModal, setShowPasswordConfirmModal] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [reauthAction, setReauthAction] = useState(null); // 'audit' | 'archive' | 'restore'
+
+  // Safely extract facilityId — MongoDB _id could be an object, so convert to string
+  const facilityId =
+    (facility?.id && String(facility.id)) ||
+    (facility?._id && String(facility._id)) ||
+    (facility?.facilityId && String(facility.facilityId)) ||
+    (user?.facilityId && String(user.facilityId)) || '';
+  const currentFacilityName = facility?.name || facility?.facilityName || '';
 
   const handleExport = () => {
     const data = JSON.stringify({ facility, exportedAt: new Date().toISOString() }, null, 2);
@@ -952,24 +1390,182 @@ const DangerZoneTab = ({ user, facility }) => {
     toast.success('Facility data exported successfully 📥');
   };
 
-  const handleArchive = () => {
-    if (confirmArchive !== facility?.facilityName) {
+  const handleArchiveInitiate = () => {
+    if (confirmArchive !== currentFacilityName) {
       toast.error('Please type facility name correctly to confirm');
       return;
     }
-    toast.error('Archive feature is locked/coming soon');
     setShowArchiveModal(false);
     setConfirmArchive('');
+    setReauthAction('archive');
+    setShowPasswordConfirmModal(true);
+  };
+
+  const handleRestoreInitiate = () => {
+    setReauthAction('restore');
+    setShowPasswordConfirmModal(true);
+  };
+
+  const handleResetInitiate = () => {
+    if (confirmReset !== 'RESET') {
+      toast.error('Please type "RESET" in uppercase to confirm');
+      return;
+    }
+    setShowResetModal(false);
+    setConfirmReset('');
+    setReauthAction('reset');
+    setShowPasswordConfirmModal(true);
+  };
+
+  const handlePasswordConfirm = async (e) => {
+    e.preventDefault();
+    if (!confirmPassword) return;
+
+    // Capture reauthAction before any async ops (finally block clears it)
+    const action = reauthAction;
+    const fid = facilityId;
+
+    if (!fid) {
+      toast.error('Facility ID not found. Please refresh and try again.');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const response = await api.post('/auth/verify-password', {
+        password: confirmPassword
+      });
+
+      if (response.data?.success) {
+        setShowPasswordConfirmModal(false);
+        setConfirmPassword('');
+        setShowConfirmPassword(false);
+        setReauthAction(null);
+
+        if (action === 'audit') {
+          setShowAuditModal(true);
+          toast.success('Identity verified successfully! 🛡️');
+        } else if (action === 'archive') {
+          // Perform archival
+          const res = await api.patch(`/facility/${fid}/archive`);
+          if (res.data?.success) {
+            toast.success('Facility archived successfully. Staff login access has been blocked. 📦');
+            if (onRefresh) onRefresh();
+          } else {
+            toast.error(res.data?.message || 'Failed to archive facility.');
+          }
+        } else if (action === 'restore') {
+          // Perform restoration
+          const res = await api.patch(`/facility/${fid}/restore`);
+          if (res.data?.success) {
+            toast.success('Facility restored successfully! Staff access re-enabled. 🟢');
+            if (onRefresh) onRefresh();
+          } else {
+            toast.error(res.data?.message || 'Failed to restore facility.');
+          }
+        } else if (action === 'reset') {
+          // Perform daily reset
+          const res = await api.post(`/queue/reset-daily`);
+          if (res.data?.success) {
+            toast.success("Queue logs flushed and token counter reset to 1 successfully! 🟢");
+            if (onRefresh) onRefresh();
+          } else {
+            toast.error(res.data?.message || 'Failed to reset queue.');
+          }
+        }
+      } else {
+        toast.error('Incorrect password. Access denied.');
+      }
+    } catch (err) {
+      console.error('[DangerZone] Action failed:', action, err);
+      toast.error(err.response?.data?.message || 'Action failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const isAdmin = user?.role === 'admin';
 
   return (
     <div className="space-y-5">
+      {/* Security Audit Log Modal */}
+      <SecurityAuditModal
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+        user={user}
+      />
+
+      {/* Password Confirmation Modal */}
+      {showPasswordConfirmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <form onSubmit={handlePasswordConfirm} className="bg-bg-secondary rounded-3xl border border-border-muted/50 dark:border-white/5 p-7 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                <span className="material-symbols-outlined">security</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-text-primary">Confirm Admin Access</h3>
+                <p className="text-xs text-text-secondary mt-0.5">Please confirm your password to proceed.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-3 bg-bg-primary/50 border border-border-muted/30 rounded-xl text-xs">
+                <p className="font-medium text-text-secondary">Administrator Email</p>
+                <p className="font-bold text-text-primary mt-0.5">{user?.email}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-wider font-bold text-text-secondary">Password</label>
+                <div className="relative group">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3 pl-4 pr-12 text-text-primary text-sm focus:outline-none focus:border-border-muted"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{showConfirmPassword ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest disabled:opacity-50 transition-all"
+              >
+                {isVerifying ? 'Verifying...' : 'Confirm'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordConfirmModal(false);
+                  setConfirmPassword('');
+                  setShowConfirmPassword(false);
+                  setReauthAction(null);
+                }}
+                className="px-5 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-widest transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Active Status', value: '🟢 Operational', color: 'text-emerald-500' },
+          { label: 'Active Status', value: facility?.isActive !== false ? '🟢 Operational' : '🔴 Archived', color: facility?.isActive !== false ? 'text-emerald-500' : 'text-rose-500' },
           { label: 'Current Plan', value: facility?.subscriptionPlan === 'pro' ? '💎 Pro Plan' : '🆓 Free Plan', color: 'text-blue-500' },
           { label: 'Today\'s Limit', value: 'Unlimited', color: 'text-text-primary' }
         ].map((card) => (
@@ -990,38 +1586,59 @@ const DangerZoneTab = ({ user, facility }) => {
           <span className="material-symbols-outlined text-[18px] opacity-50">arrow_forward</span>
         </button>
         <button
-          disabled
-          className="w-full py-3.5 px-4 rounded-2xl border border-border-muted/20 text-text-secondary/40 cursor-not-allowed text-left text-sm font-bold flex items-center justify-between"
-          title="Pro Feature"
+          onClick={() => {
+            if (!isAdmin) {
+              toast.error('Only Administrators are authorized to view security logs');
+              return;
+            }
+            setReauthAction('audit');
+            setShowPasswordConfirmModal(true);
+          }}
+          className="w-full py-3.5 px-4 rounded-2xl border border-border-muted/50 dark:border-white/5 text-text-primary hover:bg-bg-primary transition text-left text-sm font-bold flex items-center justify-between"
         >
-          <span>📋 View System Security Audit Logs 🔒</span>
-          <span className="material-symbols-outlined text-[18px] opacity-30">lock</span>
+          <span className="flex items-center gap-2">📋 View System Security Audit Logs <span className="text-[10px] bg-blue-500/10 text-blue-500 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-500/20">🔒 Admin Restricted</span></span>
+          <span className="material-symbols-outlined text-[18px] opacity-50">arrow_forward</span>
         </button>
       </div>
 
-      {/* Archive Facility - Admin Only */}
+      {/* Archive / Restore Facility - Admin Only */}
       {isAdmin && (
-        <div className="p-5 bg-rose-500/5 rounded-2xl border border-rose-500/20 mt-6">
-          <h4 className="font-bold text-rose-500 text-sm flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[18px]">warning</span> Archive Facility
-          </h4>
-          <p className="text-xs text-text-secondary mt-1.5">This will deactivate your facility configuration and restrict staff login access. This operation is reversible by administrators.</p>
-          <button
-            onClick={() => setShowArchiveModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-wider mt-4"
-          >
-            Archive Facility Configuration
-          </button>
-        </div>
+        facility?.isActive !== false ? (
+          <div className="p-5 bg-rose-500/5 rounded-2xl border border-rose-500/20 mt-6 animate-fade-in">
+            <h4 className="font-bold text-rose-500 text-sm flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[18px]">warning</span> Archive Facility
+            </h4>
+            <p className="text-xs text-text-secondary mt-1.5">This will temporarily deactivate your facility configuration and restrict all staff members from logging into the system. No data will be lost, and administrators can undo this action later.</p>
+            <button
+              onClick={() => setShowArchiveModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-wider mt-4 transition-all duration-200"
+            >
+              Archive Facility Configuration
+            </button>
+          </div>
+        ) : (
+          <div className="p-5 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 mt-6 animate-fade-in">
+            <h4 className="font-bold text-emerald-500 text-sm flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[18px]">check_circle</span> Restore Facility
+            </h4>
+            <p className="text-xs text-text-secondary mt-1.5">This facility is currently archived. Staff access is blocked. Click the button below to re-enable access for all staff members.</p>
+            <button
+              onClick={handleRestoreInitiate}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider mt-4 transition-all duration-200"
+            >
+              Restore Facility Configuration
+            </button>
+          </div>
+        )
       )}
 
       {/* Archive Confirmation Modal */}
       {showArchiveModal && (
-        <div className="fixed inset-0 bg-bg-primary/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-bg-secondary rounded-3xl border border-border-muted/50 dark:border-white/5 p-7 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-black text-text-primary mb-2">Confirm Facility Archival</h3>
             <p className="text-xs text-text-secondary mb-4 leading-relaxed">
-              Archiving will hide patients database. To proceed, please type <strong className="text-rose-500">"{facility?.facilityName}"</strong> below:
+              Archiving will block all staff logins temporarily. To proceed, please type <strong className="text-rose-500">"{currentFacilityName}"</strong> below:
             </p>
             <input
               type="text"
@@ -1032,14 +1649,55 @@ const DangerZoneTab = ({ user, facility }) => {
             />
             <div className="flex gap-3">
               <button
-                onClick={handleArchive}
-                className="flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-widest"
+                onClick={handleArchiveInitiate}
+                className="flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-widest transition-all duration-200"
               >
                 Confirm Archive
               </button>
               <button
-                onClick={() => setShowArchiveModal(false)}
-                className="px-4 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-widest"
+                onClick={() => {
+                  setShowArchiveModal(false);
+                  setConfirmArchive('');
+                }}
+                className="px-4 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-widest transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-bg-secondary rounded-3xl border border-border-muted/50 dark:border-white/5 p-7 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-black text-rose-500 mb-2">Confirm Queue Reset</h3>
+            <p className="text-xs text-text-secondary mb-4 leading-relaxed">
+              This action will **permanently delete** all patient waiting, in-progress, and completed queue records for today, and reset the token sequence back to 1.
+              <br /><br />
+              To proceed, please type <strong className="text-rose-500">"RESET"</strong> in uppercase below:
+            </p>
+            <input
+              type="text"
+              value={confirmReset}
+              onChange={(e) => setConfirmReset(e.target.value)}
+              className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 px-4 text-text-primary text-sm focus:outline-none mb-5"
+              placeholder="Type RESET"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleResetInitiate}
+                className="flex-1 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-widest transition-all duration-200"
+              >
+                Confirm Reset
+              </button>
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setConfirmReset('');
+                }}
+                className="px-4 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-bold text-xs uppercase tracking-widest transition-all duration-200"
               >
                 Cancel
               </button>
@@ -1055,7 +1713,7 @@ const DangerZoneTab = ({ user, facility }) => {
         </h4>
         <p className="text-xs text-text-secondary mt-1.5">This will clear today's active waiting tickets index and flush the current queue log. Cannot be undone.</p>
         <button
-          onClick={() => toast.error('Counter reset endpoint coming soon')}
+          onClick={() => setShowResetModal(true)}
           className="px-4 py-2.5 rounded-xl border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 font-bold text-xs uppercase tracking-wider mt-4 transition"
         >
           Reset Today's Queue Logs
@@ -1452,13 +2110,25 @@ const FacilityTypesTab = ({ facility }) => {
 // ─────────────────────────────────────────────────────────────
 
 const SubscriptionTab = () => {
-  const { facilityId } = useAuthStore();
-  const { subscriptionPlan, subscriptionStatus, subscriptionEnd, fetchSubscriptionStatus, initiateUpgrade, loading } = useBillingStore();
+  const { facilityId } = useFacilityStore();
+  const {
+    subscriptionPlan,
+    subscriptionStatus,
+    subscriptionEnd,
+    subscriptionHistory,
+    fetchSubscriptionStatus,
+    fetchSubscriptionHistory,
+    initiateUpgrade,
+    loading
+  } = useBillingStore();
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState("yearly"); // Default yearly plan selection
 
   useEffect(() => {
-    if (facilityId) fetchSubscriptionStatus();
+    if (facilityId) {
+      fetchSubscriptionStatus();
+      fetchSubscriptionHistory();
+    }
   }, [facilityId]);
 
   const isPro = subscriptionPlan === "pro";
@@ -1554,8 +2224,8 @@ const SubscriptionTab = () => {
                   type="button"
                   onClick={() => setSelectedDuration(duration)}
                   className={`relative p-6 rounded-2xl border-2 transition-all text-left overflow-hidden group ${isSelected
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20"
-                      : "border-border-muted/50 dark:border-white/10 bg-bg-primary hover:border-blue-500/40 dark:hover:border-blue-500/40 opacity-80 hover:opacity-100"
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20"
+                    : "border-border-muted/50 dark:border-white/10 bg-bg-primary hover:border-blue-500/40 dark:hover:border-blue-500/40 opacity-80 hover:opacity-100"
                     }`}
                 >
                   {duration === "yearly" && (
@@ -1625,9 +2295,54 @@ const SubscriptionTab = () => {
         </button>
 
         {showHistory && (
-          <div className="mt-4 p-5 rounded-2xl bg-bg-secondary/40 border border-border-muted/40 dark:border-white/5 text-sm text-text-secondary italic flex flex-col items-center justify-center gap-3 py-8">
-            <span className="material-symbols-outlined text-[32px] opacity-30">receipt_long</span>
-            <p className="font-medium text-text-secondary/80">Billing history will appear here after your first transaction.</p>
+          <div className="mt-4 space-y-4">
+            {loading && (!subscriptionHistory || subscriptionHistory.length === 0) ? (
+              <div className="p-8 text-center text-text-secondary/70">
+                <span className="material-symbols-outlined animate-spin text-[24px]">sync</span>
+                <p className="text-xs mt-1">Loading billing history...</p>
+              </div>
+            ) : (!subscriptionHistory || subscriptionHistory.length === 0) ? (
+              <div className="p-5 rounded-2xl bg-bg-secondary/40 border border-border-muted/40 dark:border-white/5 text-sm text-text-secondary italic flex flex-col items-center justify-center gap-3 py-8">
+                <span className="material-symbols-outlined text-[32px] opacity-30">receipt_long</span>
+                <p className="font-medium text-text-secondary/80">Billing history will appear here after your first transaction.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto bg-bg-primary rounded-2xl border border-border-muted dark:border-white/10 shadow-sm">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-border-muted/50 dark:border-white/10 bg-bg-secondary/30">
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider">Date</th>
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider">Plan</th>
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider">Duration</th>
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider">Amount</th>
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider">Order ID</th>
+                      <th className="py-3 px-4 font-bold text-text-secondary uppercase tracking-wider text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscriptionHistory.map((sub) => (
+                      <tr key={sub.razorpayOrderId || sub._id} className="border-b border-border-muted/30 dark:border-white/5 last:border-0 hover:bg-bg-secondary/20 transition-colors">
+                        <td className="py-3 px-4 text-text-primary font-medium">
+                          {new Date(sub.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-text-primary uppercase">{sub.plan}</td>
+                        <td className="py-3 px-4 text-text-secondary capitalize">{sub.duration}</td>
+                        <td className="py-3 px-4 text-text-primary font-semibold">₹{(sub.amount / 100).toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-4 text-text-secondary font-mono text-[10px]">{sub.razorpayOrderId || '—'}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${sub.status === 'paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              sub.status === 'created' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            }`}>
+                            {sub.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1763,7 +2478,8 @@ export default function Settings() {
   };
 
   const renderTabContent = () => {
-    const facility = facilityData || { facilityId, facilityType, facilityName };
+    // Include _id and facilityId in fallback so DangerZoneTab can always resolve facility ID
+    const facility = facilityData || { _id: facilityId, facilityId, facilityType, facilityName };
 
     switch (activeTab) {
       case 'profile': return <MyAccountTab user={user} />;
@@ -1774,7 +2490,7 @@ export default function Settings() {
       case 'appearance': return <AppearanceTab config={config} fontSize={fontSize} setFontSize={setFontSize} />;
       case 'notifications': return <NotificationsTab facilityId={facilityId} />;
       case 'subscription': return <SubscriptionTab />;
-      case 'danger': return <DangerZoneTab user={user} facility={facility} />;
+      case 'danger': return <DangerZoneTab user={user} facility={facility} onRefresh={fetchFacilityData} />;
       default: return null;
     }
   };

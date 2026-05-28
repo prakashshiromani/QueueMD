@@ -251,6 +251,67 @@ describe('PUT /api/auth/change-password', () => {
   });
 });
 
+describe('POST /api/auth/verify-password', () => {
+  const verifyEmail = 'verify-test@queuemd.com';
+  const testPassword = 'secureVerifyPass123';
+  let token;
+  let User;
+
+  beforeAll(async () => {
+    User = require('../models/User');
+    await User.deleteMany({ email: verifyEmail });
+
+    const Facility = require('../models/Facility');
+    let facility = await Facility.findOne();
+    if (!facility) {
+      facility = await Facility.create({ name: 'Test Facility', facilityType: 'clinic' });
+    }
+
+    await User.create({
+      name: 'Verify Tester',
+      email: verifyEmail,
+      password: testPassword,
+      facilityId: facility._id,
+      facilityType: facility.facilityType,
+      role: 'admin'
+    });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: verifyEmail, password: testPassword });
+    token = loginRes.body.token || loginRes.body.accessToken;
+  });
+
+  afterAll(async () => {
+    await User.deleteMany({ email: verifyEmail });
+  });
+
+  it('should return 401 when no token is provided', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-password')
+      .send({ password: testPassword });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('should return 400 when password is wrong', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ password: 'wrongpassword' });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('should return 200 when password is correct', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ password: testPassword });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+});
+
 describe('GET /api/health', () => {
   it('should return 200 and status ok', async () => {
     const res = await request(app).get('/api/health');

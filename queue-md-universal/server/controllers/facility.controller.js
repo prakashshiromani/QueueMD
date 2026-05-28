@@ -1,15 +1,7 @@
 const Facility = require("../models/Facility");
-const { z } = require("zod");
+const { facilitySchema } = require("../schemas/facility.schema");
 const logger = require("../utils/logger");
-
-// Validation Schema
-const facilitySchema = z.object({
-  name: z.string().min(2, "Facility name required"),
-  facilityType: z.enum(["clinic", "hospital", "pathlab", "dental", "physio", "other"]),
-  address: z.string().optional(),
-  contact: z.string().optional(),
-  customFields: z.record(z.any()).optional()
-});
+const { logAudit } = require("../utils/auditLogger");
 
 // ✅ CREATE FACILITY
 exports.createFacility = async (req, res, next) => {
@@ -163,6 +155,15 @@ exports.updateFacility = async (req, res, next) => {
 
     await facility.save();
     logger.info(`Facility updated: ${facility.name} (ID: ${facility._id})`);
+
+    await logAudit(req, {
+      action: "FACILITY_UPDATED",
+      facilityId: facility._id,
+      userId: req.user.id,
+      severity: "info",
+      status: "success",
+      details: { updatedFields: Object.keys(updates) }
+    });
 
     res.json({
       success: true,
@@ -372,3 +373,100 @@ exports.completeOnboardingStep = async (req, res, next) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
+// ✅ ARCHIVE FACILITY (Deactivate and block staff access)
+exports.archiveFacility = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verify the admin belongs to this facility
+    const userFacilityId = req.user.facilityId ? req.user.facilityId.toString() : '';
+    if (userFacilityId && userFacilityId !== id) {
+      return res.status(403).json({ success: false, message: "Not authorized to modify this facility" });
+    }
+
+    const facility = await Facility.findById(id);
+    if (!facility) {
+      return res.status(404).json({ success: false, message: "Facility not found" });
+    }
+
+    if (!facility.isActive) {
+      return res.json({ success: true, message: "Facility is already archived.", data: facility });
+    }
+
+    facility.isActive = false;
+    await facility.save();
+
+    await logAudit(req, {
+      action: "FACILITY_ARCHIVED",
+      facilityId: facility._id,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      userName: req.user.name,
+      userRole: req.user.role,
+      severity: "critical",
+      status: "success",
+      details: { facilityName: facility.name }
+    });
+
+    logger.info(`[FACILITY] Facility archived successfully: ${facility.name} (${id})`);
+
+    res.json({
+      success: true,
+      message: "Facility archived successfully. Staff login access has been blocked.",
+      data: facility
+    });
+  } catch (err) {
+    logger.error(`[FACILITY] Archive error: ${err.message}`);
+    next(err);
+  }
+};
+
+// ✅ RESTORE FACILITY (Reactivate and restore staff access)
+exports.restoreFacility = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verify the admin belongs to this facility
+    const userFacilityId = req.user.facilityId ? req.user.facilityId.toString() : '';
+    if (userFacilityId && userFacilityId !== id) {
+      return res.status(403).json({ success: false, message: "Not authorized to modify this facility" });
+    }
+
+    const facility = await Facility.findById(id);
+    if (!facility) {
+      return res.status(404).json({ success: false, message: "Facility not found" });
+    }
+
+    if (facility.isActive) {
+      return res.json({ success: true, message: "Facility is already active.", data: facility });
+    }
+
+    facility.isActive = true;
+    await facility.save();
+
+    await logAudit(req, {
+      action: "FACILITY_RESTORED",
+      facilityId: facility._id,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      userName: req.user.name,
+      userRole: req.user.role,
+      severity: "warning",
+      status: "success",
+      details: { facilityName: facility.name }
+    });
+
+    logger.info(`[FACILITY] Facility restored successfully: ${facility.name} (${id})`);
+
+    res.json({
+      success: true,
+      message: "Facility restored successfully. Staff access has been re-enabled.",
+      data: facility
+    });
+  } catch (err) {
+    logger.error(`[FACILITY] Restore error: ${err.message}`);
+    next(err);
+  }
+};
+

@@ -1,16 +1,16 @@
 import ChartSkeleton from './ChartSkeleton';
 
 export default function TopDoctorsCard({ data = [], loading }) {
-  console.log('📊 TopDoctorsCard received:', data);
+
 
   if (loading) return <ChartSkeleton height={250} />;
 
   // ✅ Defensive check for empty or non-array data
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
-      <div className="h-[250px] flex flex-col items-center justify-center text-text-secondary border border-border-muted/50 rounded-xl bg-bg-secondary">
-        <span className="material-symbols-outlined text-[32px] opacity-50 mb-2">medical_services</span>
-        <p className="text-[12px] font-bold">No doctor stats available</p>
+      <div className="h-[200px] flex flex-col items-center justify-center text-text-secondary">
+        <span className="material-symbols-outlined text-3xl opacity-20 mb-2">medical_services</span>
+        <p className="text-[12px] font-bold opacity-50">No doctor stats available</p>
       </div>
     );
   }
@@ -19,65 +19,52 @@ export default function TopDoctorsCard({ data = [], loading }) {
   const maxCount = Math.max(...data.map(d => d.value !== undefined ? d.value : (d.count || 0))) || 1;
 
   return (
-    <div className="h-[250px] w-full bg-bg-secondary p-5 rounded-xl border border-border-muted/50 overflow-y-auto custom-scrollbar">
-      <h3 className="text-[14px] font-black text-text-primary mb-4 tracking-tight flex items-center justify-between">
-        Top Doctors
-        <span className="material-symbols-outlined text-[16px] text-yellow-500">trophy</span>
-      </h3>
-      
-      <div className="space-y-4">
-        {data.map((doctor, index) => {
-          if (!doctor) return null;
+    <div className="w-full space-y-3 overflow-y-auto max-h-[200px] custom-scrollbar">
+      {data.map((doctor, index) => {
+        if (!doctor) return null;
+        const name = doctor.name || doctor.doctorName || doctor._id || 'Unknown Doctor';
+        const count = doctor.value !== undefined ? doctor.value : (doctor.count || 0);
+        const initial = name?.charAt(0)?.toUpperCase() || '?';
+        const medals = ['🥇', '🥈', '🥉'];
 
-          // ✅ Backend sends name as '_id' or 'doctorName' or 'name'
-          const name = doctor.name || doctor.doctorName || doctor._id || 'Unknown Doctor';
-          const count = doctor.value !== undefined ? doctor.value : (doctor.count || 0);
-          const initial = name?.charAt(0)?.toUpperCase() || '?';
+        return (
+          <div key={name + index} className="flex items-center gap-3 group">
+            <div
+              className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[12px] font-black border"
+              style={{
+                backgroundColor: 'rgba(var(--theme-primary-rgb),0.12)',
+                color: 'var(--theme-primary)',
+                borderColor: 'rgba(var(--theme-primary-rgb),0.2)'
+              }}
+            >
+              {initial}
+            </div>
 
-          return (
-            <div key={name + index} className="flex items-center gap-3">
-              <div className="w-8 h-8 shrink-0 rounded-full bg-surface-variant text-text-primary flex items-center justify-center text-[12px] font-black border border-border-muted/50">
-                {initial}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-end mb-1.5">
+                <span className="text-[13px] font-bold text-text-primary truncate">{name}</span>
+                <span className="text-[11px] font-black text-text-secondary shrink-0 ml-2">{count} pts</span>
               </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[13px] font-bold text-text-primary truncate">{name}</span>
-                  <span className="text-[11px] font-black text-text-secondary">{count} pts</span>
-                </div>
-                
-                <div className="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${(count / maxCount) * 100}%` }}
-                  />
-                </div>
+              <div className="h-1.5 w-full bg-surface-variant/60 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{
+                    width: `${(count / maxCount) * 100}%`,
+                    backgroundColor: 'var(--theme-primary)',
+                    boxShadow: '0 0 6px rgba(var(--theme-primary-rgb),0.4)'
+                  }}
+                />
               </div>
-              
-              {index === 0 && (
-                <div className="shrink-0 w-6 flex justify-center">
-                  <span className="text-[16px]">🥇</span>
-                </div>
-              )}
-              {index === 1 && (
-                <div className="shrink-0 w-6 flex justify-center">
-                  <span className="text-[16px]">🥈</span>
-                </div>
-              )}
-              {index === 2 && (
-                <div className="shrink-0 w-6 flex justify-center">
-                  <span className="text-[16px]">🥉</span>
-                </div>
-              )}
-              {index > 2 && (
-                <div className="shrink-0 w-6 flex justify-center text-[12px] font-black text-text-secondary">
-                  #{index + 1}
-                </div>
+            </div>
+
+            <div className="shrink-0 w-6 flex justify-center text-[14px]">
+              {index < 3 ? medals[index] : (
+                <span className="text-[11px] font-black text-text-secondary">#{index + 1}</span>
               )}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

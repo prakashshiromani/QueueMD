@@ -113,6 +113,7 @@ export const useBillingStore = create(
       subscriptionPlan: "free",
       subscriptionStatus: "active",
       subscriptionEnd: null,
+      subscriptionHistory: [],
 
       fetchSubscriptionStatus: async () => {
         try {
@@ -126,6 +127,20 @@ export const useBillingStore = create(
           });
         } catch (err) {
           console.error("Failed to fetch subscription:", err);
+          set({ loading: false });
+        }
+      },
+
+      fetchSubscriptionHistory: async () => {
+        try {
+          set({ loading: true });
+          const { data } = await api.get("/subscription/history");
+          set({
+            subscriptionHistory: data.subscriptions || [],
+            loading: false
+          });
+        } catch (err) {
+          console.error("Failed to fetch subscription history:", err);
           set({ loading: false });
         }
       },
@@ -162,6 +177,7 @@ export const useBillingStore = create(
                 subscriptionEnd: result.subscription.validUntil,
                 loading: false
               });
+              get().fetchSubscriptionHistory();
               toast.success(result.message || "🎉 Upgrade successful! Pro features unlocked!");
               return { success: true, isMock: true };
             }
@@ -190,6 +206,7 @@ export const useBillingStore = create(
                     subscriptionEnd: result.subscription.validUntil,
                     loading: false
                   });
+                  get().fetchSubscriptionHistory();
                   toast.success(result.message || "🎉 Upgrade successful!");
                   return { success: true };
                 }
@@ -251,7 +268,8 @@ export const useBillingStore = create(
         totalInvoices: 0,
         subscriptionPlan: "free",
         subscriptionStatus: "active",
-        subscriptionEnd: null
+        subscriptionEnd: null,
+        subscriptionHistory: []
       })
     }),
     {

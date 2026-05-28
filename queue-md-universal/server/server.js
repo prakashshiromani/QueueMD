@@ -33,6 +33,7 @@ const subscriptionRoutes = require("./routes/subscription.routes");
 const ticketRoutes = require("./routes/ticket.routes");
 const uploadRoutes = require("./routes/upload.routes");
 const visitRoutes = require("./routes/visit.routes");
+const auditLogRoutes = require("./routes/auditLog.routes");
 
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
@@ -75,7 +76,7 @@ app.use((req, res, next) => {
 
 // Basic Health Routes
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     message: "🚀 QueueMD API is Running",
     version: "3.2",
     status: "OK"
@@ -101,6 +102,7 @@ app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/visits", visitRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
 
 // Public Routes
 const publicRoutes = require("./routes/publicRoutes");
@@ -127,7 +129,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     console.log("🛠️ Starting server...");
-    
+
     // 1. Connect to Database
     console.log("🔌 Connecting to MongoDB...");
     await connectDB();
@@ -161,7 +163,7 @@ const startServer = async () => {
   } catch (error) {
     console.error(`❌ Startup Error: ${error.message}`);
     logger.error(`❌ Startup Error: ${error.message}`);
-    process.exit(1); 
+    process.exit(1);
   }
 };
 

@@ -4,7 +4,7 @@ import AddPatientModal from "../components/AddPatientModal";
 import PatientHistoryDrawer from "../components/PatientHistoryDrawer";
 import { fetchPatientsApi, addPatientToDirectoryApi, addPatientApi, togglePatientStatusApi, updatePatientApi, deletePatientApi, createInvoiceApi } from "../services/api";
 import { useFacilityStore } from "../store/facilityStore";
-import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
+import { FACILITY_TYPES, formatTokenNumber } from "../utils/facilityTypeConfig";
 import { staffApi } from "../services/staffApi";
 import { X, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -118,7 +118,7 @@ export default function Patients() {
       };
 
       const res = await addPatientApi(payload);
-      toast.success(`Token #${res.data.tokenNumber} generated for ${patient.name}!`);
+      toast.success(`Token #${formatTokenNumber(res.data.tokenNumber, patient.facilityType)} generated for ${patient.name}!`);
 
     } catch (error) {
       const msg = error.response?.data?.message || "Failed to add to queue";
@@ -418,18 +418,18 @@ export default function Patients() {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-variant/30 border-b border-border-muted/50 dark:border-white/5">
-                  <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PATIENT</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">CONTACT</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PRIMARY FACILITY</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">LAST VISIT</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">STATUS</th>
-                  <th className="px-6 py-5 text-right text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">ACTIONS</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PATIENT</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">CONTACT</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">PRIMARY FACILITY</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">LAST VISIT</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">STATUS</th>
+                  <th className="px-6 py-3 text-right text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-muted/30">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center">
+                    <td colSpan="6" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined animate-spin text-4xl text-blue-500">refresh</span>
                         <p className="text-[11px] font-black text-text-secondary uppercase tracking-widest">Synchronizing records...</p>
@@ -438,7 +438,7 @@ export default function Patients() {
                   </tr>
                 ) : patients.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center">
+                    <td colSpan="6" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4 opacity-40">
                         <span className="material-symbols-outlined text-6xl">person_off</span>
                         <div className="space-y-1">
@@ -453,7 +453,7 @@ export default function Patients() {
                 ) : (
                   patients.map((patient) => (
                     <tr key={patient._id} className="group hover:bg-surface-variant/40 transition-all border-l-4 border-l-transparent hover:border-l-[var(--theme-primary)]">
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <div className="flex items-center gap-3">
                           <div
                             className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[13px] border"
@@ -476,7 +476,7 @@ export default function Patients() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <div className="text-[13px] font-bold text-text-primary whitespace-nowrap">
                           {patient.phone || "N/A"}
                         </div>
@@ -485,11 +485,11 @@ export default function Patients() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <FacilityBadge type={patient.facilityType || "clinic"} />
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <div className="text-[13px] font-bold text-text-primary">
                           {formatDate(patient.lastVisit)}
                         </div>
@@ -498,11 +498,11 @@ export default function Patients() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <StatusBadge status={patient.status || "active"} patientId={patient._id} />
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <div className="flex items-center justify-end gap-2">
                           {(() => {
                             const rowConfig = FACILITY_TYPES[patient.facilityType] || FACILITY_TYPES.clinic;
@@ -511,7 +511,7 @@ export default function Patients() {
                               <button
                                 onClick={() => handleAddToQueue(patient)}
                                 disabled={actionLoading[patient._id]}
-                                className="px-4 py-2 rounded-xl font-black text-[11px] tracking-widest uppercase transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm border"
+                                className="px-4 py-2 rounded-xl font-black text-[11px] tracking-widest uppercase transition-all flex items-center gap-2 disabled:opacity-50 shadow-sm border whitespace-nowrap"
                                 style={{
                                   backgroundColor: `${rowPrimary}10`,
                                   color: rowPrimary,

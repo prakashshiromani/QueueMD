@@ -1,10 +1,11 @@
 // server/controllers/auth.controller.js
 const User = require("../models/User");
 const logger = require("../utils/logger");
+const { logAudit } = require("../utils/auditLogger");
 const Facility = require("../models/Facility");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { z } = require("zod");
+const { registerSchema, loginSchema } = require("../schemas/auth.schema");
 
 // Validation Schemas
 const createTokens = (user) => {
@@ -20,22 +21,6 @@ const createTokens = (user) => {
   );
   return { accessToken, refreshToken };
 };
-
-const registerSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
-  facilityName: z.string().optional(), // If new facility
-  facilityId: z.string().optional(),   // If existing facility
-  facilityType: z.enum(["clinic", "hospital", "pathlab", "dental", "physio", "other"]).default("clinic"),
-  role: z.enum(["admin", "receptionist", "doctor", "lab_tech"]).optional()
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  remember: z.boolean().optional()
-});
 
 // ✅ REGISTER (Auto-Create Facility if needed)
 exports.register = async (req, res, next) => {
@@ -66,15 +51,11 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Either facilityName or facilityId is required" });
     }
 
-    // Hash Password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Create User
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password, // Mongoose pre-save hook will hash this automatically with 12 rounds
       facilityId: facility._id,
       facilityType: facility.facilityType,
       role
@@ -82,6 +63,18 @@ exports.register = async (req, res, next) => {
 
     // Generate Tokens
     const tokens = createTokens(user);
+
+    await logAudit(req, {
+      action: "REGISTER_SUCCESS",
+      facilityId: facility._id,
+      userId: user._id,
+      userEmail: user.email,
+      userName: user.name,
+      userRole: user.role,
+      severity: "info",
+      status: "success",
+      details: { facilityName: facility.name }
+    });
 
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
@@ -122,6 +115,13 @@ exports.login = async (req, res, next) => {
     // Find User (+password because we hid it in model)
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
+      await logAudit(req, {
+        action: "LOGIN_FAILED",
+        userEmail: email,
+        severity: "warning",
+        status: "failed",
+        details: { reason: "User not found" }
+      });
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
@@ -129,16 +129,87 @@ exports.login = async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
+      await logAudit(req, {
+        action: "LOGIN_FAILED",
+        facilityId: user.facilityId,
+        userId: user._id,
+        userEmail: user.email,
+        userName: user.name,
+        userRole: user.role,
+        severity: "warning",
+        status: "failed",
+        details: { reason: "Incorrect password" }
+      });
+
+      // Suspicious check: count logs in past 15 mins for this IP
+      const AuditLog = require("../models/AuditLog");
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip || "";
+      const failedCount = await AuditLog.countDocuments({
+        ipAddress,
+        action: "LOGIN_FAILED",
+        createdAt: { $gte: fifteenMinsAgo }
+      });
+
+      if (failedCount >= 5) {
+        await logAudit(req, {
+          action: "SUSPICIOUS_ACTIVITY",
+          facilityId: user.facilityId,
+          userId: user._id,
+          userEmail: user.email,
+          userName: user.name,
+          userRole: user.role,
+          severity: "critical",
+          status: "failed",
+          details: { reason: "Multiple failed login attempts", attemptCount: failedCount }
+        });
+      }
+
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     // Get Facility Name for frontend display
     const facility = await Facility.findById(user.facilityId);
+    if (!facility) {
+      return res.status(404).json({ success: false, message: "Associated facility not found" });
+    }
+
+    // Check if facility is active (Archive Facility check)
+    // Non-admin roles are blocked from logging in. Admin is allowed to log in to restore it.
+    if (facility.isActive === false && user.role !== "admin") {
+      await logAudit(req, {
+        action: "LOGIN_FAILED",
+        facilityId: user.facilityId,
+        userId: user._id,
+        userEmail: user.email,
+        userName: user.name,
+        userRole: user.role,
+        severity: "warning",
+        status: "failed",
+        details: { reason: "Facility is archived" }
+      });
+      return res.status(403).json({
+        success: false,
+        message: "This facility has been temporarily archived. Access is restricted for staff members."
+      });
+    }
 
     logger.info(`Login success for user: ${user.email}, FacilityType: ${user.facilityType}`);
 
     // Generate Tokens
     const tokens = createTokens(user);
+
+    await logAudit(req, {
+      action: "LOGIN_SUCCESS",
+      facilityId: user.facilityId,
+      userId: user._id,
+      userEmail: user.email,
+      userName: user.name,
+      userRole: user.role,
+      severity: "info",
+      status: "success",
+      details: { remember: validation.data.remember !== false }
+    });
 
     const cookieOptions = {
       httpOnly: true,
@@ -306,6 +377,17 @@ exports.changePassword = async (req, res, next) => {
     user.password = newPassword;
     await user.save();
 
+    await logAudit(req, {
+      action: "PASSWORD_CHANGED",
+      facilityId: user.facilityId,
+      userId: user._id,
+      userEmail: user.email,
+      userName: user.name,
+      userRole: user.role,
+      severity: "warning",
+      status: "success"
+    });
+
     logger.info(`[SECURITY] Password changed successfully by user: ${user.email}`);
 
     return res.status(200).json({
@@ -316,4 +398,58 @@ exports.changePassword = async (req, res, next) => {
     next(err);
   }
 };
+
+// ✅ VERIFY PASSWORD (For authenticated users to confirm identity before sensitive operations)
+exports.verifyPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required" });
+    }
+
+    // Get user from database with password included
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Verify password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      await logAudit(req, {
+        action: "REAUTH_FAILED",
+        facilityId: user.facilityId,
+        userId: user._id,
+        userEmail: user.email,
+        userName: user.name,
+        userRole: user.role,
+        severity: "warning",
+        status: "failed",
+        details: { reason: "Incorrect verification password" }
+      });
+
+      return res.status(400).json({ success: false, message: "Incorrect password" });
+    }
+
+    await logAudit(req, {
+      action: "REAUTH_SUCCESS",
+      facilityId: user.facilityId,
+      userId: user._id,
+      userEmail: user.email,
+      userName: user.name,
+      userRole: user.role,
+      severity: "info",
+      status: "success"
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Identity verified successfully"
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 

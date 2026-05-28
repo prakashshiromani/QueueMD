@@ -8,6 +8,7 @@ import { Upload, Lock, FileText, LogOut, Calendar, Activity, RefreshCcw, Downloa
 import UploadPrescriptionModal from '../components/UploadPrescriptionModal';
 import ViewPrescriptionsModal from '../components/ViewPrescriptionsModal';
 import { createPortal } from 'react-dom';
+import { formatTokenNumber } from '../utils/facilityTypeConfig';
 
 const patientApi = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -330,7 +331,7 @@ const LobbyPortal = () => {
                         <div>
                             <p className="text-gray-400 uppercase tracking-widest text-xs font-bold mb-1">Currently Serving</p>
                             <h2 className="text-5xl font-black text-emerald-400 tracking-tighter">
-                                {liveData.currentlyServing !== "None" ? `#${liveData.currentlyServing}` : liveData.currentlyServing}
+                                {liveData.currentlyServing !== "None" ? `#${formatTokenNumber(liveData.currentlyServing, liveData.facilityType)}` : liveData.currentlyServing}
                             </h2>
                         </div>
                         
@@ -338,7 +339,7 @@ const LobbyPortal = () => {
                             <div className="absolute inset-0 bg-white/[0.02]"></div>
                             <div className="relative">
                                 <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">Your Token</p>
-                                <h1 className="text-7xl font-black text-white my-3 tracking-tighter">#{liveData.myToken}</h1>
+                                <h1 className="text-7xl font-black text-white my-3 tracking-tighter">#{formatTokenNumber(liveData.myToken, liveData.facilityType)}</h1>
                                 
                                 <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-widest ${
                                     ['in-progress', 'in-room', 'completed'].includes(liveData.myStatus) 
@@ -617,6 +618,7 @@ const LobbyPortal = () => {
                     tokenNumber={liveData?.myToken || token}
                     phone={phone}
                     onClose={() => setShowUploadModal(false)}
+                    facilityType={liveData?.facilityType}
                 />
             )}
 

@@ -45,22 +45,22 @@ export default function PatientHistoryDrawer({ isOpen, onClose, patient }) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-[400px] bg-[#0B1120]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 flex flex-col"
+            className="fixed right-0 top-0 h-full w-full max-w-[400px] bg-bg-secondary dark:bg-[#0B1120] backdrop-blur-xl border-l border-border-muted dark:border-white/10 shadow-2xl z-50 flex flex-col"
           >
             {/* Header */}
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+            <div className="p-6 border-b border-border-muted dark:border-white/10 flex items-center justify-between">
               <div>
-                <h2 className="text-[18px] font-black text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-purple-400">history</span>
+                <h2 className="text-[18px] font-black text-text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">history</span>
                   Patient History
                 </h2>
-                <p className="text-[12px] text-gray-400 mt-1 font-medium">
-                  Clinical records for <span className="font-bold text-white">{patient.name}</span>
+                <p className="text-[12px] text-text-secondary mt-1 font-medium">
+                  Clinical records for <span className="font-bold text-text-primary">{patient.name}</span>
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl hover:bg-white/10 text-gray-400 transition"
+                className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 text-text-secondary transition"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -89,22 +89,22 @@ function SkeletonTimeline() {
   return (
     <div className="space-y-6 animate-pulse">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="relative pl-8 border-l-2 border-white/5">
+        <div key={i} className="relative pl-8 border-l-2 border-border-muted dark:border-white/5">
           {/* Timeline Dot */}
-          <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white/10 ring-4 ring-[#0B1120]"></div>
+          <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-black/10 dark:bg-white/10 ring-4 ring-bg-secondary dark:ring-[#0B1120]"></div>
           {/* Card Skeleton */}
-          <div className="bg-white/5 border border-white/5 rounded-xl p-4 space-y-3">
+          <div className="bg-black/5 dark:bg-white/5 border border-border-muted dark:border-white/5 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-start">
               <div className="space-y-2 w-1/2">
-                <div className="h-2.5 bg-white/10 rounded-full w-24"></div>
-                <div className="h-3.5 bg-white/10 rounded-full w-32"></div>
+                <div className="h-2.5 bg-black/10 dark:bg-white/10 rounded-full w-24"></div>
+                <div className="h-3.5 bg-black/10 dark:bg-white/10 rounded-full w-32"></div>
               </div>
-              <div className="h-6 bg-white/10 rounded-full w-16"></div>
+              <div className="h-6 bg-black/10 dark:bg-white/10 rounded-full w-16"></div>
             </div>
             <div className="space-y-2 mt-4">
-              <div className="h-3 bg-white/10 rounded-full w-full"></div>
-              <div className="h-3 bg-white/10 rounded-full w-5/6"></div>
-              <div className="h-3 bg-white/10 rounded-full w-2/3"></div>
+              <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full w-full"></div>
+              <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full w-5/6"></div>
+              <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full w-2/3"></div>
             </div>
           </div>
         </div>

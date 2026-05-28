@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../components/Layout";
 import { useAuthStore } from "../store/authStore";
 import { useFacilityStore } from "../store/facilityStore";
-import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
+import { FACILITY_TYPES, formatTokenNumber } from "../utils/facilityTypeConfig";
 import api, { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompletedApi, fetchCompletedCountApi, pausePatientApi, resumePatientApi } from "../services/api";
 import { socket } from "../services/socket";
 import toast from "react-hot-toast";
@@ -280,37 +280,43 @@ export default function Dashboard() {
       <AnimatePage className="p-6 space-y-6 max-w-5xl mx-auto pb-32">
         
         {/* 🔥 DEMO MODE TOGGLE & FACILITY SELECTOR */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
-          <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-bg-secondary/50 backdrop-blur-md p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm">
+          {/* Left section: UI Preview Title & Facility List */}
+          <div className="flex items-center gap-4 flex-1 min-w-0 w-full lg:w-auto">
             <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest whitespace-nowrap">UI Preview:</span>
-            <div className="flex flex-wrap gap-2 w-full pb-1">
+            {/* The scrollable list with right padding to prevent crowding */}
+            <div className="flex flex-nowrap overflow-x-auto scrollbar-hide gap-2 pb-1 w-full pr-6">
               {Object.entries(FACILITY_TYPES).map(([type, config]) => (
                 <button
                   key={type}
                   onClick={() => setFacilityType(type)}
                   disabled={!isDemoMode}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-[12px] whitespace-nowrap transition-all border ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all duration-200 border shrink-0 ${
                     facilityType === type && isDemoMode
-                      ? "text-white shadow-lg scale-105"
+                      ? "text-white shadow-lg border-transparent scale-[1.03]"
                       : isDemoMode
-                      ? "bg-bg-primary border-border-muted/50 text-text-secondary hover:text-text-primary"
-                      : "bg-bg-primary/30 border-border-muted/20 text-text-secondary/40 cursor-not-allowed"
+                      ? "bg-bg-primary/50 dark:bg-white/5 border-border-muted/30 dark:border-white/5 text-text-secondary hover:text-text-primary hover:bg-bg-primary/80 dark:hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]"
+                      : "bg-bg-primary/20 dark:bg-white/2 border-border-muted/10 dark:border-white/2 text-text-secondary/30 cursor-not-allowed"
                   }`}
                   style={facilityType === type && isDemoMode ? {
                     backgroundColor: config.theme.primary,
-                    borderColor: config.theme.primary,
-                    boxShadow: `0 4px 14px ${config.theme.primary}40`
+                    boxShadow: `0 4px 16px ${config.theme.primary}45`
                   } : {}}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{config.icon}</span>
+                  <span className="text-xs shrink-0">{config.icon}</span>
                   {config.label}
                 </button>
               ))}
+              {/* Trailing spacer to guarantee that the last button is never clipped or touching the divider line */}
+              <div className="w-4 shrink-0" />
             </div>
           </div>
 
+          {/* Desktop divider to separate preview items from mode toggler */}
+          <div className="hidden lg:block w-px h-8 bg-border-muted/30 dark:bg-white/10 shrink-0" />
+
           {/* Toggle Switch */}
-          <div className="flex items-center gap-4 shrink-0 bg-bg-primary/50 p-2 px-4 rounded-xl border border-border-muted/30 dark:border-white/5">
+          <div className="flex items-center gap-4 shrink-0 bg-bg-primary/50 p-2.5 px-4 rounded-xl border border-border-muted/30 dark:border-white/5 w-full lg:w-auto justify-between lg:justify-start">
             <div className="text-right">
               <div className={`text-[10px] font-black tracking-widest uppercase ${isDemoMode ? "text-orange-400" : "text-text-secondary"}`}>
                 {isDemoMode ? "🧪 Demo Mode" : "🔒 Secure Mode"}
@@ -463,7 +469,7 @@ export default function Dashboard() {
                   >
                     {getInitials(currentPatient.patientName)}
                   </div>
-                  <div className="text-[32px] font-black text-text-primary mb-1 tracking-tight">Token #{currentPatient.tokenNumber}</div>
+                  <div className="text-[32px] font-black text-text-primary mb-1 tracking-tight">Token #{formatTokenNumber(currentPatient.tokenNumber, currentPatient.facilityType || facilityType)}</div>
                   <div className="text-[18px] font-bold text-text-secondary mb-6">{currentPatient.patientName}</div>
                   
                   <div className="w-full bg-bg-primary rounded-2xl p-5 mb-8 border border-border-muted/50 dark:border-white/5 shadow-inner">
@@ -535,8 +541,8 @@ export default function Dashboard() {
                       {pausedQueue.map(p => (
                         <div key={p._id} className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 hover:bg-amber-500/10 transition-all shadow-sm">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-xs font-black text-amber-500">
-                              #{p.tokenNumber}
+                            <div className="w-fit px-2 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-xs font-black text-amber-500">
+                              #{formatTokenNumber(p.tokenNumber, p.facilityType || facilityType)}
                             </div>
                             <div>
                               <div className="text-sm font-bold text-text-primary">{p.patientName}</div>
@@ -576,13 +582,13 @@ export default function Dashboard() {
                          }}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border group-hover:scale-105 transition-transform"
+                        <div className="w-fit px-3.5 h-12 rounded-xl flex items-center justify-center font-black text-sm border group-hover:scale-105 transition-transform"
                              style={{ 
                                backgroundColor: `${config.theme.primary}10`, 
                                color: config.theme.primary, 
                                borderColor: `${config.theme.primary}25` 
                              }}>
-                          #{patient.tokenNumber.toString().padStart(2, '0')}
+                          #{formatTokenNumber(patient.tokenNumber, patient.facilityType || facilityType)}
                         </div>
                         <div>
                           <div className="text-[14px] font-black text-text-primary">{patient.patientName}</div>

@@ -7,7 +7,7 @@ const { FACILITY_TYPES } = require('../utils/facilityTypeConfig');
 // Worker background me chalta rahega
 const worker = new Worker('notificationQueue', async (job) => {
   const { facilityId, facilityType, patientName, tokenNumber, phone, customData } = job.data;
-  
+
   let config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
   if (facilityId) {
     try {
@@ -22,21 +22,21 @@ const worker = new Worker('notificationQueue', async (job) => {
     }
   }
   let message = config.notificationTemplate;
-  
+
   // 🔧 Dynamic Placeholders Replace
   message = message.replace('#{token}', tokenNumber || 'N/A')
-                   .replace('#{patientName}', patientName || 'Patient')
-                   .replace('#{sampleId}', customData?.sampleId || '')
-                   .replace('#{procedure}', customData?.procedure || '')
-                   .replace('#{sessionType}', customData?.sessionType || '');
+    .replace('#{patientName}', patientName || 'Patient')
+    .replace('#{sampleId}', customData?.sampleId || '')
+    .replace('#{procedure}', customData?.procedure || '')
+    .replace('#{sessionType}', customData?.sessionType || '');
 
   // 🚀 Yahan actual SMS/WhatsApp API aayega (Twilio/MSG91/Meta)
   // Abhi ke liye MCA demo me hum sirf log karenge (Production ready structure hai)
   logger.info(`🔔 [${facilityType.toUpperCase()}] ${message} | Phone: ${phone || 'N/A'} | JobID: ${job.id}`);
-  
+
   // Simulate API delay
   await new Promise(res => setTimeout(res, 300));
-  
+
   return { status: 'queued_for_sms', message };
 }, {
   connection,

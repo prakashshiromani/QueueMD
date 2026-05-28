@@ -1,6 +1,6 @@
 const Invoice = require("../models/Invoice");
-const { z } = require("zod");
-const logger = require("../utils/logger"); // Tumhare utils se logger aayega
+const { invoiceSchema } = require("../schemas/billing.schema");
+const logger = require("../utils/logger");
 const mongoose = require("mongoose");
 const { getIO } = require("../sockets/index");
 const Counter = require("../models/Counter");
@@ -13,15 +13,6 @@ async function getNextSequence(id) {
   );
   return counter.seq;
 }
-
-// ✅ Validation Schema (Zod)
-const invoiceSchema = z.object({
-  patientName: z.string().min(2, "Patient name is required"),
-  phone: z.string().optional(),
-  amount: z.number().positive("Amount must be positive"),
-  status: z.enum(["Paid", "Pending", "Overdue"]).optional().default("Pending"),
-  description: z.string().optional()
-});
 
 // 1️⃣ CREATE INVOICE (Naya Bill Banana)
 exports.createInvoice = async (req, res, next) => {

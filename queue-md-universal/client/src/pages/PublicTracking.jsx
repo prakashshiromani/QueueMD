@@ -8,6 +8,7 @@ import ViewPrescriptionsModal from '../components/ViewPrescriptionsModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
+import { formatTokenNumber } from '../utils/facilityTypeConfig';
 
 
 export default function PublicTracking() {
@@ -318,8 +319,8 @@ export default function PublicTracking() {
             className={`w-32 h-32 rounded-full flex items-center justify-center border-4 shadow-[0_0_40px_rgba(0,0,0,0.3)]
               ${isCompleted ? 'border-emerald-500 bg-emerald-500/10 shadow-emerald-500/20' : isNext ? 'border-green-500 bg-green-500/10 shadow-green-500/20' : 'border-blue-500 bg-blue-500/10 shadow-blue-500/20'}`}
           >
-            <span className={`text-5xl font-black tracking-tighter ${isCompleted ? 'text-emerald-400' : isNext ? 'text-green-400' : 'text-blue-400'}`}>
-              #{data.myTokenNumber}
+            <span className={`text-3xl font-black tracking-tighter ${isCompleted ? 'text-emerald-400' : isNext ? 'text-green-400' : 'text-blue-400'}`}>
+              #{formatTokenNumber(data.myTokenNumber, data.facilityType)}
             </span>
           </motion.div>
         </div>
@@ -414,7 +415,9 @@ export default function PublicTracking() {
         {/* Current Serving Info */}
         <div className="mt-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50 flex justify-between items-center">
           <span className="text-sm text-slate-400 font-medium">Currently Serving</span>
-          <span className="text-lg font-bold text-slate-200">#{data.currentServingToken}</span>
+          <span className="text-lg font-bold text-slate-200">
+            {data.currentServingToken !== "None" ? `#${formatTokenNumber(data.currentServingToken, data.facilityType)}` : data.currentServingToken}
+          </span>
         </div>
 
         {/* 🔐 SECURE PATIENT PORTAL SECTION */}
@@ -664,6 +667,7 @@ export default function PublicTracking() {
           tokenNumber={tokenNumber}
           phone={verifiedPhone}
           onClose={() => setShowUploadModal(false)}
+          facilityType={data?.facilityType}
         />
       )}
 

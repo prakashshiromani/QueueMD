@@ -554,6 +554,7 @@ export default function Billing() {
                       <tr className="bg-bg-primary/50 text-text-secondary text-[11px] uppercase tracking-[0.2em] font-black border-b border-border-muted/50 dark:border-white/5">
                         <th className="px-6 py-5">Invoice ID</th>
                         <th className="px-6 py-5">Patient</th>
+                        <th className="px-6 py-5">Facility Type</th>
                         <th className="px-6 py-5">Date</th>
                         <th className="px-6 py-5">Amount</th>
                         <th className="px-6 py-5">Status</th>
@@ -586,6 +587,25 @@ export default function Billing() {
                               </div>
                               <span className="text-sm text-text-primary font-bold tracking-tight">{invoice.patientName}</span>
                             </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            {(() => {
+                              const cfg = getFacilityConfig(invoice.facilityType || 'clinic');
+                              const rgb = hexToRgb(cfg.theme.primary);
+                              return (
+                                <span 
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border shadow-sm"
+                                  style={{
+                                    color: cfg.theme.primary,
+                                    backgroundColor: `rgba(${rgb}, 0.08)`,
+                                    borderColor: `rgba(${rgb}, 0.2)`
+                                  }}
+                                >
+                                  <span>{cfg.icon}</span>
+                                  <span>{cfg.label}</span>
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-5 text-sm text-text-secondary font-medium">
                             {format(new Date(invoice.createdAt), 'MMM dd, yyyy')}
