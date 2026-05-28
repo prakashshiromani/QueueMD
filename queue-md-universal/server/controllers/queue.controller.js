@@ -74,7 +74,7 @@ exports.addPatient = async (req, res, next) => {
     if (existingActive) {
       return res.status(400).json({
         success: false,
-        message: "Patient already in queue (Token # " + existingActive.tokenNumber + ")",
+        message: `Patient already in queue (Token #${getNextTokenPrefix(queueFacilityType)}-${String(existingActive.tokenNumber).padStart(3, '0')})`,
         data: {
           tokenNumber: existingActive.tokenNumber,
           status: existingActive.status

@@ -86,7 +86,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
       if (existingActive) {
         return res.status(400).json({ 
           success: false, 
-          message: `Patient is already in the active queue (Token # ${existingActive.tokenNumber})`
+          message: `Patient is already in the active queue (Token #${getNextTokenPrefix(assignedFacilityType)}-${String(existingActive.tokenNumber).padStart(3, '0')})`
         });
       }
 
@@ -200,7 +200,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
     res.status(201).json({ 
       success: true, 
       alreadyExists,
-      message: alreadyExists ? `Existing patient found! Added to queue with Token #${nextToken}` : "Patient added successfully",
+      message: alreadyExists ? `Existing patient found! Added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}` : "Patient added successfully",
       data: patient,
       queueInfo: { tokenNumber: nextToken }
     });

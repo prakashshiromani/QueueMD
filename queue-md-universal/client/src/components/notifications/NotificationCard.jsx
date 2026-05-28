@@ -20,6 +20,16 @@ export default function NotificationCard({ notification }) {
   // ✅ Dynamic Config Lookup for Department Badge
   const config = FACILITY_TYPES[notification.facilityType] || FACILITY_TYPES.clinic;
 
+  // ✅ Format old-style "Token #308" → "Token #TKN-308" for backward compat
+  const formatNotificationMessage = (message) => {
+    if (!message) return message;
+    const prefix = config.tokenPrefix || "TKN";
+    // Match: "Token #<digits>" but NOT already-prefixed "Token #TKN-308"
+    return message.replace(/Token #(\d+)(?!-)/g, (_, num) => {
+      return `Token #${prefix}-${String(num).padStart(3, '0')}`;
+    });
+  };
+
   // ✅ Safe Badge Styling (Tailwind dynamic classes avoid karne ke liye inline style)
   const badgeStyle = {
     backgroundColor: `${config.theme.primary}20`, // 20% opacity
@@ -81,7 +91,7 @@ export default function NotificationCard({ notification }) {
             </span>
           </div>
         </div>
-        <p className={`text-sm mt-1.5 line-clamp-2 leading-relaxed ${notification.isRead ? 'text-slate-500 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`}>{notification.message}</p>
+        <p className={`text-sm mt-1.5 line-clamp-2 leading-relaxed ${notification.isRead ? 'text-slate-500 dark:text-slate-500' : 'text-slate-600 dark:text-slate-400'}`}>{formatNotificationMessage(notification.message)}</p>
       </div>
     </motion.div>
   );

@@ -27,6 +27,15 @@ const MyAccountTab = ({ user }) => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmNewPassword: false
+  });
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
 
   const validatePassword = () => {
     const errs = {};
@@ -114,12 +123,24 @@ const MyAccountTab = ({ user }) => {
           ].map((field) => (
             <div key={field.key} className="space-y-1.5">
               <label className="text-xs font-bold text-text-secondary capitalize">{field.label}</label>
-              <input
-                type="password"
-                value={formData[field.key]}
-                onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3 px-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords[field.key] ? 'text' : 'password'}
+                  value={formData[field.key]}
+                  onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                  className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3 pl-4 pr-11 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility(field.key)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                  tabIndex={-1}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPasswords[field.key] ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
               {errors[field.key] && <p className="text-rose-500 text-xs mt-1">{errors[field.key]}</p>}
             </div>
           ))}
