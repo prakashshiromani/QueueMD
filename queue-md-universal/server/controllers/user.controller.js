@@ -1,6 +1,9 @@
 const User = require("../models/User");
 const { FACILITY_TYPES } = require("../utils/facilityTypeConfig");
 
+// ✅ Staff limit per plan
+const FREE_STAFF_LIMIT = 5;
+
 // ✅ CREATE STAFF
 exports.createStaff = async (req, res) => {
   try {
@@ -18,6 +21,19 @@ exports.createStaff = async (req, res) => {
     // Load custom types from the facility model database if any
     const Facility = require("../models/Facility");
     const facility = await Facility.findById(req.user.facilityId);
+
+    // 🚫 FREE PLAN STAFF LIMIT CHECK
+    const currentCount = await User.countDocuments({ facilityId: req.user.facilityId });
+    if (facility.subscriptionPlan !== "pro" && currentCount >= FREE_STAFF_LIMIT) {
+      return res.status(403).json({
+        success: false,
+        message: `Free plan allows a maximum of ${FREE_STAFF_LIMIT} staff members. Upgrade to Pro for unlimited staff.`,
+        upgradeRequired: true,
+        currentCount,
+        limit: FREE_STAFF_LIMIT
+      });
+    }
+
     const customTypes = (facility && facility.customFields && facility.customFields.get("customFacilityTypes")) || {};
 
     const allTypes = { ...FACILITY_TYPES, ...customTypes };
@@ -150,13 +166,25 @@ exports.getStaff = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Unauthorized: No facility context found" });
     }
 
-    // Fetch all users in this facility
-    const staff = await User.find({ facilityId: req.user.facilityId }).select("-password");
+    // Fetch facility plan + all users in this facility
+    const Facility = require("../models/Facility");
+    const [staff, facility] = await Promise.all([
+      User.find({ facilityId }).select("-password"),
+      Facility.findById(facilityId).select("subscriptionPlan")
+    ]);
+
+    const isPro = facility?.subscriptionPlan === "pro";
 
     res.status(200).json({
       success: true,
       count: staff.length,
-      data: staff
+      data: staff,
+      limit: {
+        plan: facility?.subscriptionPlan || "free",
+        max: isPro ? null : FREE_STAFF_LIMIT,   // null = unlimited
+        current: staff.length,
+        canAdd: isPro || staff.length < FREE_STAFF_LIMIT
+      }
     });
   } catch (err) {
     next(err);

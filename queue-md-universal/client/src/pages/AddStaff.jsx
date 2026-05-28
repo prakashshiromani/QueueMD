@@ -77,7 +77,14 @@ export default function AddStaff() {
       toast.success("Staff member added successfully! 🎉");
       navigate("/staff");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add staff");
+      const data = error.response?.data;
+      // ⭐ Pro upgrade gate
+      if (error.response?.status === 403 && data?.upgradeRequired) {
+        toast.error(`⭐ ${data.message || 'Staff limit reached! Upgrade to Pro for unlimited staff.'}`);
+        setTimeout(() => navigate("/settings?tab=subscription"), 1500);
+      } else {
+        toast.error(data?.message || "Failed to add staff");
+      }
     } finally {
       setLoading(false);
     }

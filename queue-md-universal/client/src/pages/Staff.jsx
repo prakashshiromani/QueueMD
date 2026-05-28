@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Download, Edit, Trash2, Loader2, UserX, Plus, Shield } from "lucide-react";
-import { Link } from 'react-router-dom';
+import { Search, Download, Edit, Trash2, Loader2, UserX, Plus, Shield, Lock, Crown, Users } from "lucide-react";
+import { Link, useNavigate } from 'react-router-dom';
 import toast from "react-hot-toast";
 import Layout from '../components/Layout';
 import { staffApi } from "../services/staffApi";
@@ -25,6 +25,7 @@ export default function StaffPage() {
   const config = getFacilityConfig(facilityType);
   const primaryRgb = hexToRgb(config.theme.primary);
 
+  const navigate = useNavigate();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -33,12 +34,15 @@ export default function StaffPage() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [saving, setSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [staffLimit, setStaffLimit] = useState({ plan: 'free', max: 5, current: 0, canAdd: true });
 
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
       const res = await staffApi.getAll();
       setStaff(res.data || res.users || []);
+      // Store limit metadata from API
+      if (res.limit) setStaffLimit(res.limit);
     } catch (err) { 
       console.error(err);
       toast.error("Failed to load staff members"); 
@@ -161,6 +165,9 @@ export default function StaffPage() {
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <span className="material-symbols-outlined text-[18px]">download</span>} 
               {isExporting ? "Exporting..." : "Export"}
             </button>
+          </div>
+          {/* ⭐ Add Staff — locked for Free plan when limit reached */}
+          {staffLimit.canAdd ? (
             <Link 
               to="/staff/add" 
               className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] active:scale-[0.98] transition flex items-center justify-center gap-2 shadow-lg"
@@ -172,8 +179,83 @@ export default function StaffPage() {
               <span className="material-symbols-outlined text-[20px]">add</span>
               Add Staff
             </Link>
-          </div>
+          ) : (
+            <button
+              onClick={() => {
+                toast.error('⭐ Staff limit reached! Upgrade to Pro for unlimited staff.');
+                setTimeout(() => navigate('/settings?tab=subscription'), 1500);
+              }}
+              className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] transition flex items-center justify-center gap-2 shadow-lg relative overflow-hidden"
+              style={{ backgroundColor: '#94a3b8' }}
+              title="Upgrade to Pro for unlimited staff"
+            >
+              <Lock className="w-4 h-4" />
+              Add Staff
+            </button>
+          )}
         </div>
+
+        {/* ⭐ Staff Usage Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            backgroundColor: staffLimit.plan === 'pro' ? 'rgba(16, 185, 129, 0.08)' : `rgba(${primaryRgb}, 0.06)`,
+            borderColor: staffLimit.plan === 'pro' ? 'rgba(16, 185, 129, 0.25)' : `rgba(${primaryRgb}, 0.2)`
+          }}
+        >
+          {staffLimit.plan === 'pro' ? (
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                <Crown className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Pro Plan — Unlimited Staff</p>
+                <p className="text-xs text-text-secondary">{staffLimit.current} staff member{staffLimit.current !== 1 ? 's' : ''} active</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `rgba(${primaryRgb}, 0.12)` }}>
+                  <Users className="w-4 h-4" style={{ color: config.theme.primary }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-sm font-bold text-text-primary">
+                      {staffLimit.current} / {staffLimit.max} Staff Used
+                    </p>
+                    {!staffLimit.canAdd && (
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">Limit Reached</span>
+                    )}
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full h-1.5 rounded-full bg-border-muted/30 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((staffLimit.current / staffLimit.max) * 100, 100)}%` }}
+                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                      className="h-full rounded-full"
+                      style={{
+                        backgroundColor: staffLimit.canAdd ? config.theme.primary : '#f59e0b'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Link
+                to="/settings?tab=subscription"
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-[0.97]"
+                style={{ backgroundColor: config.theme.primary }}
+              >
+                <Crown className="w-3.5 h-3.5" />
+                Upgrade to Pro
+              </Link>
+            </>
+          )}
+        </motion.div>
 
         {/* 🔎 Filter Bar */}
         <div className="bg-bg-secondary p-4 rounded-2xl border border-border-muted/50 dark:border-white/5 shadow-sm grid grid-cols-1 lg:grid-cols-4 gap-4 items-center">
