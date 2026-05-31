@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useFacilityStore } from '../store/facilityStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -9,7 +10,19 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Interceptor to automatically attach JWT token to headers for protected routes
+// Helper to generate a valid UUIDv4 string
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+// Interceptor to automatically attach JWT token and Idempotency Key to headers
 api.interceptors.request.use(
   (config) => {
     // Calling getState() reads the current persistent token unconditionally
@@ -17,6 +30,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Attach X-Idempotency-Key for state-changing methods
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      if (!config.headers['X-Idempotency-Key']) {
+        config.headers['X-Idempotency-Key'] = generateUUID();
+      }
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -80,7 +101,12 @@ export const createFacilityApi = (data) => api.post('/facility/create', data);
 
 // ✅ 1. Add Patient
 export const addPatientApi = async (payload) => {
-  const response = await api.post('/queue/add', payload);
+  const finalPayload = { ...payload };
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch && !finalPayload.branchId) {
+    finalPayload.branchId = selectedBranch;
+  }
+  const response = await api.post('/queue/add', finalPayload);
   return response.data;
 };
 
@@ -88,6 +114,10 @@ export const addPatientApi = async (payload) => {
 export const fetchQueueApi = async (status = 'waiting', facilityType = null) => {
   const params = { status, limit: 50 };
   if (facilityType) params.type = facilityType;
+  
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) params.branchId = selectedBranch;
+
   const response = await api.get('/queue', { params });
   return response.data.queue; // Returns the array of patients
 };
@@ -95,6 +125,10 @@ export const fetchQueueApi = async (status = 'waiting', facilityType = null) => 
 // ✅ 3. Next Patient (Calls the oldest waiting patient)
 export const nextPatientApi = async (facilityType = null) => {
   const body = facilityType ? { facilityType } : {};
+  
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) body.branchId = selectedBranch;
+
   const response = await api.post('/queue/next', body);
   return response.data;
 };
@@ -102,6 +136,10 @@ export const nextPatientApi = async (facilityType = null) => {
 // ✅ 4. Get Completed Count
 export const fetchCompletedCountApi = async (facilityType = null) => {
   const params = facilityType ? { type: facilityType } : {};
+  
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) params.branchId = selectedBranch;
+
   const response = await api.get('/queue/stats/completed', { params });
   return response.data.completedToday;
 };
@@ -125,6 +163,10 @@ export const resumePatientApi = async (patientId) => {
 // ✅ 6. Analytics Stats
 export const fetchAnalyticsStatsApi = async (facilityType = null) => {
   const params = facilityType ? { type: facilityType } : {};
+  
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) params.branchId = selectedBranch;
+
   const response = await api.get('/analytics/stats', { params });
   return response.data.stats || response.data.data || response.data;
 };
@@ -144,7 +186,12 @@ export const fetchPatientsApi = async (params = {}) => {
 };
 
 export const addPatientToDirectoryApi = async (payload) => {
-  const response = await api.post('/patients/add', payload);
+  const finalPayload = { ...payload };
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch && !finalPayload.branchId) {
+    finalPayload.branchId = selectedBranch;
+  }
+  const response = await api.post('/patients/add', finalPayload);
   return response.data;
 };
 
@@ -170,12 +217,20 @@ export const deletePatientApi = async (id) => {
 
 // ✅ 8. Appointments
 export const fetchAppointments = async (params) => {
-  const res = await api.get("/appointments", { params });
+  const finalParams = { ...params };
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) finalParams.branchId = selectedBranch;
+  
+  const res = await api.get("/appointments", { params: finalParams });
   return res.data;
 };
 
 export const fetchTodaySchedule = async () => {
-  const res = await api.get("/appointments/today");
+  const params = {};
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) params.branchId = selectedBranch;
+
+  const res = await api.get("/appointments/today", { params });
   return res.data;
 };
 
@@ -211,12 +266,20 @@ export const deletePatientEntirelyApi = async (patientId) => {
 
 // ✅ 9. Lab Reports
 export const fetchLabReportsApi = async (params) => {
-  const res = await api.get("/lab/reports", { params });
+  const finalParams = { ...params };
+  // 📍 LP-04 Fix: Inject branchId for branch-scoped lab reports
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) finalParams.branchId = selectedBranch;
+  const res = await api.get("/lab/reports", { params: finalParams });
   return res.data;
 };
 
 export const fetchLabStatsApi = async (params) => {
-  const res = await api.get("/lab/stats", { params });
+  const finalParams = { ...params };
+  // 📍 LP-04 Fix: Inject branchId for branch-scoped lab stats
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) finalParams.branchId = selectedBranch;
+  const res = await api.get("/lab/stats", { params: finalParams });
   return res.data;
 };
 
@@ -237,18 +300,22 @@ export const fetchBillingStats = async () => {
 };
 
 export const fetchInvoices = async (page = 1, filters = {}) => {
-  const params = {
-    page,
-    limit: 10,
-    ...filters
-  };
-  
+  const params = { page, limit: 10, ...filters };
+  // 📍 LP-10 Fix: Inject branchId for branch-scoped invoice list
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch) params.branchId = selectedBranch;
   const response = await api.get('/billing/list', { params });
   return response.data;
 };
 
 export const createInvoiceApi = async (invoiceData) => {
-  const response = await api.post('/billing/create', invoiceData);
+  const finalData = { ...invoiceData };
+  // 📍 LP-10 Fix: Inject branchId when creating an invoice
+  const selectedBranch = useFacilityStore.getState().selectedBranch;
+  if (selectedBranch && !finalData.branchId) {
+    finalData.branchId = selectedBranch;
+  }
+  const response = await api.post('/billing/create', finalData);
   return response.data.data;
 };
 

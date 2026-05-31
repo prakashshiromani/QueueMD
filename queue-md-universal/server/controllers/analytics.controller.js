@@ -519,9 +519,11 @@ exports.getPredictedWait = async (req, res, next) => {
     const { facilityId, facilityType: userFacilityType } = req.user;
     // facilityType can be overridden by query param (for Demo Mode UI switches)
     const facilityType = req.query.facilityType || userFacilityType || 'clinic';
+    // 📍 LP-08 Fix: Include branchId in cache key and prediction request
+    const branchId = req.query.branchId || null;
 
-    // Scoped cache key: per facility + per type → dental & pathlab never pollute each other
-    const cacheKey = `wait_time:${facilityId}:${facilityType}`;
+    // Scoped cache key: per facility + per type + per branch → no cross-branch pollution
+    const cacheKey = `wait_time:${facilityId}:${facilityType}:${branchId || 'global'}`;
 
     // 1. Check Redis Cache
     try {
@@ -545,12 +547,10 @@ exports.getPredictedWait = async (req, res, next) => {
     const timeoutId = setTimeout(() => controller.abort(), 2000);
 
     try {
-      logger.info(`🔍 [Wait Prediction] Cache MISS — fetching from FastAPI for facility=${facilityId} type=${facilityType}`);
-      // Pass facilityType as query param so Python filters by it
-      const pyRes = await fetch(
-        `http://localhost:8000/predict-wait/${facilityId}?facility_type=${facilityType}`,
-        { signal: controller.signal }
-      );
+      logger.info(`🔍 [Wait Prediction] Cache MISS — fetching from FastAPI for facility=${facilityId} type=${facilityType} branch=${branchId || 'global'}`);
+      // Pass facilityType and branchId as query params so Python filters by them
+      const pyUrl = `http://localhost:8000/predict-wait/${facilityId}?facility_type=${facilityType}${branchId ? `&branch_id=${branchId}` : ''}`;
+      const pyRes = await fetch(pyUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (pyRes.ok) {

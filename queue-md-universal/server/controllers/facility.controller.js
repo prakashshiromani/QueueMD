@@ -11,7 +11,7 @@ exports.createFacility = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Validation Error",
-        errors: validation.error.errors
+        errors: validation.error.issues
       });
     }
 
@@ -60,6 +60,15 @@ exports.addBranch = async (req, res, next) => {
     const facility = await Facility.findById(id);
     if (!facility) return res.status(404).json({ success: false, message: "Facility not found" });
 
+    // 🔒 Pro subscription gate: Restrict free users to 1 branch max (1st branch is free, 2nd requires pro)
+    if (facility.subscriptionPlan !== "pro" && facility.branches.length >= 1) {
+      return res.status(403).json({
+        success: false,
+        message: "Upgrade to Pro to add more branches.",
+        upgradeRequired: true
+      });
+    }
+
     facility.branches.push({ name, address, isActive: true });
     await facility.save();
 
@@ -96,10 +105,38 @@ exports.updateBranch = async (req, res, next) => {
   }
 };
 
+// ✅ DELETE BRANCH
+exports.deleteBranch = async (req, res, next) => {
+  try {
+    const { id, branchId } = req.params;
+    if (id !== req.user.facilityId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    const facility = await Facility.findById(id);
+    if (!facility) return res.status(404).json({ success: false, message: "Facility not found" });
+
+    const branch = facility.branches.id(branchId);
+    if (!branch) return res.status(404).json({ success: false, message: "Branch not found" });
+
+    branch.deleteOne();
+    await facility.save();
+
+    res.json({ success: true, data: facility.branches, message: "Branch deleted successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ✅ GET BRANCHES
 exports.getBranches = async (req, res, next) => {
   try {
     const { id } = req.params;
+    // 🔒 SECURITY (LP-06 Fix): Verify the requesting user actually owns this facility.
+    // Without this, any authenticated user could enumerate any facility's branch names/addresses.
+    if (id !== req.user.facilityId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to view these branches" });
+    }
     const facility = await Facility.findById(id).select("branches");
     if (!facility) return res.status(404).json({ success: false, message: "Facility not found" });
 
@@ -108,6 +145,7 @@ exports.getBranches = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // ✅ GET CURRENT FACILITY
 exports.getMyFacility = async (req, res, next) => {

@@ -14,7 +14,8 @@ exports.getLabReports = async (req, res, next) => {
       page = 1, 
       limit = 10, 
       search,
-      date 
+      date,
+      branchId  // 📍 LP-04 Fix: Accept branchId filter
     } = req.query;
 
     // Build query
@@ -22,6 +23,11 @@ exports.getLabReports = async (req, res, next) => {
       facilityId,
       facilityType: 'pathlab' // Lab reports only for pathlab
     };
+
+    // 📍 LP-04 Fix: Filter by branchId when provided
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      query.branchId = branchId;
+    }
 
     // Filter by status if provided
     if (status && status !== 'all') {
@@ -126,6 +132,10 @@ exports.getLabStats = async (req, res, next) => {
         $match: {
           facilityId: new mongoose.Types.ObjectId(facilityId),
           facilityType: 'pathlab',
+          // 📍 LP-04 Fix: Filter by branchId in stats too
+          ...(req.query.branchId && req.query.branchId !== 'null'
+            ? { branchId: new mongoose.Types.ObjectId(req.query.branchId) }
+            : {}),
           ...dateFilter
         }
       },
@@ -231,7 +241,7 @@ exports.updateLabStatus = async (req, res, next) => {
 exports.createLabOrder = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
-    const { patientName, phone, customData, doctorName } = req.body;
+    const { patientName, phone, customData, doctorName, branchId } = req.body; // 📍 LP-04: Accept branchId
 
     // Validate input
     const validation = labOrderSchema.safeParse({
@@ -245,7 +255,7 @@ exports.createLabOrder = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Validation Error',
-        errors: validation.error.errors
+        errors: validation.error.issues
       });
     }
 
@@ -261,6 +271,7 @@ exports.createLabOrder = async (req, res, next) => {
     const labOrder = await Queue.create({
       facilityId,
       facilityType: 'pathlab',
+      branchId: branchId || null, // 📍 LP-04 Fix: Store branch context
       patientName,
       phone,
       customData,
@@ -310,7 +321,7 @@ exports.updateLabOrder = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Validation Error',
-        errors: validation.error.errors
+        errors: validation.error.issues
       });
     }
 

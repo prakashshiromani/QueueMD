@@ -42,13 +42,14 @@ exports.tenantData = (req, bodyData = {}) => {
   // Deep copy bodyData
   const sanitizedData = { ...bodyData };
 
-  // 🔒 Strip client-supplied properties to prevent IDOR / spoofing
+  // 🔒 Strip client-supplied facilityId to prevent IDOR / spoofing
   delete sanitizedData.facilityId;
-  delete sanitizedData.facilityType;
-
-  // 🔒 Force verified tenant parameters
   sanitizedData.facilityId = req.user.facilityId;
-  sanitizedData.facilityType = req.user.facilityType;
+
+  // Keep client-supplied facilityType if provided, otherwise fallback to user's facilityType
+  if (!sanitizedData.facilityType) {
+    sanitizedData.facilityType = req.user.facilityType;
+  }
 
   return sanitizedData;
 };

@@ -34,7 +34,7 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Validation Failed",
-        errors: validation.error.errors.map((e) => ({ field: e.path.join("."), message: e.message }))
+        errors: validation.error.issues.map((e) => ({ field: e.path.join("."), message: e.message }))
       });
     }
 
@@ -388,7 +388,7 @@ exports.resetPassword = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Validation Failed",
-        errors: validation.error.errors.map((e) => ({ field: e.path.join("."), message: e.message }))
+        errors: validation.error.issues.map((e) => ({ field: e.path.join("."), message: e.message }))
       });
     }
 

@@ -2,12 +2,18 @@ const { z } = require("zod");
 
 const phoneRegex = /^(?:\+91|91)?[6789]\d{9}$|^[0-9]{10}$/;
 
+const phoneField = z.preprocess(
+  (val) => (typeof val === "string" ? val.replace(/\s+/g, "") : val),
+  z.string().regex(phoneRegex, "Please enter a valid 10-digit phone number").optional().or(z.literal(""))
+);
+
 const addPatientQueueSchema = z.object({
   patientId: z.string().optional(),
   patientName: z.string().min(2, "Patient name must be at least 2 characters").trim(),
-  phone: z.string().regex(phoneRegex, "Please enter a valid 10-digit phone number").optional().or(z.literal("")),
+  phone: phoneField,
   doctorName: z.string().min(2, "Doctor name must be at least 2 characters").optional().or(z.literal("")),
   facilityType: z.enum(["clinic", "hospital", "pathlab", "dental", "physio", "other"]).optional(),
+  branchId: z.string().nullable().optional().or(z.literal("")),
   customData: z.record(z.any()).optional()
 });
 

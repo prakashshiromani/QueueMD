@@ -11,6 +11,7 @@ const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
 const notificationQueue = require('../jobs/notification.queue');
 const Counter = require("../models/Counter");
+const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
 const ClinicalVisit = require("../models/ClinicalVisit");
 const { getPhoneRegex } = require("../utils/phoneHelper");
 const { logAudit } = require("../utils/auditLogger");
@@ -35,7 +36,19 @@ exports.addPatient = async (req, res, next) => {
 
     // Auto-cleanup stale tokens from previous days
     await cleanupStaleTokens(Queue, facilityId);
-    const { patientId, patientName, phone, customData, doctorName } = req.body;
+    const { patientId, patientName, phone, customData, doctorName, branchId } = req.body;
+
+    // 🔒 SECURITY (LP-02 Fix): Verify the branchId actually belongs to this facility.
+    // Without this, an attacker could inject a branchId from another facility.
+    if (branchId) {
+      const isValidBranch = await validateBranchOwnership(facilityId, branchId);
+      if (!isValidBranch) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid branch: Branch does not belong to your facility or is inactive."
+        });
+      }
+    }
 
     // ✅ Validation
     if (!patientName || !patientName.trim()) {
@@ -82,51 +95,52 @@ exports.addPatient = async (req, res, next) => {
       });
     }
 
-    // 🔥 Generate next token for this specific department atomically with daily resets
+    // 🔥 Generate next token — LP-07 Fix: counter is now branch-aware
+    // Each branch gets its OWN independent daily sequence starting from 1
     const { start: todayStart } = getISTRange("today");
+    const safeBranchId = branchId || 'global';
+    const counterId = `token:${facilityId}:${queueFacilityType}:${safeBranchId}`;
+
     const todayEntry = await Queue.findOne({
       facilityId,
       facilityType: queueFacilityType,
+      ...(branchId ? { branchId } : {}),
       createdAt: { $gte: todayStart }
     });
 
     if (!todayEntry) {
-      // No patients today yet: reset sequence to 0
+      // No patients in this branch today yet: reset sequence to 0
       await Counter.findOneAndUpdate(
-        { _id: `token:${facilityId}:${queueFacilityType}` },
+        { _id: counterId },
         { seq: 0 },
         { upsert: true, new: true }
       );
     } else {
-      // Ensure counter document exists
-      let counter = await Counter.findById(`token:${facilityId}:${queueFacilityType}`);
+      let counter = await Counter.findById(counterId);
       if (!counter) {
-        const lastToken = await Queue.findOne({ facilityId, facilityType: queueFacilityType })
-          .sort({ tokenNumber: -1 });
-
-        let startNum = 0;
-        if (lastToken) {
-          startNum = lastToken.tokenNumber;
-        }
+        const lastToken = await Queue.findOne({
+          facilityId,
+          facilityType: queueFacilityType,
+          ...(branchId ? { branchId } : {})
+        }).sort({ tokenNumber: -1 });
+        let startNum = lastToken ? lastToken.tokenNumber : 0;
         try {
-          await Counter.create({ _id: `token:${facilityId}:${queueFacilityType}`, seq: startNum });
-        } catch (err) {
-          // Ignore duplicate key error
-        }
+          await Counter.create({ _id: counterId, seq: startNum });
+        } catch (err) { /* ignore duplicate */ }
       }
     }
-    const nextToken = await getNextSequence(`token:${facilityId}:${queueFacilityType}`);
+    const nextToken = await getNextSequence(counterId);
 
-    // ✅ Update patient's lastVisit + totalVisits WITHOUT changing their facilityType
+    // ✅ Update patient's lastVisit + totalVisits + lastBranchId WITHOUT changing facilityType
     if (patientId) {
       await Patient.findOneAndUpdate(
         { _id: patientId, facilityId },
         {
           status: "Active",
           lastVisit: new Date(),
-          $inc: { totalVisits: 1 }
+          $inc: { totalVisits: 1 },
+          ...(branchId ? { lastBranchId: branchId } : {}) // LP-09 Fix: track last branch visited
         }
-        // No upsert, no facilityType overwrite!
       );
     }
 
@@ -134,6 +148,7 @@ exports.addPatient = async (req, res, next) => {
     const newQueueEntry = await Queue.create({
       facilityId,
       facilityType: queueFacilityType,  // Patient's real department, NOT JWT default
+      branchId: branchId || null,       // 🔗 Branch isolation
       patientId: patientId || null,
       patientName,
       phone,
@@ -192,23 +207,29 @@ exports.getQueue = async (req, res, next) => {
 
     // Auto-cleanup stale tokens from previous days
     await cleanupStaleTokens(Queue, facilityId);
-    const { status = "waiting", limit = 50, type } = req.query;
+    const { status = "waiting", limit = 50, type, branchId } = req.query;
 
     // Use query param 'type' if provided (Dashboard Demo Mode), else JWT default
     const facilityType = type || jwtFacilityType;
 
-    logger.info(`[GET QUEUE] FacilityType: ${facilityType}, Status: ${status}`);
+    logger.info(`[GET QUEUE] FacilityType: ${facilityType}, Status: ${status}, BranchId: ${branchId}`);
 
     if (status === "waiting") {
       await calculateWaitPredictions(Queue, facilityId, facilityType);
     }
 
-    const queue = await Queue.find({
+    const query = {
       facilityId,
       facilityType,
       status,
       isLabOrder: { $ne: true }
-    })
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      query.branchId = branchId;
+    }
+
+    const queue = await Queue.find(query)
       .sort(status === "waiting" ? { tokenNumber: 1 } : { updatedAt: -1 })
       .limit(parseInt(limit));
 
@@ -229,19 +250,25 @@ exports.getCompletedCount = async (req, res, next) => {
 
     // Auto-cleanup stale tokens from previous days
     await cleanupStaleTokens(Queue, facilityId);
-    const { type } = req.query;
+    const { type, branchId } = req.query;
     const facilityType = type || jwtFacilityType;
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const count = await Queue.countDocuments({
+    const query = {
       facilityId,
       facilityType,
       status: "completed",
       completedAt: { $gte: startOfDay },
       isLabOrder: { $ne: true }
-    });
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      query.branchId = branchId;
+    }
+
+    const count = await Queue.countDocuments(query);
 
     res.json({
       success: true,
@@ -392,16 +419,23 @@ exports.nextPatient = async (req, res, next) => {
 
     // Use body or query param 'type' if provided (from Dashboard), else JWT default
     const facilityType = req.body.facilityType || req.query.type || jwtFacilityType;
+    const branchId = req.body.branchId || req.query.branchId;
 
-    logger.info(`Finding next patient for: facilityId=${facilityId}, type=${facilityType}`);
+    logger.info(`Finding next patient for: facilityId=${facilityId}, type=${facilityType}, branchId=${branchId}`);
+
+    const query = {
+      facilityId,
+      facilityType,  // ✅ Department-specific
+      status: "waiting"
+    };
+
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      query.branchId = branchId;
+    }
 
     // ✅ Find oldest waiting patient for this department
     const nextPatient = await Queue.findOneAndUpdate(
-      {
-        facilityId,
-        facilityType,  // ✅ Department-specific
-        status: "waiting"
-      },
+      query,
       {
         status: "in-progress",
         calledAt: new Date()

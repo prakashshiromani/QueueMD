@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useFacilityStore } from "../../store/facilityStore";
 import { FACILITY_TYPES } from "../../utils/facilityTypeConfig";
 import { staffApi } from "../../services/staffApi";
+import api from "../../services/api";
 import toast from "react-hot-toast";
 
 // Helper to convert hex to RGB string
@@ -11,7 +12,7 @@ function hexToRgb(hex) {
 }
 
 export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, appointment, selectedDate }) {
-  const { facilityType: globalFacilityType } = useFacilityStore();
+  const { facilityId, facilityType: globalFacilityType, selectedBranch } = useFacilityStore();
   
   const [form, setForm] = useState({ 
     patientName: "", 
@@ -24,6 +25,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
     doctorName: "", 
     notes: "",
     visitFees: "",
+    branchId: "", // 📍 Added branchId field
     customData: {}
   });
 
@@ -31,6 +33,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
   const [errors, setErrors] = useState({});
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [branches, setBranches] = useState([]);
 
   // Get current facility config for theme/icons
   const config = FACILITY_TYPES[form.appointmentType] || FACILITY_TYPES.clinic;
@@ -55,10 +58,21 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
       }
     };
 
+    const fetchBranches = async () => {
+      if (!facilityId) return;
+      try {
+        const res = await api.get(`/facility/${facilityId}/branches`);
+        setBranches(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch branches for modal:", err);
+      }
+    };
+
     if (isOpen) {
       fetchDoctors();
+      fetchBranches();
     }
-  }, [isOpen]);
+  }, [isOpen, facilityId]);
 
   useEffect(() => {
     if (appointment) {
@@ -73,6 +87,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
         doctorName: appointment.doctorName || "", 
         notes: appointment.notes || appointment.specialNotes || "",
         visitFees: appointment.visitFees !== undefined && appointment.visitFees !== null ? appointment.visitFees.toString() : "",
+        branchId: appointment.branchId || "", // 📍 Set branchId from appointment
         customData: appointment.customData || {}
       });
     } else {
@@ -97,10 +112,11 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
         doctorName: "",
         notes: "",
         visitFees: "",
+        branchId: selectedBranch || "", // 📍 Default to selectedBranch from store
         customData: {}
       });
     }
-  }, [appointment, selectedDate, isOpen]);
+  }, [appointment, selectedDate, isOpen, selectedBranch]);
 
   // Escape key and scroll lock
   useEffect(() => {
@@ -169,6 +185,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
       setLoading(true); 
       const payload = { 
         ...form, 
+        branchId: form.branchId || null, // 📍 Set null if empty string
         facilityType: globalFacilityType || "clinic",
         visitFees: form.visitFees ? parseFloat(form.visitFees) : null
       };
@@ -339,7 +356,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
             <div className="bg-bg-primary/20 backdrop-blur-xl border border-border-muted/30 rounded-2xl p-5 shadow-sm space-y-4">
               <h3 className="text-[14px] font-black text-text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
                 <span className="w-6 h-[2px] rounded-full" style={{ backgroundColor: 'var(--theme-primary)' }}></span>
-                Assigned Dept
+                Assigned Dept & Branch
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
@@ -395,6 +412,27 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                     </p>
                   )}
                 </div>
+
+                {/* 📍 Branch / Location Dropdown */}
+                {branches.length > 0 && (
+                  <div className="group relative col-span-2 pt-2">
+                    <label className={labelCls}>Branch / Location</label>
+                    <div className="relative">
+                      <span className={iconCls}>location_on</span>
+                      <select
+                        value={form.branchId || ""}
+                        onChange={e => setForm({ ...form, branchId: e.target.value || "" })}
+                        className={`${inputCls} appearance-none cursor-pointer`}
+                      >
+                        <option value="">🌐 Main / All Locations</option>
+                        {branches.map((b) => (
+                          <option key={b._id} value={b._id}>📍 {b.name} ({b.address || "No Address"})</option>
+                        ))}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">expand_more</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Conditional Fields based on Appointment Type */}
@@ -485,7 +523,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                     className="w-full h-[50px] bg-bg-primary border border-border-muted/50 rounded-xl pl-9 pr-4 text-[14px] text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)] transition-all"
                   />
                 </div>
-                <p className="text-[11px] text-text-secondary/50 mt-1.5 pl-1">
+                <p className="text-[11px] text-text-secondary opacity-50 mt-1.5 pl-1">
                   If entered, an invoice will be auto-created in Billing for this patient.
                 </p>
               </div>

@@ -30,6 +30,11 @@ const syncDirectory = async () => {
       const patient = await Patient.findById(appt.patientId);
       if (patient) {
         patient.isDirectoryVisible = true;
+        // 📍 LP-09 Fix: Preserve branch context from the appointment
+        // So when the patient shows up in the directory, staff know which branch they're visiting
+        if (appt.branchId) {
+          patient.lastBranchId = appt.branchId;
+        }
         await patient.save();
         syncedCount++;
       }
@@ -43,6 +48,7 @@ const syncDirectory = async () => {
   } catch (error) {
     logger.error(`❌ Directory Sync Job Error: ${error.message}`, { stack: error.stack });
   }
+
 };
 
 const startDirectorySyncCron = () => {

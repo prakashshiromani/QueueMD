@@ -283,13 +283,13 @@ const ImageUploader = ({ onUploadSuccess, folderType = 'logos', currentImage = '
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 text-text-secondary">
-            <span className="material-symbols-outlined text-[36px] text-text-secondary/50">
+            <span className="material-symbols-outlined text-[36px] text-text-secondary opacity-50">
               {uploading ? 'sync' : 'cloud_upload'}
             </span>
             <p className="text-xs font-bold uppercase tracking-widest">
               {uploading ? 'Uploading...' : 'Drop image or click to browse'}
             </p>
-            <p className="text-[10px] text-text-secondary/50">PNG, JPG, WEBP · Max 5MB</p>
+            <p className="text-[10px] text-text-secondary opacity-50">PNG, JPG, WEBP · Max 5MB</p>
           </div>
         )}
 

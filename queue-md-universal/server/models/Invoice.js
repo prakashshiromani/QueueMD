@@ -15,6 +15,13 @@ const invoiceSchema = new mongoose.Schema({
     index: true
   },
 
+  // 📍 Branch Identification (LP-10 Fix: Invoice is now branch-aware)
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+    index: true
+  },
+
   // 💰 Invoice Details
   invoiceNumber: {
     type: String,
@@ -59,5 +66,7 @@ const invoiceSchema = new mongoose.Schema({
 // 🚀 Compound Index for Fast Filtering (MCA Defense Point)
 invoiceSchema.index({ facilityId: 1, status: 1 });
 invoiceSchema.index({ facilityId: 1, createdAt: -1 });
+// 📍 Branch-scoped billing index (LP-10 Fix)
+invoiceSchema.index({ facilityId: 1, branchId: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Invoice", invoiceSchema);

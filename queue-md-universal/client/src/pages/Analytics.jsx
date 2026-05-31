@@ -21,6 +21,16 @@ import PatientHistoryDrawer from "../components/PatientHistoryDrawer";
 export default function Analytics() {
   const { user } = useAuthStore();
   const { facilityId, selectedBranch, setSelectedBranch } = useFacilityStore();
+  const [branches, setBranches] = useState([]);
+
+  // Fetch branches list for selector
+  useEffect(() => {
+    if (facilityId) {
+      api.get(`/facility/${facilityId}/branches`)
+        .then(res => setBranches(res.data.data || []))
+        .catch(err => console.error("Error fetching branches for analytics:", err));
+    }
+  }, [facilityId]);
 
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -105,7 +115,8 @@ export default function Analytics() {
         facilityType: facilityTypeFilter !== 'all' ? facilityTypeFilter : undefined,
         startDate: customStart,
         endDate: customEnd,
-        status: statusFilter
+        status: statusFilter,
+        branchId: selectedBranch || undefined
       };
       const response = await api.get("/analytics/completed-consultations", { params });
       setPatients(response.data.consultations || []);
@@ -116,7 +127,7 @@ export default function Analytics() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, dateRange, facilityTypeFilter, customStart, customEnd, statusFilter]);
+  }, [debouncedSearch, dateRange, facilityTypeFilter, customStart, customEnd, statusFilter, selectedBranch]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -124,7 +135,8 @@ export default function Analytics() {
         range: dateRange,
         facilityType: facilityTypeFilter !== 'all' ? facilityTypeFilter : undefined,
         startDate: customStart,
-        endDate: customEnd
+        endDate: customEnd,
+        branchId: selectedBranch || undefined
       };
       const response = await api.get("/analytics/stats", { params });
       setStats(response.data?.stats || { totalPatients: 0, completedToday: 0, avgWaitTime: 0, efficiency: 0 });
@@ -132,7 +144,7 @@ export default function Analytics() {
       console.error("Load summary error:", error);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange, facilityTypeFilter, customStart, customEnd]);
+  }, [dateRange, facilityTypeFilter, customStart, customEnd, selectedBranch]);
 
   const loadCharts = useCallback(async () => {
     if (!facilityId) return;
@@ -147,7 +159,8 @@ export default function Analytics() {
         facilityType: facilityTypeFilter !== 'all' ? facilityTypeFilter : undefined,
         range: dateRange,
         startDate: customStart,
-        endDate: customEnd
+        endDate: customEnd,
+        branchId: selectedBranch || undefined
       };
 
       const [hourly, daily, facilityStats, doctors, insights] = await Promise.all([
@@ -178,7 +191,7 @@ export default function Analytics() {
       setChartsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facilityId, facilityTypeFilter, dateRange, customStart, customEnd]);
+  }, [facilityId, facilityTypeFilter, dateRange, customStart, customEnd, selectedBranch]);
 
   useEffect(() => {
     if (facilityId) {
@@ -187,7 +200,7 @@ export default function Analytics() {
       loadCharts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facilityId, dateRange, facilityTypeFilter, statusFilter, customStart, customEnd, debouncedSearch]);
+  }, [facilityId, dateRange, facilityTypeFilter, statusFilter, customStart, customEnd, debouncedSearch, selectedBranch]);
 
   useEffect(() => {
     if (!facilityId) return;
@@ -369,73 +382,109 @@ export default function Analytics() {
         </div>
 
         {/* ── FILTER BAR ─────────────────────────────────────────── */}
-        <div className="bg-bg-secondary/70 backdrop-blur-md border border-border-muted/50 dark:border-white/8 rounded-2xl p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-sm">
-          {/* Date Pills */}
-          <div className="flex gap-2 flex-wrap overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
-            {[
-              { key: "today", label: "Today", icon: "📅" },
-              { key: "yesterday", label: "Yesterday", icon: "⏮" },
-              { key: "week", label: "7D", icon: "📆" },
-              { key: "month", label: "30D", icon: "📊" },
-              { key: "6m", label: "6 Months", icon: "📅" },
-              { key: "1y", label: "1 Year", icon: "📅" },
-              { key: "custom", label: "Custom", icon: "🛠" },
-            ].map(({ key, label, icon }) => (
-              <button
-                key={key}
-                onClick={() => setDateRange(key)}
-                className={`px-3.5 py-1.5 rounded-xl font-bold text-[12px] whitespace-nowrap transition-all duration-200 border ${
-                  dateRange === key
-                    ? "text-white shadow-lg border-transparent"
-                    : "bg-surface-variant/50 text-text-secondary hover:text-text-primary border-transparent hover:border-border-muted/50 hover:bg-surface-variant"
-                }`}
-                style={
-                  dateRange === key
-                    ? { backgroundColor: "var(--theme-primary)", boxShadow: "0 4px 14px rgba(var(--theme-primary-rgb),0.3)" }
-                    : {}
-                }
-              >
-                {icon} {label}
-              </button>
-            ))}
+        <div className="bg-bg-secondary/70 backdrop-blur-md border border-border-muted/50 dark:border-white/8 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between shadow-sm">
+          {/* Left: Date controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-1 min-w-0">
+            {/* Segmented Control for Date Range */}
+            <div className="inline-flex p-1 bg-bg-primary/50 dark:bg-white/5 border border-border-muted/30 dark:border-white/5 rounded-xl gap-0.5 overflow-x-auto scrollbar-hide max-w-full">
+              {[
+                { key: "today", label: "Today" },
+                { key: "yesterday", label: "Yesterday" },
+                { key: "week", label: "7D" },
+                { key: "month", label: "30D" },
+                { key: "6m", label: "6M" },
+                { key: "1y", label: "1Y" },
+                { key: "custom", label: "Custom" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setDateRange(key)}
+                  className={`px-3.5 py-1.5 rounded-lg font-bold text-xs whitespace-nowrap transition-all duration-200 ${
+                    dateRange === key
+                      ? "text-white shadow-sm"
+                      : "text-text-secondary hover:text-text-primary hover:bg-surface-variant/40 dark:hover:bg-white/5"
+                  }`}
+                  style={
+                    dateRange === key
+                      ? { backgroundColor: "var(--theme-primary)" }
+                      : {}
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Date Inputs (shown inline on sm and up) */}
+            {dateRange === "custom" && (
+              <div className="flex items-center gap-2 bg-bg-primary/50 dark:bg-white/5 border border-border-muted/30 dark:border-white/5 rounded-xl px-2 py-1 shrink-0">
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-text-primary outline-none px-1 py-0.5 focus:bg-bg-primary dark:focus:bg-slate-800 rounded-md transition-all border-none"
+                />
+                <span className="text-text-secondary font-black text-xs opacity-60">→</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-text-primary outline-none px-1 py-0.5 focus:bg-bg-primary dark:focus:bg-slate-800 rounded-md transition-all border-none"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Custom Date Inputs */}
-          {dateRange === "custom" && (
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="bg-bg-primary border border-border-muted/50 dark:border-white/8 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-[var(--theme-primary)] transition-all"
-              />
-              <span className="text-text-secondary font-black text-sm">→</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="bg-bg-primary border border-border-muted/50 dark:border-white/8 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-[var(--theme-primary)] transition-all"
-              />
+          {/* Right: Dropdowns (Facility Type, Branch) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* Facility Selector */}
+            <div className="relative w-full sm:w-48 shrink-0">
+              <select
+                value={facilityTypeFilter}
+                onChange={(e) => setFacilityTypeFilter(e.target.value)}
+                className="w-full h-[38px] appearance-none bg-bg-primary/50 dark:bg-white/5 border border-border-muted/30 dark:border-white/5 rounded-xl pl-9 pr-8 text-xs text-text-primary font-bold focus:outline-none focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[rgba(var(--theme-primary-rgb),0.15)] transition-all cursor-pointer"
+              >
+                <option value="all">All Facilities</option>
+                {Object.entries(FACILITY_TYPES).map(([key, config]) => (
+                  <option key={key} value={key} className="bg-bg-secondary">
+                    {config.icon} {config.label}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/70 pointer-events-none text-[16px]">
+                lan
+              </span>
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary/70 pointer-events-none text-[16px]">
+                unfold_more
+              </span>
             </div>
-          )}
 
-          {/* Facility Selector */}
-          <div className="relative w-full lg:w-56 shrink-0">
-            <select
-              value={facilityTypeFilter}
-              onChange={(e) => setFacilityTypeFilter(e.target.value)}
-              className="w-full h-[40px] appearance-none bg-bg-primary border border-border-muted/50 dark:border-white/8 rounded-xl px-4 pr-10 text-[13px] text-text-primary font-bold focus:outline-none focus:border-[var(--theme-primary)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb),0.15)] transition-all"
-            >
-              <option value="all">🌐 All Facility Types</option>
-              {Object.entries(FACILITY_TYPES).map(([key, config]) => (
-                <option key={key} value={key} className="bg-bg-secondary">
-                  {config.icon} {config.label}
-                </option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[18px]">
-              expand_more
-            </span>
+            {/* Branch Selector */}
+            {branches.length > 0 && (
+              <div className="relative w-full sm:w-48 shrink-0">
+                <select
+                  value={selectedBranch || ""}
+                  onChange={(e) => setSelectedBranch(e.target.value || null)}
+                  className="w-full h-[38px] appearance-none bg-bg-primary/50 dark:bg-white/5 border border-border-muted/30 dark:border-white/5 rounded-xl pl-9 pr-8 text-xs text-text-primary font-bold focus:outline-none focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[rgba(var(--theme-primary-rgb),0.15)] transition-all cursor-pointer"
+                  style={{
+                    borderColor: selectedBranch ? 'var(--theme-primary)' : 'rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <option value="">All Locations</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id} className="bg-bg-secondary">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/70 pointer-events-none text-[16px]">
+                  location_on
+                </span>
+                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary/70 pointer-events-none text-[16px]">
+                  unfold_more
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -532,13 +581,13 @@ export default function Analytics() {
           {/* Search row */}
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/50 text-xl pointer-events-none">search</span>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-60 text-xl z-10 pointer-events-none">search</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by Patient Name, Phone, Token, Doctor, Facility, or Date (DD/MM)..."
-                className="w-full bg-bg-secondary dark:bg-[#1e293b]/70 backdrop-blur-md border border-border-muted/50 dark:border-white/8 rounded-xl py-3 pl-12 pr-4 text-[13.5px] text-text-primary placeholder:text-text-secondary/40 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb),0.2)] focus:border-[var(--theme-primary)] transition-all"
+                className="w-full bg-bg-secondary dark:bg-[#1e293b]/70 backdrop-blur-md border border-border-muted/50 dark:border-white/8 rounded-xl py-3 pl-12 pr-4 text-[13.5px] text-text-primary placeholder:text-text-secondary/50 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb),0.2)] focus:border-[var(--theme-primary)] transition-all"
               />
               {searchQuery && (
                 <button

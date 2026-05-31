@@ -2,7 +2,7 @@ const Invoice = require("../models/Invoice");
 const { invoiceSchema } = require("../schemas/billing.schema");
 const logger = require("../utils/logger");
 const mongoose = require("mongoose");
-const { getIO } = require("../sockets/index");
+const { getIO, getRoomHash } = require("../sockets/index"); // 🔒 LP-03 Fix: use getRoomHash
 const Counter = require("../models/Counter");
 
 async function getNextSequence(id) {
@@ -24,10 +24,12 @@ exports.createInvoice = async (req, res, next) => {
     // ✅ Input Validation
     const validation = invoiceSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ success: false, errors: validation.error.errors });
+      return res.status(400).json({ success: false, errors: validation.error.issues });
     }
 
     const { patientName, phone, amount, status, description } = validation.data;
+    // 📍 LP-10 Fix: Accept branchId from request body for branch-scoped billing
+    const branchId = req.body.branchId || null;
 
     // 🔢 Auto Invoice Number Generator (Format: INV-XXXX) - Atomic & thread-safe
     let counter = await Counter.findById(`invoice:${facilityId}`);
@@ -57,6 +59,7 @@ exports.createInvoice = async (req, res, next) => {
       invoiceNumber: `INV-${seq}`,
       facilityId,
       facilityType,
+      branchId, // 📍 LP-10 Fix: Store branch context
       patientName,
       phone,
       amount,
@@ -64,10 +67,11 @@ exports.createInvoice = async (req, res, next) => {
       description
     });
 
-    logger.info(`Invoice Created: ${newInvoice.invoiceNumber} for ${facilityType}`);
+    logger.info(`Invoice Created: ${newInvoice.invoiceNumber} for ${facilityType} (branch: ${branchId || 'global'})`);
 
-    // 🔥 Emit Socket Event
-    getIO().to(`${facilityId}_${facilityType}`).emit("billing_update", { 
+    // 🔥 Emit Socket Event — 🔒 LP-03 Fix: use getRoomHash instead of raw room string
+    const billingRoom = getRoomHash(facilityId, facilityType);
+    getIO().to(billingRoom).emit("billing_update", { 
       type: "NEW_INVOICE", 
       invoice: newInvoice 
     });
@@ -92,6 +96,10 @@ exports.getInvoices = async (req, res, next) => {
 
     const query = { facilityId, facilityType };
     if (status) query.status = status;
+    // 📍 LP-10 Fix: Filter by branchId when provided
+    if (req.query.branchId && req.query.branchId !== 'null' && req.query.branchId !== '') {
+      query.branchId = req.query.branchId;
+    }
 
     const invoices = await Invoice.find(query)
       .sort({ createdAt: -1 }) // Latest pehle
@@ -217,8 +225,9 @@ exports.updateInvoiceStatus = async (req, res, next) => {
 
     logger.info(`Invoice ${updatedInvoice.invoiceNumber} status updated to ${status}`);
 
-    // 🔥 Emit Socket Event
-    getIO().to(`${facilityId}_${facilityType}`).emit("billing_update", { 
+    // 🔥 Emit Socket Event — 🔒 LP-03 Fix: use getRoomHash instead of raw room string
+    const billingRoomUpd = getRoomHash(facilityId, facilityType);
+    getIO().to(billingRoomUpd).emit("billing_update", { 
       type: "STATUS_UPDATE", 
       invoice: updatedInvoice 
     });

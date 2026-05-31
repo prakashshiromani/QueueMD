@@ -52,6 +52,7 @@ const initSocket = (server) => {
 
   io.on("connection", (socket) => {
     // 🔒 SECURITY: Room Join with Facility Ownership Verification (VULN-04)
+    // Legacy join_facility event kept for backward compatibility
     socket.on("join_facility", ({ facilityId, facilityType }) => {
       if (!socket.isAuthenticated || !socket.user) {
         return socket.emit("error", { message: "Authentication required to join facility room" });
@@ -60,9 +61,31 @@ const initSocket = (server) => {
       if (String(socket.user.facilityId) !== String(facilityId)) {
         return socket.emit("error", { message: "Unauthorized: You cannot join another facility's room" });
       }
-      // 🔒 SECURITY: Hash internal room name to prevent predictable predictable names sniffing (Item 6)
+      // 🔒 SECURITY: Hash internal room name to prevent predictable room enumeration (Item 6)
       const room = getRoomHash(facilityId, facilityType);
       socket.join(room);
+    });
+
+    // 🔒 SECURITY (LP-01 Fix): Branch-scoped room join event.
+    // Clients join the global facility room AND an optional branch-specific room.
+    // Server emits full PII only to the branch room; global room gets sanitized data only.
+    socket.on("join_facility_branch", ({ facilityId, facilityType, branchId }) => {
+      if (!socket.isAuthenticated || !socket.user) {
+        return socket.emit("error", { message: "Authentication required to join facility room" });
+      }
+      if (String(socket.user.facilityId) !== String(facilityId)) {
+        return socket.emit("error", { message: "Unauthorized: You cannot join another facility's room" });
+      }
+
+      // Join the global facility room (receives sanitized, PII-free updates)
+      const globalRoom = getRoomHash(facilityId, facilityType);
+      socket.join(globalRoom);
+
+      // Also join the branch-specific room if a branch is selected (receives full patient data)
+      if (branchId && branchId !== 'null' && branchId !== '') {
+        const branchRoom = getRoomHash(facilityId, facilityType, branchId);
+        socket.join(branchRoom);
+      }
     });
 
     // 🔒 SECURITY: Notification Room with Auth Check (VULN-04)
@@ -104,11 +127,15 @@ const getIO = () => {
   return io;
 };
 
-// 🔒 SECURITY: Cryptographically secure room hashing to prevent predictable room enumeration (Item 6)
-const getRoomHash = (facilityId, suffix = "") => {
+// 🔒 SECURITY: Cryptographically secure room hashing — prevents predictable room enumeration (Item 6)
+// LP-01 Fix: Now supports optional branchId for branch-scoped rooms.
+const getRoomHash = (facilityId, suffix = "", branchId = null) => {
   const crypto = require("crypto");
   const secret = process.env.JWT_SECRET || "fallback_salt_value_123";
-  return crypto.createHmac("sha256", secret).update(`${String(facilityId).trim()}_${String(suffix).trim()}`).digest("hex");
+  const hashInput = branchId
+    ? `${String(facilityId).trim()}_${String(suffix).trim()}_${String(branchId).trim()}`
+    : `${String(facilityId).trim()}_${String(suffix).trim()}`;
+  return crypto.createHmac("sha256", secret).update(hashInput).digest("hex");
 };
 
 module.exports = { initSocket, getIO, getRoomHash };

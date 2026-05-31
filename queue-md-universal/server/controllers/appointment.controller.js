@@ -4,6 +4,7 @@ const Patient = require("../models/Patient");
 const Queue = require("../models/Queue");
 const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
 const logger = require("../utils/logger");
+const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
 
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
@@ -26,7 +27,8 @@ exports.createAppointment = async (req, res, next) => {
       endTime, 
       appointmentType, 
       doctorName, 
-      notes 
+      notes,
+      branchId // 📍 Extract branchId
     } = req.body;
 
     // ✅ VALIDATION: Ensure facilityType exists
@@ -45,10 +47,22 @@ exports.createAppointment = async (req, res, next) => {
       });
     }
 
-    // 🔒 Check Slot Conflict (Overlap detection)
+    // 🔒 SECURITY (LP-02 Fix): Verify the branchId actually belongs to this facility
+    if (branchId) {
+      const isValidBranch = await validateBranchOwnership(facilityId, branchId);
+      if (!isValidBranch) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid branch: Branch does not belong to your facility or is inactive."
+        });
+      }
+    }
+
+    // 🔒 Check Slot Conflict (Overlap detection - scoped to branchId)
     const conflict = await Appointment.findOne({
       facilityId,
       facilityType,
+      branchId: branchId || null, // 📍 Scoped by branch
       appointmentDate: new Date(appointmentDate),
       startTime: { $lt: endTime },  // existing start < new end
       endTime: { $gt: startTime },  // existing end > new start
@@ -144,6 +158,7 @@ exports.createAppointment = async (req, res, next) => {
       notes,
       tokenNumber,
       createdBy: req.user.id,
+      branchId: branchId || null, // 📍 Save branchId
       pendingDirectorySync: !isToday  // ✅ Future appointments need sync on that day
     });
 
@@ -189,7 +204,7 @@ exports.createAppointment = async (req, res, next) => {
 exports.getAppointments = async (req, res, next) => {
   try {
     const { facilityId, facilityType } = req.user;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, branchId } = req.query; // 📍 Extract branchId filter
 
     const query = { facilityId, facilityType };
     if (startDate && endDate) {
@@ -197,6 +212,9 @@ exports.getAppointments = async (req, res, next) => {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       };
+    }
+    if (branchId) {
+      query.branchId = branchId; // 📍 Filter by branch if passed
     }
 
     const appointments = await Appointment.find(query)
@@ -213,6 +231,7 @@ exports.getAppointments = async (req, res, next) => {
 exports.getTodaySchedule = async (req, res, next) => {
   try {
     const { facilityId, facilityType } = req.user;
+    const { branchId } = req.query; // 📍 Extract branchId filter if any
     
     // 🔥 Robust Date Range (Start of Day to End of Day)
     const today = new Date();
@@ -220,12 +239,17 @@ exports.getTodaySchedule = async (req, res, next) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // ✅ Fetch ALL appointments for today (no status filter)
-    const appointments = await Appointment.find({
+    const query = {
       facilityId,
       facilityType,
       appointmentDate: { $gte: today, $lt: tomorrow }
-    }).sort({ startTime: 1, createdAt: -1 });
+    };
+    if (branchId) {
+      query.branchId = branchId; // 📍 Filter by branch if passed
+    }
+
+    // ✅ Fetch ALL appointments for today (no status filter)
+    const appointments = await Appointment.find(query).sort({ startTime: 1, createdAt: -1 });
 
     // 🔥 Accurate Stats Calculation
     const stats = {
@@ -271,6 +295,7 @@ exports.updateStatus = async (req, res, next) => {
       // Create Queue Entry
       const queueEntry = await Queue.create({
         facilityId, facilityType,
+        branchId: appointment.branchId || null, // 📍 Copy branchId to queue
         patientName: appointment.patientName,
         phone: appointment.phone,
         tokenNumber: appointment.tokenNumber,
@@ -300,7 +325,8 @@ exports.updateAppointment = async (req, res, next) => {
     const { facilityId, facilityType } = req.user;
     const { 
       patientName, phone, email, appointmentDate, 
-      startTime, endTime, appointmentType, doctorName, notes 
+      startTime, endTime, appointmentType, doctorName, notes,
+      branchId // 📍 Extract branchId
     } = req.body;
 
     // 🔍 Step 1: Fetch existing appointment (for patientId + old phone)
@@ -317,10 +343,11 @@ exports.updateAppointment = async (req, res, next) => {
       });
     }
 
-    // 🔒 Step 2: Conflict check (exclude current appointment + overlap detection)
+    // 🔒 Step 2: Conflict check (exclude current appointment + overlap detection per-branch)
     const conflict = await Appointment.findOne({
       facilityId,
       facilityType,
+      branchId: branchId || null, // 📍 Scoped by branch
       appointmentDate: new Date(appointmentDate),
       startTime: { $lt: endTime },  // existing start < new end
       endTime: { $gt: startTime },  // existing end > new start
@@ -353,7 +380,8 @@ exports.updateAppointment = async (req, res, next) => {
         endTime,
         appointmentType,
         doctorName,
-        notes
+        notes,
+        branchId: branchId || null // 📍 Save updated branchId
       },
       { new: true, runValidators: true }
     );

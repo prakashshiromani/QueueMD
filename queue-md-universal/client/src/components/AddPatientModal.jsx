@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FACILITY_TYPES } from "../utils/facilityTypeConfig";
+import { FACILITY_TYPES, getFacilityConfig } from "../utils/facilityTypeConfig";
 import { useFacilityStore } from "../store/facilityStore";
 import { staffApi } from "../services/staffApi";
 
@@ -23,6 +23,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
     visitTimePeriod: new Date().getHours() >= 12 ? "PM" : "AM",
     status: "active",
     visitFees: "",
+    consentGiven: true,
     customData: {}
   });
 
@@ -56,9 +57,9 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
     }
   }, [isOpen]);
 
-  // Get facility config
+  // Get facility config — use getFacilityConfig() which always ensures customFields is []
   const activeFacilityType = formData.facilityType || globalFacilityType || 'clinic';
-  const config = FACILITY_TYPES[activeFacilityType] || FACILITY_TYPES.clinic;
+  const config = getFacilityConfig(activeFacilityType);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
         visitTimePeriod: now.getHours() >= 12 ? "PM" : "AM",
         status: "active",
         visitFees: "",
+        consentGiven: true,
         customData: {}
       });
       setErrors({});
@@ -91,6 +93,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
     if (!formData.facilityType) newErrors.facilityType = "Please select a facility type";
     if (!formData.visitDate) newErrors.visitDate = "Visit date is required";
     if (!formData.visitTime) newErrors.visitTime = "Visit time is required";
+    if (!formData.consentGiven) newErrors.consentGiven = "Consent is required to register patient";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -576,7 +579,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
               </div>
 
               {/* 🔥 DYNAMIC FACILITY-SPECIFIC FIELDS 🔥 */}
-              {config.customFields && config.customFields.length > 0 && (
+              {(config.customFields || []).length > 0 && (
                 <div className="bg-bg-primary/20 backdrop-blur-xl border border-border-muted/30 rounded-2xl p-5 md:p-6 shadow-sm">
                   <h3 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
                     <span 
@@ -588,7 +591,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
                     {config.label} Specific Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {config.customFields.map((field) => (
+                    {(config.customFields || []).map((field) => (
                       <div key={field.name}>
                         <label className="block text-sm text-text-secondary pl-1 mb-1.5 font-medium">
                           {field.label} {field.required && <span className="text-red-500">*</span>}
@@ -669,10 +672,28 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
                       className="w-full h-[50px] bg-bg-primary border border-border-muted/50 rounded-xl pl-9 pr-4 text-[14px] text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all"
                     />
                   </div>
-                  <p className="text-[11px] text-text-secondary/50 mt-1.5 pl-1">
+                  <p className="text-[11px] text-text-secondary opacity-50 mt-1.5 pl-1">
                     If entered, an invoice will be auto-created in Billing for this patient.
                   </p>
                 </div>
+              </div>
+
+              {/* 🔒 GDPR / DPDP Consent Checkbox */}
+              <div className="mb-4 pl-1">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.consentGiven || false}
+                    onChange={(e) => handleChange("consentGiven", e.target.checked)}
+                    className="w-4 h-4 rounded border-border-muted/50 text-[var(--theme-primary)] bg-bg-primary focus:ring-[var(--theme-primary)]/30 mt-0.5 accent-[var(--theme-primary)]"
+                  />
+                  <span className="text-xs text-text-secondary leading-normal">
+                    Patient consents to receive notifications and has agreed to the storage & processing of health records in accordance with GDPR / DPDP privacy regulations.
+                  </span>
+                </label>
+                {errors.consentGiven && (
+                  <p className="text-xs text-red-400 mt-1 pl-6">{errors.consentGiven}</p>
+                )}
               </div>
 
               {/* Status Badge (Auto-set to Active) */}

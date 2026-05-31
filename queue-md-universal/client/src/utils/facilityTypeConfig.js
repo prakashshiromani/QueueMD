@@ -100,8 +100,27 @@ try {
   console.error("Auto-load of custom/deleted facility types failed:", e);
 }
 
+const CLINIC_DEFAULT = {
+  label: "Clinic",
+  icon: "🏥",
+  theme: { primary: "#2563EB", secondary: "#10B981" },
+  customFields: [],
+  notificationTemplate: "Token #{token} abhi call hoga",
+  statusFlow: ["waiting", "in-progress", "completed"],
+  roles: ["Admin", "Receptionist", "Doctor", "Nurse", "Patient"],
+  tokenPrefix: "TKN",
+  baseConsultTime: 10
+};
+
 export const getFacilityConfig = (type) => {
-  return FACILITY_TYPES[type] || FACILITY_TYPES.clinic;
+  // Always fall back to CLINIC_DEFAULT so theme/customFields are NEVER undefined
+  const base = FACILITY_TYPES[type] || FACILITY_TYPES.clinic || CLINIC_DEFAULT;
+  return {
+    ...CLINIC_DEFAULT,  // safe defaults for any missing keys
+    ...base,
+    customFields: Array.isArray(base.customFields) ? base.customFields : [],
+    theme: base.theme || CLINIC_DEFAULT.theme,
+  };
 };
 
 export const getNextTokenPrefix = (type) => {

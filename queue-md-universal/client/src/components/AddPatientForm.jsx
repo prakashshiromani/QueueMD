@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFacilityStore } from '../store/facilityStore';
-import { FACILITY_TYPES } from '../utils/facilityTypeConfig';
+import { FACILITY_TYPES, getFacilityConfig } from '../utils/facilityTypeConfig';
 import { addPatientApi, searchPatientsApi } from '../services/api';
 
 /**
@@ -9,7 +9,7 @@ import { addPatientApi, searchPatientsApi } from '../services/api';
  */
 const AddPatientForm = ({ handleAddPatient }) => {
   const { facilityType, setFacilityType } = useFacilityStore();
-  const config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
+  const config = getFacilityConfig(facilityType);
 
   const [patientName, setPatientName] = useState('');
   const [phone, setPhone] = useState('');
@@ -64,7 +64,8 @@ const AddPatientForm = ({ handleAddPatient }) => {
         visitTime,
         status,
         customData,
-        facilityType
+        facilityType,
+        consentGiven: true
       };
 
       console.log("🚀 [FRONTEND DEBUG] Sending Payload:", payload);
@@ -194,7 +195,7 @@ const AddPatientForm = ({ handleAddPatient }) => {
                   <option key={doc.id} value={doc.name} className="bg-bg-secondary">{doc.name}</option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary/50">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary opacity-50">
                 <span className="material-symbols-outlined text-[18px]">expand_more</span>
               </div>
             </div>
@@ -233,15 +234,15 @@ const AddPatientForm = ({ handleAddPatient }) => {
                     <option value="Active" className="bg-bg-secondary">Active</option>
                     <option value="Inactive" className="bg-bg-secondary">Inactive</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary/50">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary opacity-50">
                     <span className="material-symbols-outlined text-[18px]">expand_more</span>
                   </div>
                 </div>
               </div>
 
-          {config.customFields && config.customFields.length > 0 && (
+          {(config.customFields || []).length > 0 && (
             <div className="pt-4 border-t border-border-muted/50 space-y-4">
-              {config.customFields.map((field) => (
+              {(config.customFields || []).map((field) => (
                 <div key={field.name} className="space-y-1">
                   <label className="text-caption-xs font-label-bold text-text-secondary uppercase tracking-wider block">{field.label}</label>
                   {field.type === 'select' ? (
@@ -258,7 +259,7 @@ const AddPatientForm = ({ handleAddPatient }) => {
                           <option key={opt} value={opt} className="bg-bg-secondary">{opt}</option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary/50">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-secondary opacity-50">
                         <span className="material-symbols-outlined text-[18px]">expand_more</span>
                       </div>
                     </div>

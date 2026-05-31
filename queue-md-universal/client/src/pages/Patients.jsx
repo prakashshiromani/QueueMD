@@ -793,12 +793,12 @@ export default function Patients() {
                 </div>
 
                 {/* 📋 Facility-Specific Custom Fields */}
-                {modalConfig.customFields && modalConfig.customFields.length > 0 && (
+                {(modalConfig.customFields || []).length > 0 && (
                   <div>
                     <h3 className={`text-sm font-medium ${theme.label} mb-3 uppercase tracking-wider`}>{modalConfig.label} Specific Details</h3>
                     <div className="border border-border-muted/50 dark:border-white/5 rounded-2xl p-5 bg-bg-primary/20 space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
-                        {modalConfig.customFields.map((field) => (
+                        {(modalConfig.customFields || []).map((field) => (
                           <div key={field.name} className={field.type === "select" ? "" : "md:col-span-2"}>
                             <label className={`block text-sm mb-1 ${theme.label}`}>
                               {field.label} {field.required && <span className="text-red-500">*</span>}

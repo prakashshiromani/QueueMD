@@ -21,16 +21,29 @@ const worker = new Worker('notificationQueue', async (job) => {
     return { status: 'skipped', message: 'Queue entry not found' };
   }
 
-  const { facilityId, facilityType, patientName, tokenNumber, phone, customData } = queueEntry;
+  const { facilityId, facilityType, patientName, tokenNumber, phone, customData, branchId } = queueEntry;
 
   let config = FACILITY_TYPES[facilityType] || FACILITY_TYPES.clinic;
+  let branchName = "";
+  let branchAddress = "";
+
   if (facilityId) {
     try {
       const Facility = require('../models/Facility');
       const facility = await Facility.findById(facilityId);
+      
       const customTypes = (facility && facility.customFields && facility.customFields.get("customFacilityTypes")) || {};
       if (customTypes[facilityType]) {
         config = { ...config, ...customTypes[facilityType] };
+      }
+
+      // Load branch details if branchId exists
+      if (branchId && facility && facility.branches) {
+        const branch = facility.branches.id(branchId);
+        if (branch) {
+          branchName = branch.name || "";
+          branchAddress = branch.address || "";
+        }
       }
     } catch (e) {
       logger.error(`Error loading custom notification config: ${e.message}`);
@@ -43,7 +56,9 @@ const worker = new Worker('notificationQueue', async (job) => {
     .replace('#{patientName}', patientName || 'Patient')
     .replace('#{sampleId}', customData?.sampleId || '')
     .replace('#{procedure}', customData?.procedure || '')
-    .replace('#{sessionType}', customData?.sessionType || '');
+    .replace('#{sessionType}', customData?.sessionType || '')
+    .replace('#{branchName}', branchName || '')
+    .replace('#{branchAddress}', branchAddress || '');
 
   // 🚀 Yahan actual SMS/WhatsApp API aayega (Twilio/MSG91/Meta)
   // Abhi ke liye MCA demo me hum sirf log karenge (Production ready structure hai)

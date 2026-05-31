@@ -68,6 +68,13 @@ const appointmentSchema = new mongoose.Schema({
   // 📅 Smart Directory Sync: true = future appt, patient hidden from directory until appt day
   pendingDirectorySync: { type: Boolean, default: false, index: true },
   
+  // 📍 Branch Identification
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+    index: true
+  },
+  
   // 🕒 Timestamps
   checkedInAt: Date,
   completedAt: Date,
@@ -79,7 +86,8 @@ const appointmentSchema = new mongoose.Schema({
 // 🚀 Compound Indexes for Performance
 appointmentSchema.index({ facilityId: 1, facilityType: 1, appointmentDate: 1 });
 appointmentSchema.index({ facilityId: 1, facilityType: 1, status: 1, appointmentDate: 1 });
-// Index for overlap detection queries
-appointmentSchema.index({ facilityId: 1, facilityType: 1, appointmentDate: 1, startTime: 1, endTime: 1 });
+// Index for overlap detection queries (scoped by branchId for location isolation)
+appointmentSchema.index({ facilityId: 1, facilityType: 1, branchId: 1, appointmentDate: 1, startTime: 1, endTime: 1 });
+appointmentSchema.index({ facilityId: 1, branchId: 1, status: 1, appointmentDate: 1 });
 
 module.exports = mongoose.model("Appointment", appointmentSchema);

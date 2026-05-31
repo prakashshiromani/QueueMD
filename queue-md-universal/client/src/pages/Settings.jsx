@@ -439,7 +439,7 @@ const BranchesTab = ({ facilityId }) => {
       fetchBranches();
       toast.success('Branch added successfully');
     } catch (err) {
-      toast.error('Failed to add branch');
+      toast.error(err.response?.data?.message || err.response?.data?.msg || 'Failed to add branch');
     }
   };
 
@@ -462,6 +462,17 @@ const BranchesTab = ({ facilityId }) => {
       toast.success('Branch updated successfully');
     } catch (err) {
       toast.error('Failed to update branch');
+    }
+  };
+
+  const handleDeleteBranch = async (branchId, branchName) => {
+    if (!window.confirm(`Are you sure you want to delete "${branchName}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/facility/${facilityId}/branch/${branchId}`);
+      fetchBranches();
+      toast.success('Branch deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete branch');
     }
   };
 
@@ -562,12 +573,20 @@ const BranchesTab = ({ facilityId }) => {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setEditingBranch(branch)}
-                    className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary flex items-center justify-center transition"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">edit</span>
-                  </button>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setEditingBranch(branch)}
+                      className="w-8 h-8 rounded-lg bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary flex items-center justify-center transition"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBranch(branch._id, branch.name)}
+                      className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-500 flex items-center justify-center transition"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -214,7 +214,7 @@ export default function Login() {
             </div>
 
             <div className="relative z-10 pt-4 border-t border-white/5">
-              <p className="text-[11px] text-text-secondary/50 font-bold uppercase tracking-wider">
+              <p className="text-[11px] text-text-secondary opacity-50 font-bold uppercase tracking-wider">
                 Powered by QueueMD Cloud
               </p>
             </div>
@@ -427,7 +427,7 @@ export default function Login() {
                         required
                       />
                     </div>
-                    <span className="text-[10px] text-text-secondary/50 font-bold ml-1 block leading-normal">
+                    <span className="text-[10px] text-text-secondary opacity-50 font-bold ml-1 block leading-normal">
                       Check your registered email for the verification code.
                     </span>
                   </div>

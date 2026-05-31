@@ -14,9 +14,8 @@ import WaitTimeBadge from "../components/WaitTimeBadge";
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  const { facilityId, facilityType, setFacilityType, isDemoMode, toggleDemoMode } = useFacilityStore();
-  
-
+  const { facilityId, facilityType, setFacilityType, isDemoMode, toggleDemoMode, selectedBranch, setSelectedBranch } = useFacilityStore();
+  const [branches, setBranches] = useState([]);
   const [queue, setQueue] = useState([]);
   const [pausedQueue, setPausedQueue] = useState([]);
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -26,6 +25,15 @@ export default function Dashboard() {
   const [showWizard, setShowWizard] = useState(false);
   
   const queueRef = useRef([]);
+
+  // ✅ Fetch branches list for selector
+  useEffect(() => {
+    if (facilityId) {
+      api.get(`/facility/${facilityId}/branches`)
+        .then(res => setBranches(res.data.data || []))
+        .catch(err => console.error("Error fetching branches for selector:", err));
+    }
+  }, [facilityId]);
 
   // ✅ Load initial data (memoized to fix useEffect exhaustive-deps warning)
   const loadData = useCallback(async () => {
@@ -66,20 +74,23 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, facilityType]);
+  }, [facilityId, facilityType, selectedBranch]);
 
   // ✅ Socket Real-Time Sync
   useEffect(() => {
     if (!facilityId) return;
     loadData();
 
-    socket.emit("join_facility", { facilityId, facilityType });
+    // 🔒 LP-01 Fix: Join branch-specific socket room so server only sends data for this branch.
+    // Replaced join_facility (global) with join_facility_branch (branch-scoped + global).
+    socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
     setLiveIndicator(socket.connected);
 
     const handleQueueUpdate = (data) => {
       // Safety Check: ID & Type must match
       if (data.facilityId !== facilityId || data.facilityType !== facilityType) return;
-      
+      // ✅ LP-01 Fix: No client-side branch filter needed — server already scoped the broadcast.
+
       setLiveIndicator(true);
 
       // Sync stats (avgWait, aiPredictedWait, confidence) globally for all actions
@@ -167,7 +178,8 @@ export default function Dashboard() {
     const handleDisconnect = () => setLiveIndicator(false);
     const handleConnect = () => {
       setLiveIndicator(true);
-      socket.emit("join_facility", { facilityId, facilityType });
+      // 🔒 LP-01 Fix: Re-join branch-specific room on reconnect
+      socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
     };
 
     socket.on("queue_update", handleQueueUpdate);
@@ -321,7 +333,7 @@ export default function Dashboard() {
               <div className={`text-[10px] font-black tracking-widest uppercase ${isDemoMode ? "text-orange-400" : "text-text-secondary"}`}>
                 {isDemoMode ? "🧪 Demo Mode" : "🔒 Secure Mode"}
               </div>
-              <div className="text-[9px] font-medium text-text-secondary/50 uppercase">Isolation active</div>
+              <div className="text-[9px] font-medium text-text-secondary opacity-50 uppercase">Isolation active</div>
             </div>
             <button
               onClick={toggleDemoMode}
@@ -342,22 +354,47 @@ export default function Dashboard() {
           </div>
         )}
         
-        {/* 🏥 Facility Mode Badge (Read-Only) */}
-        <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-2xl border border-border-muted/50 dark:border-white/5 w-fit">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center border"
-            style={{ 
-              backgroundColor: `${config.theme.primary}10`, 
-              color: config.theme.primary, 
-              borderColor: `${config.theme.primary}30` 
-            }}
-          >
-            <span className="material-symbols-outlined text-xl">{config.icon}</span>
+        {/* 🏥 Facility Mode Badge & Branch Selector */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3.5">
+          <div className="flex items-center gap-3 bg-bg-secondary p-3 rounded-2xl border border-border-muted/50 dark:border-white/5 w-fit">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center border"
+              style={{ 
+                backgroundColor: `${config.theme.primary}10`, 
+                color: config.theme.primary, 
+                borderColor: `${config.theme.primary}30` 
+              }}
+            >
+              <span className="material-symbols-outlined text-xl">{config.icon}</span>
+            </div>
+            <div className="pr-2">
+              <div className="font-black text-text-primary uppercase tracking-widest text-sm">{config.label} Dashboard</div>
+              <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em]">Active Mode</div>
+            </div>
           </div>
-          <div className="pr-2">
-            <div className="font-black text-text-primary uppercase tracking-widest text-sm">{config.label} Dashboard</div>
-            <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em]">Active Mode</div>
-          </div>
+
+          {branches.length > 0 && (
+            <div className="relative w-full sm:w-52 shrink-0">
+              <select
+                value={selectedBranch || ""}
+                onChange={(e) => setSelectedBranch(e.target.value || null)}
+                className="w-full h-[52px] appearance-none bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl px-4 pr-10 text-[13px] text-text-primary font-bold focus:outline-none transition-all shadow-inner"
+                style={{
+                  borderColor: selectedBranch ? config.theme.primary : 'rgba(255,255,255,0.05)'
+                }}
+              >
+                <option value="">🌐 All Locations (Main)</option>
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id} className="bg-bg-secondary">
+                    📍 {b.name}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[18px]">
+                expand_more
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 📊 Premium Stats Cards */}

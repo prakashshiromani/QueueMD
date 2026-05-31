@@ -7,7 +7,7 @@ import DayView from "../components/appointments/DayView";
 import DailySchedule from "../components/appointments/DailySchedule";
 import AppointmentModal from "../components/appointments/AppointmentModal";
 import { socket } from "../services/socket";
-import {
+import api, {
   fetchAppointments,
   fetchTodaySchedule,
   createAppointmentApi,
@@ -20,7 +20,7 @@ import {
 import { toast } from "react-hot-toast";
 
 export default function Appointments() {
-  const { facilityId, facilityType } = useFacilityStore();
+  const { facilityId, facilityType, selectedBranch, setSelectedBranch } = useFacilityStore();
   const [view, setView] = useState("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState([]);
@@ -29,6 +29,7 @@ export default function Appointments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [branches, setBranches] = useState([]);
 
   const loadData = async () => {
     if (!facilityId) return;
@@ -50,11 +51,22 @@ export default function Appointments() {
   };
 
   useEffect(() => {
+    if (facilityId) {
+      api.get(`/facility/${facilityId}/branches`)
+        .then(res => setBranches(res.data.data || []))
+        .catch(err => console.error("Error fetching branches for selector:", err));
+    }
+  }, [facilityId]);
+
+  useEffect(() => {
     if (!facilityId) return;
-    socket.emit("join_facility", { facilityId, facilityType });
+    // 🔒 LP-01 Fix: Join branch-specific socket room
+    socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
     
     const handleAppointmentUpdate = (data) => {
       if (data.facilityType !== facilityType) return;
+      // ✅ LP-01 Fix: No client-side branch filter needed — server already scoped the broadcast.
+
       if (data.action === "create") setAppointments(prev => [...prev, data.appointment]);
       else if (data.action === "update") setAppointments(prev => prev.map(a => a._id === data.appointment._id ? data.appointment : a));
       else if (data.action === "delete") setAppointments(prev => prev.filter(a => a._id !== data.appointmentId));
@@ -70,9 +82,10 @@ export default function Appointments() {
 
     socket.on("appointment_update", handleAppointmentUpdate);
     return () => socket.off("appointment_update", handleAppointmentUpdate);
-  }, [facilityId, facilityType]);
+  }, [facilityId, facilityType, selectedBranch]);
 
-  useEffect(() => { loadData(); }, [currentDate]);
+
+  useEffect(() => { loadData(); }, [currentDate, selectedBranch]);
 
   const handleSubmit = async (formData) => {
     try {
@@ -180,6 +193,27 @@ export default function Appointments() {
             <button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="text-text-secondary hover:text-text-primary"><span className="material-symbols-outlined">chevron_right</span></button>
           </div>
           <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 rounded-lg border border-border-muted/50 dark:border-white/5 text-[13px] font-bold text-text-secondary hover:bg-surface-variant">Today</button>
+
+          {/* 📍 Sticky Branch Selector */}
+          {branches.length > 0 && (
+            <div className="relative w-full sm:w-52 shrink-0 ml-auto">
+              <select
+                value={selectedBranch || ""}
+                onChange={(e) => setSelectedBranch(e.target.value || null)}
+                className="w-full h-[38px] appearance-none bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-lg px-4 pr-10 text-[13px] text-text-primary font-bold focus:outline-none transition-all shadow-inner"
+              >
+                <option value="">🌐 All Locations</option>
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id} className="bg-bg-secondary">
+                    📍 {b.name}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none text-[18px]">
+                expand_more
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

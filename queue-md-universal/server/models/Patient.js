@@ -15,6 +15,8 @@ const patientSchema = new mongoose.Schema({
   }],
   lastVisit: { type: Date },
   lastVisitType: { type: String }, // e.g. "CONSULTATION", "LAB TEST"
+  // 📍 Branch context: which branch did this patient last visit? (LP-05/LP-09 Fix)
+  lastBranchId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
   doctorName: { type: String },
   totalVisits: { type: Number, default: 0 },
   status: { type: String, enum: ["Active", "Inactive", "Archived"], default: "Active" },

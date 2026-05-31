@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
+import { useBillingStore } from '../store/billingStore';
+import { useFacilityStore } from '../store/facilityStore';
 
 const CreateInvoice = () => {
+  const navigate = useNavigate();
+  const { createInvoice, loading } = useBillingStore();
+  const { selectedBranch } = useFacilityStore();
+
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
     date: new Date().toISOString().split('T')[0],
     patientName: '',
+    phone: '',
     patientId: '',
     status: 'Pending',
     items: [{ id: 1, description: '', quantity: 1, price: 0 }],
@@ -43,6 +52,44 @@ const CreateInvoice = () => {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
+  const handleSave = async () => {
+    if (!invoiceData.patientName.trim()) {
+      toast.error('Patient name is required');
+      return;
+    }
+    
+    const subtotal = invoiceData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+    const taxAmount = (subtotal * invoiceData.taxRate) / 100;
+    const total = subtotal + taxAmount - invoiceData.discount;
+
+    if (total <= 0) {
+      toast.error('Invoice amount must be positive');
+      return;
+    }
+
+    const itemDescriptions = invoiceData.items
+      .map(item => `${item.description || 'Item'} (Qty: ${item.quantity}, Price: ₹${item.price})`)
+      .filter(Boolean)
+      .join(', ');
+
+    const finalDescription = itemDescriptions || 'Medical consultation / services';
+
+    try {
+      await createInvoice({
+        patientName: invoiceData.patientName.trim(),
+        phone: invoiceData.phone || '',
+        amount: parseFloat(total.toFixed(2)),
+        status: invoiceData.status === 'Partial' ? 'Pending' : invoiceData.status,
+        description: finalDescription,
+        branchId: selectedBranch || null
+      });
+      toast.success('Invoice saved successfully! 🎉');
+      navigate('/billing');
+    } catch (error) {
+      toast.error(error.message || 'Failed to save invoice');
+    }
+  };
+
   const subtotal = invoiceData.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
   const taxAmount = (subtotal * invoiceData.taxRate) / 100;
   const total = subtotal + taxAmount - invoiceData.discount;
@@ -69,9 +116,22 @@ const CreateInvoice = () => {
               <span className="material-symbols-outlined text-[20px]">print</span>
               Preview
             </button>
-            <button className="px-8 h-[46px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[20px]">save</span>
-              Save Invoice
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="px-8 h-[46px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[14px] shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[20px]">save</span>
+                  Save Invoice
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -88,32 +148,50 @@ const CreateInvoice = () => {
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">person</span>
                     <input
                       type="text"
-                      placeholder="Search patient..."
+                      placeholder="Patient name..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={invoiceData.patientName}
                       onChange={(e) => setInvoiceData({ ...invoiceData, patientName: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Invoice #</label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Phone Number</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">phone</span>
                     <input
-                      type="text"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner font-mono"
-                      value={invoiceData.invoiceNumber}
-                      readOnly
+                      type="tel"
+                      placeholder="Phone number..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
+                      value={invoiceData.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        if (val.length <= 10) setInvoiceData({ ...invoiceData, phone: val });
+                      }}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Date</label>
-                    <input
-                      type="date"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
-                      value={invoiceData.date}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, date: e.target.value })}
-                    />
-                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-white/5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Invoice #</label>
+                  <input
+                    type="text"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner font-mono"
+                    value={invoiceData.invoiceNumber}
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest block ml-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
+                    value={invoiceData.date}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, date: e.target.value })}
+                  />
                 </div>
               </div>
             </div>
@@ -136,8 +214,8 @@ const CreateInvoice = () => {
                     <tr className="bg-white/5 text-[11px] font-black text-text-secondary uppercase tracking-widest">
                       <th className="px-6 py-4">Description</th>
                       <th className="px-6 py-4 w-24">Qty</th>
-                      <th className="px-6 py-4 w-32">Price ($)</th>
-                      <th className="px-6 py-4 w-32">Total ($)</th>
+                      <th className="px-6 py-4 w-32">Price (₹)</th>
+                      <th className="px-6 py-4 w-32">Total (₹)</th>
                       <th className="px-6 py-4 w-16 text-center"></th>
                     </tr>
                   </thead>
@@ -170,7 +248,7 @@ const CreateInvoice = () => {
                           />
                         </td>
                         <td className="px-6 py-4 font-bold text-text-primary text-[14px]">
-                          ${(item.quantity * item.price).toFixed(2)}
+                          ₹{(item.quantity * item.price).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button
@@ -196,11 +274,11 @@ const CreateInvoice = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="opacity-70">Subtotal</span>
-                  <span className="font-bold">${subtotal.toFixed(2)}</span>
+                  <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="opacity-70">Tax ({invoiceData.taxRate}%)</span>
-                  <span className="font-bold">${taxAmount.toFixed(2)}</span>
+                  <span className="font-bold">₹{taxAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="opacity-70">Discount</span>
@@ -214,7 +292,7 @@ const CreateInvoice = () => {
                 <div className="h-[1px] bg-white/20 my-2"></div>
                 <div className="flex justify-between items-center">
                   <span className="text-[16px] font-black uppercase tracking-widest">Grand Total</span>
-                  <span className="text-[24px] font-black">${total.toFixed(2)}</span>
+                  <span className="text-[24px] font-black">₹{total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -253,7 +331,7 @@ const CreateInvoice = () => {
                       <option value="Online" className="bg-bg-secondary">Online Transfer / UPI</option>
                       <option value="Insurance" className="bg-bg-secondary">Insurance Claim</option>
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary/50">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary opacity-50">
                       <span className="material-symbols-outlined text-[18px]">expand_more</span>
                     </div>
                   </div>

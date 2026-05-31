@@ -9,6 +9,7 @@ const { getPhoneRegex } = require("../utils/phoneHelper");
 const { getISTRange } = require("../utils/dateHelpers");
 const { getNextTokenPrefix } = require("../utils/facilityTypeConfig");
 const { tenantQuery, tenantData } = require("../utils/tenantIsolation");
+const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
@@ -59,12 +60,23 @@ exports.addPatientToDirectory = async (req, res, next) => {
     const sanitized = tenantData(req, req.body);
     logger.debug(`addPatientToDirectory sanitized body: ${JSON.stringify(sanitized)}`);
     
-    const { name, patientName, phone, email, gender, age, status, customData, doctorName, facilityType: bodyFacilityType, consentGiven } = sanitized;
+    const { name, patientName, phone, email, gender, age, status, customData, doctorName, facilityType: bodyFacilityType, consentGiven, branchId } = sanitized;
     const { facilityId } = req.user;
     const finalName = name || patientName;
 
     if (!finalName || !phone) {
       return res.status(400).json({ success: false, message: "Name and phone are required" });
+    }
+
+    // 🔒 SECURITY (LP-02 Fix): Verify branchId belongs to this facility
+    if (branchId) {
+      const isValidBranch = await validateBranchOwnership(facilityId, branchId);
+      if (!isValidBranch) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid branch: Branch does not belong to your facility or is inactive."
+        });
+      }
     }
 
     const assignedFacilityType = bodyFacilityType || req.user.facilityType || "clinic";
@@ -139,12 +151,14 @@ exports.addPatientToDirectory = async (req, res, next) => {
     }
 
     // 2. Automatically Add to Queue
-    // Generate next token for this specific department atomically with daily resets
-    const counterId = `token:${facilityId}:${assignedFacilityType}`;
+    // LP-07 Fix: Counter is now branch-aware — each branch gets its own sequence
+    const safeBranchId = branchId || 'global';
+    const counterId = `token:${facilityId}:${assignedFacilityType}:${safeBranchId}`;
     const { start: todayStart } = getISTRange("today");
     const todayEntry = await Queue.findOne({
       facilityId,
       facilityType: assignedFacilityType,
+      ...(branchId ? { branchId } : {}),
       createdAt: { $gte: todayStart }
     });
 
@@ -156,16 +170,14 @@ exports.addPatientToDirectory = async (req, res, next) => {
         { upsert: true, new: true }
       );
     } else {
-      // Ensure counter document exists
       let counter = await Counter.findById(counterId);
       if (!counter) {
-        const lastToken = await Queue.findOne({ facilityId, facilityType: assignedFacilityType })
-          .sort({ tokenNumber: -1 });
-
-        let startNum = 0;
-        if (lastToken) {
-          startNum = lastToken.tokenNumber;
-        }
+        const lastToken = await Queue.findOne({
+          facilityId,
+          facilityType: assignedFacilityType,
+          ...(branchId ? { branchId } : {})
+        }).sort({ tokenNumber: -1 });
+        let startNum = lastToken ? lastToken.tokenNumber : 0;
         try {
           await Counter.create({ _id: counterId, seq: startNum });
         } catch (err) {}
@@ -177,6 +189,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
     const newQueueEntry = await Queue.create({
       facilityId,
       facilityType: assignedFacilityType,
+      branchId: branchId || null,   // ✅ Branch isolation
       patientId: patient._id,
       patientName: finalName,
       phone,
@@ -186,6 +199,11 @@ exports.addPatientToDirectory = async (req, res, next) => {
       status: "waiting",
       createdAt: new Date()
     });
+
+    // LP-09 Fix: Track the last branch the patient visited
+    if (branchId) {
+      await Patient.findByIdAndUpdate(patient._id, { lastBranchId: branchId });
+    }
 
     // Socket emit to queue
     emitQueueUpdate(facilityId, assignedFacilityType, {
@@ -242,10 +260,16 @@ exports.addPatientToDirectory = async (req, res, next) => {
 
 exports.getPatients = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = "", facility = "", status = "", gender = "", doctor = "" } = req.query;
+    const { page = 1, limit = 10, search = "", facility = "", status = "", gender = "", doctor = "", branchId } = req.query;
 
     // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper (Item 2)
     let query = tenantQuery(req, { isDeleted: { $ne: true } });
+
+    // 📍 LP-05 Fix: Filter by lastBranchId when a branch is selected
+    // Patient directory is shared across branches, but can be filtered by which branch they last visited
+    if (branchId && branchId !== 'null' && branchId !== '') {
+      query.lastBranchId = branchId;
+    }
 
     if (search) {
       const safeSearch = escapeRegex(search.toString());
