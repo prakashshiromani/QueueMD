@@ -69,7 +69,9 @@ module.exports = function mongooseFieldEncryption(schema, options = {}) {
         this[field] = encrypt(this[field]);
       }
     });
-    next();
+    if (typeof next === 'function') {
+      next();
+    }
   });
 
   // Helper to decrypt a single document

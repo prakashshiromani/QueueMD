@@ -26,7 +26,32 @@ export default function Register() {
       setMessage('✅ Account created successfully! Redirecting...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please check your details.');
+      const errorData = err.response?.data;
+      if (errorData?.errors) {
+        if (Array.isArray(errorData.errors)) {
+          const formattedErrors = errorData.errors
+            .map(e => {
+              const fieldName = e.field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              return `${fieldName}: ${e.message}`;
+            })
+            .join(' | ');
+          setError(formattedErrors);
+        } else if (typeof errorData.errors === 'object') {
+          const formattedErrors = Object.entries(errorData.errors)
+            .filter(([key, val]) => key !== '_errors' && val?._errors && val._errors.length > 0)
+            .map(([key, val]) => {
+              const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              return `${fieldName}: ${val._errors.join(', ')}`;
+            })
+            .join(' | ');
+          setError(formattedErrors || errorData.message || 'Registration failed. Please check your details.');
+        } else {
+          setError(errorData.message || 'Registration failed. Please check your details.');
+        }
+      } else {
+        setError(errorData?.message || 'Registration failed. Please check your details.');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -125,6 +150,9 @@ export default function Register() {
                       <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                     </button>
                   </div>
+                  <span className="text-[10px] text-text-secondary/60 ml-1 mt-1 block leading-normal">
+                    Must be at least 12 characters, including 1 uppercase, 1 lowercase, 1 number, and 1 special character.
+                  </span>
                 </div>
               </div>
 

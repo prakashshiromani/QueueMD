@@ -19,8 +19,7 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email(),
-  // 🔒 SECURITY: Enforce same strong password checking in login
-  password: passwordValidation,
+  password: z.string().min(6, "Password must be at least 6 characters"),
   remember: z.boolean().optional()
 });
 
@@ -29,8 +28,13 @@ const forgotPasswordSchema = z.object({
 });
 
 const resetPasswordSchema = z.object({
-  token: z.string({ required_error: "Reset token is required" }).min(1, "Reset token is required"),
+  email: z.string().email().optional(),
+  code: z.string().optional(),
+  token: z.string().optional(),
   newPassword: passwordValidation
+}).refine(data => data.token || (data.email && data.code), {
+  message: "Either token or email/code must be provided",
+  path: ["token"]
 });
 
 const changePasswordSchema = z.object({

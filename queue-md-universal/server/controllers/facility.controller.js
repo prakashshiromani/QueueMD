@@ -369,8 +369,8 @@ exports.completeOnboardingStep = async (req, res, next) => {
             accessToken: newAccessToken
         });
     } catch (error) {
-        console.error("Onboarding error:", error);
-        res.status(500).json({ success: false, message: "Server Error" });
+        logger.error("Onboarding error stack: " + error.stack);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
 

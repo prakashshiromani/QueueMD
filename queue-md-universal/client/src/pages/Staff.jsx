@@ -156,43 +156,43 @@ export default function StaffPage() {
               <p className="text-[14px] text-text-secondary mt-2">Manage personnel roles, schedules, and permissions.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-start md:justify-end">
             <button 
               onClick={handleExport} 
               disabled={isExporting} 
-              className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              className="px-5 h-[46px] rounded-xl bg-bg-secondary border border-border-muted/50 dark:border-white/5 text-text-secondary hover:text-text-primary font-bold text-[13px] hover:bg-surface-variant/30 transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 shrink-0"
             >
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <span className="material-symbols-outlined text-[18px]">download</span>} 
               {isExporting ? "Exporting..." : "Export"}
             </button>
+            {/* ⭐ Add Staff — locked for Free plan when limit reached */}
+            {staffLimit.canAdd ? (
+              <Link 
+                to="/staff/add" 
+                className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] active:scale-[0.98] transition flex items-center justify-center gap-2 shadow-lg shrink-0"
+                style={{
+                  backgroundColor: config.theme.primary,
+                  boxShadow: `0 4px 14px rgba(${primaryRgb}, 0.4)`
+                }}
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                Add Staff
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  toast.error('⭐ Staff limit reached! Upgrade to Pro for unlimited staff.');
+                  setTimeout(() => navigate('/settings?tab=subscription'), 1500);
+                }}
+                className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] transition flex items-center justify-center gap-2 shadow-lg relative overflow-hidden shrink-0"
+                style={{ backgroundColor: '#94a3b8' }}
+                title="Upgrade to Pro for unlimited staff"
+              >
+                <Lock className="w-4 h-4" />
+                Add Staff
+              </button>
+            )}
           </div>
-          {/* ⭐ Add Staff — locked for Free plan when limit reached */}
-          {staffLimit.canAdd ? (
-            <Link 
-              to="/staff/add" 
-              className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] active:scale-[0.98] transition flex items-center justify-center gap-2 shadow-lg"
-              style={{
-                backgroundColor: config.theme.primary,
-                boxShadow: `0 4px 14px rgba(${primaryRgb}, 0.4)`
-              }}
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              Add Staff
-            </Link>
-          ) : (
-            <button
-              onClick={() => {
-                toast.error('⭐ Staff limit reached! Upgrade to Pro for unlimited staff.');
-                setTimeout(() => navigate('/settings?tab=subscription'), 1500);
-              }}
-              className="px-6 h-[46px] rounded-xl text-white font-bold text-[14px] transition flex items-center justify-center gap-2 shadow-lg relative overflow-hidden"
-              style={{ backgroundColor: '#94a3b8' }}
-              title="Upgrade to Pro for unlimited staff"
-            >
-              <Lock className="w-4 h-4" />
-              Add Staff
-            </button>
-          )}
         </div>
 
         {/* ⭐ Staff Usage Banner */}

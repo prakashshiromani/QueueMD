@@ -88,8 +88,8 @@ describe('POST /api/auth/refresh', () => {
 
 describe('Password Reset Flows', () => {
   const testEmail = 'reset-test@queuemd.com';
-  const testPassword = 'oldPassword123';
-  const newPassword = 'newPassword123';
+  const testPassword = 'OldPassword123!';
+  const newPassword = 'NewPassword123!';
   let User;
 
   beforeAll(async () => {
@@ -175,8 +175,8 @@ describe('Password Reset Flows', () => {
 
 describe('PUT /api/auth/change-password', () => {
   const changeEmail = 'change-test@queuemd.com';
-  const oldPassword = 'oldSecurePass123';
-  const newPassword = 'newSecurePass123';
+  const oldPassword = 'OldSecurePass123!';
+  const newPassword = 'NewSecurePass123!';
   let token;
   let User;
 
@@ -253,7 +253,7 @@ describe('PUT /api/auth/change-password', () => {
 
 describe('POST /api/auth/verify-password', () => {
   const verifyEmail = 'verify-test@queuemd.com';
-  const testPassword = 'secureVerifyPass123';
+  const testPassword = 'SecureVerifyPass123!';
   let token;
   let User;
 

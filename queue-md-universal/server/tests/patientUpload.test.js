@@ -200,7 +200,7 @@ describe('POST /api/patient/upload-prescription', () => {
     const res = await request(app)
       .post('/api/patient/upload-prescription')
       .set('Authorization', `Bearer ${validUploadToken}`)
-      .attach('prescription', Buffer.from('dummy file content'), {
+      .attach('prescription', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'), {
         filename: 'test.png',
         contentType: 'image/png'
       });

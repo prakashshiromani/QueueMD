@@ -5,7 +5,7 @@ import { FACILITY_TYPES } from '../utils/facilityTypeConfig';
 import { useAuthStore } from '../store/authStore';
 import { useFacilityStore } from '../store/facilityStore';
 import toast from 'react-hot-toast';
-import { CheckCircle2, UserPlus, Sparkles, Building2 } from 'lucide-react';
+import { CheckCircle2, UserPlus, Sparkles, Building2, Eye, EyeOff } from 'lucide-react';
 
 // Fallback if FACILITY_TYPES is not defined
 const fallbackConfig = {
@@ -26,6 +26,7 @@ const OnboardingWizard = ({ onComplete }) => {
     const [staffPassword, setStaffPassword] = useState('');
     const [addDummyPatient, setAddDummyPatient] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const configToUse = FACILITY_TYPES || fallbackConfig;
 
@@ -125,7 +126,7 @@ const OnboardingWizard = ({ onComplete }) => {
                     initial={{ opacity: 0, scale: 0.95, y: 15 }} 
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                    className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden"
+                    className="w-full max-w-2xl bg-bg-secondary border border-border-muted/60 dark:border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300"
                 >
                     {/* Glowing Accent Orbs */}
                     <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -136,10 +137,10 @@ const OnboardingWizard = ({ onComplete }) => {
                         {[1, 2, 3].map((s) => (
                             <div key={s} className="flex-1">
                                 <div className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    s <= step ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-slate-800'
+                                    s <= step ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-slate-200 dark:bg-slate-800'
                                 }`} />
                                 <span className={`text-[10px] font-black uppercase tracking-wider block mt-2 text-center transition-colors duration-300 ${
-                                    s === step ? 'text-blue-400' : 'text-slate-500'
+                                    s === step ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-text-secondary/60'
                                 }`}>
                                     Step {s}
                                 </span>
@@ -157,14 +158,14 @@ const OnboardingWizard = ({ onComplete }) => {
                             className="min-h-[350px] flex flex-col justify-between relative z-10"
                         >
                             {step === 1 && (
-                                <div className="space-y-6 text-white">
+                                <div className="space-y-6 text-text-primary">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-blue-500/10 w-12 h-12 rounded-xl flex items-center justify-center border border-blue-500/20">
-                                            <Building2 className="w-6 h-6 text-blue-400" />
+                                            <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                                         </div>
                                         <div>
                                             <h2 className="text-2xl font-black uppercase tracking-wider">Setup Your Space</h2>
-                                            <p className="text-slate-400 text-xs mt-0.5">Let's customize QueueMD for your facility type.</p>
+                                            <p className="text-text-secondary text-xs mt-0.5">Let's customize QueueMD for your facility type.</p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
@@ -174,15 +175,15 @@ const OnboardingWizard = ({ onComplete }) => {
                                                 onClick={() => setFacilityType(type)}
                                                 className={`p-5 rounded-2xl border transition-all text-left flex flex-col items-start gap-3 relative ${
                                                     facilityType === type 
-                                                    ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.15)]' 
-                                                    : 'border-slate-800 bg-slate-900/60 hover:bg-slate-800/40 hover:border-slate-700'
+                                                    ? 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.15)]' 
+                                                    : 'border-border-muted/60 dark:border-white/5 bg-bg-primary hover:bg-surface-variant/40 hover:border-border-muted'
                                                 }`}
                                             >
                                                 <span className="text-3xl">{configToUse[type].icon}</span>
-                                                <p className="font-black uppercase tracking-wider text-xs text-white">{configToUse[type].label}</p>
+                                                <p className="font-black uppercase tracking-wider text-xs text-text-primary">{configToUse[type].label}</p>
                                                 {facilityType === type && (
                                                     <span className="absolute top-3 right-3 text-blue-400">
-                                                        <CheckCircle2 className="w-5 h-5 fill-blue-900/40" />
+                                                        <CheckCircle2 className="w-5 h-5 fill-blue-500/10 dark:fill-blue-900/40" />
                                                     </span>
                                                 )}
                                             </button>
@@ -192,32 +193,32 @@ const OnboardingWizard = ({ onComplete }) => {
                             )}
 
                             {step === 2 && (
-                                <div className="space-y-5 text-white">
+                                <div className="space-y-5 text-text-primary">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-indigo-500/10 w-12 h-12 rounded-xl flex items-center justify-center border border-indigo-500/20">
-                                            <UserPlus className="w-6 h-6 text-indigo-400" />
+                                            <UserPlus className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                                         </div>
                                         <div>
                                             <h2 className="text-2xl font-black uppercase tracking-wider">Add Your First Staff</h2>
-                                            <p className="text-slate-400 text-xs mt-0.5">Who will be managing the waiting queue today?</p>
+                                            <p className="text-text-secondary text-xs mt-0.5">Who will be managing the waiting queue today?</p>
                                         </div>
                                     </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Name</label>
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-text-secondary">Name</label>
                                             <input 
                                                 type="text" 
                                                 placeholder="Receptionist Name (e.g. Priya)" 
                                                 value={staffName}
                                                 onChange={e => setStaffName(e.target.value)}
-                                                className="w-full p-4 bg-slate-950 border border-slate-850 rounded-xl outline-none focus:border-blue-500 text-white placeholder-slate-600 font-semibold" 
+                                                className="w-full p-4 bg-bg-primary border border-border-muted/60 dark:border-white/5 rounded-xl outline-none focus:border-blue-500 text-text-primary placeholder-text-secondary/45 font-semibold transition-all" 
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phone Number</label>
-                                            <div className="flex rounded-xl overflow-hidden bg-slate-950 border border-slate-850 focus-within:border-blue-500 transition-colors">
-                                                <span className="inline-flex items-center px-4 bg-slate-900 border-r border-slate-850 text-slate-400 font-bold text-sm">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-text-secondary">Phone Number</label>
+                                            <div className="flex rounded-xl overflow-hidden bg-bg-primary border border-border-muted/60 dark:border-white/5 focus-within:border-blue-500 transition-all">
+                                                <span className="inline-flex items-center px-4 bg-surface-variant/50 border-r border-border-muted/60 dark:border-white/5 text-text-secondary font-bold text-sm">
                                                     +91
                                                 </span>
                                                 <input 
@@ -225,63 +226,76 @@ const OnboardingWizard = ({ onComplete }) => {
                                                     placeholder="10 digits" 
                                                     value={staffPhone}
                                                     onChange={e => handlePhoneChange(e.target.value)}
-                                                    className="flex-1 p-4 bg-transparent outline-none text-white placeholder-slate-600 font-semibold" 
+                                                    className="flex-1 p-4 bg-transparent outline-none text-text-primary placeholder-text-secondary/45 font-semibold" 
                                                 />
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Email Address</label>
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-text-secondary">Email Address</label>
                                             <input 
                                                 type="email" 
                                                 placeholder="priya@clinic.com" 
                                                 value={staffEmail}
                                                 onChange={e => setStaffEmail(e.target.value)}
-                                                className="w-full p-4 bg-slate-950 border border-slate-850 rounded-xl outline-none focus:border-blue-500 text-white placeholder-slate-600 font-semibold" 
+                                                className="w-full p-4 bg-bg-primary border border-border-muted/60 dark:border-white/5 rounded-xl outline-none focus:border-blue-500 text-text-primary placeholder-text-secondary/45 font-semibold transition-all" 
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Receptionist Password</label>
-                                            <input 
-                                                type="password" 
-                                                placeholder="••••••" 
-                                                value={staffPassword}
-                                                onChange={e => setStaffPassword(e.target.value)}
-                                                className="w-full p-4 bg-slate-950 border border-slate-850 rounded-xl outline-none focus:border-blue-500 text-white placeholder-slate-600 font-semibold" 
-                                            />
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-text-secondary">Receptionist Password</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type={showPassword ? "text" : "password"} 
+                                                    placeholder="••••••" 
+                                                    value={staffPassword}
+                                                    onChange={e => setStaffPassword(e.target.value)}
+                                                    className="w-full p-4 pr-12 bg-bg-primary border border-border-muted/60 dark:border-white/5 rounded-xl outline-none focus:border-blue-500 text-text-primary placeholder-text-secondary/45 font-semibold transition-all" 
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
+                                                >
+                                                    {showPassword ? (
+                                                        <EyeOff className="w-5 h-5" />
+                                                    ) : (
+                                                        <Eye className="w-5 h-5" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {step === 3 && (
-                                <div className="space-y-6 text-white text-center flex flex-col items-center justify-center py-6">
+                                <div className="space-y-6 text-text-primary text-center flex flex-col items-center justify-center py-6">
                                     <div className="bg-emerald-500/10 w-20 h-20 rounded-3xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.15)] mb-2 animate-bounce">
-                                        <Sparkles className="w-10 h-10 text-emerald-400" />
+                                        <Sparkles className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
                                     </div>
                                     <div className="space-y-2">
                                         <h2 className="text-3xl font-black uppercase tracking-wider">You're Ready!</h2>
-                                        <p className="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+                                        <p className="text-text-secondary text-sm max-w-md mx-auto leading-relaxed">
                                             Your digital waiting room has been configured successfully.
                                         </p>
                                     </div>
 
-                                    <label className="flex items-center gap-3 bg-slate-950/60 p-4 rounded-xl border border-slate-850/80 cursor-pointer select-none max-w-sm mt-4 hover:border-slate-700 transition-colors">
+                                    <label className="flex items-center gap-3 bg-bg-primary p-4 rounded-xl border border-border-muted/60 dark:border-white/5 cursor-pointer select-none max-w-sm mt-4 hover:border-border-muted transition-colors">
                                         <input 
                                             type="checkbox" 
                                             checked={addDummyPatient} 
                                             onChange={e => setAddDummyPatient(e.target.checked)} 
-                                            className="w-5 h-5 rounded border-slate-800 bg-slate-900 text-blue-500 focus:ring-blue-500/30"
+                                            className="w-5 h-5 rounded border-border-muted bg-bg-secondary text-blue-500 focus:ring-blue-500/30"
                                         />
                                         <div className="text-left">
-                                            <p className="text-xs font-bold text-slate-200 uppercase tracking-wider">Add dummy patient</p>
-                                            <p className="text-[10px] text-slate-500 font-semibold leading-normal mt-0.5">Adds "Rahul Sharma" to your waiting list to verify queue actions immediately.</p>
+                                            <p className="text-xs font-bold text-text-primary uppercase tracking-wider">Add dummy patient</p>
+                                            <p className="text-[10px] text-text-secondary font-semibold leading-normal mt-0.5">Adds "Rahul Sharma" to your waiting list to verify queue actions immediately.</p>
                                         </div>
                                     </label>
                                 </div>
                             )}
 
-                            <div className="flex justify-between items-center mt-8 border-t border-slate-850 pt-6">
-                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                            <div className="flex justify-between items-center mt-8 border-t border-border-muted/60 dark:border-white/5 pt-6">
+                                <span className="text-[10px] text-text-secondary/60 uppercase tracking-widest font-bold">
                                     QueueMD Onboarding
                                 </span>
                                 <button 

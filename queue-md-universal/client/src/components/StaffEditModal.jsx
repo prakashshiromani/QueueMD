@@ -26,19 +26,60 @@ const staffSchema = z.object({
 });
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SHIFTS = [
+const PREDEFINED_SHIFTS = [
   "09:00 AM - 05:00 PM",
   "10:00 AM - 06:00 PM",
   "08:00 AM - 04:00 PM",
-  "12:00 PM - 08:00 PM",
-  "Custom"
+  "12:00 PM - 08:00 PM"
 ];
+const SHIFTS = [...PREDEFINED_SHIFTS, "Custom"];
+
+function convert24To12(time24) {
+  if (!time24) return "";
+  const [hoursStr, minutesStr] = time24.split(":");
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr;
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const formattedHours = hours < 10 ? `0${hours}` : hours;
+  return `${formattedHours}:${minutes} ${ampm}`;
+}
+
+function convert12To24(time12) {
+  if (!time12) return "09:00";
+  const trimTime = time12.trim();
+  const match = trimTime.match(/^(\d{2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return "09:00";
+  let [_, hoursStr, minutesStr, ampm] = match;
+  let hours = parseInt(hoursStr, 10);
+  if (ampm.toUpperCase() === "PM" && hours < 12) {
+    hours += 12;
+  } else if (ampm.toUpperCase() === "AM" && hours === 12) {
+    hours = 0;
+  }
+  const formattedHours = hours < 10 ? `0${hours}` : hours;
+  return `${formattedHours}:${minutesStr}`;
+}
+
+function parseShiftRange(shiftStr) {
+  if (!shiftStr || !shiftStr.includes("-")) {
+    return { start: "09:00", end: "17:00" };
+  }
+  const [startPart, endPart] = shiftStr.split("-");
+  return {
+    start: convert12To24(startPart),
+    end: convert12To24(endPart)
+  };
+}
 
 export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading, isDark = true }) {
   const { facilityType } = useFacilityStore();
   const config = getFacilityConfig(facilityType);
   const primaryRgb = hexToRgb(config.theme.primary);
 
+  const [customStart, setCustomStart] = useState("09:00");
+  const [customEnd, setCustomEnd] = useState("17:00");
   const [form, setForm] = useState({
     name: "", email: "", role: "receptionist", isActive: true,
     specialization: "", phone: "", shift: "09:00 AM - 05:00 PM",
@@ -48,6 +89,10 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
 
   useEffect(() => {
     if (staff) {
+      const isPredefined = PREDEFINED_SHIFTS.includes(staff.shift);
+      const shiftVal = isPredefined ? staff.shift : (staff.shift ? "Custom" : "09:00 AM - 05:00 PM");
+      const parsedRange = parseShiftRange(staff.shift);
+
       setForm({
         name: staff.name || "",
         email: staff.email || "",
@@ -55,10 +100,12 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
         isActive: staff.isActive ?? true,
         specialization: staff.specialization || "",
         phone: staff.phone || "",
-        shift: staff.shift || "09:00 AM - 05:00 PM",
+        shift: shiftVal,
         workingDays: staff.workingDays || ["Mon", "Tue", "Wed", "Thu", "Fri"],
         profileImage: staff.profileImage || ""
       });
+      setCustomStart(parsedRange.start);
+      setCustomEnd(parsedRange.end);
       setErrors({});
     }
   }, [staff, isOpen]);
@@ -74,12 +121,21 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const validation = staffSchema.safeParse(form);
+    const finalShift = form.shift === "Custom"
+      ? `${convert24To12(customStart)} - ${convert24To12(customEnd)}`
+      : form.shift;
+
+    const formToValidate = {
+      ...form,
+      shift: finalShift
+    };
+
+    const validation = staffSchema.safeParse(formToValidate);
     if (!validation.success) {
       setErrors(validation.error.flatten().fieldErrors);
       return;
     }
-    onSave(staff._id, form);
+    onSave(staff._id, formToValidate);
   };
 
   const theme = {
@@ -196,7 +252,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                       placeholder="e.g., Cardiology"
                     />
                   </div>
-                  <div>
+                   <div className="md:col-span-2">
                     <label className={`block text-sm mb-1 ${theme.label} flex items-center gap-2`}>
                       <Clock className="w-4 h-4" /> Shift Timing
                     </label>
@@ -209,6 +265,29 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                         <option key={shift} value={shift} className={theme.optionBg}>{shift}</option>
                       ))}
                     </select>
+
+                    {form.shift === "Custom" && (
+                      <div className="grid grid-cols-2 gap-4 mt-3 p-4 bg-bg-primary/30 border border-border-muted/30 dark:border-white/5 rounded-xl">
+                        <div>
+                          <label className={`block text-xs ${theme.label} mb-1`}>Start Time</label>
+                          <input
+                            type="time"
+                            value={customStart}
+                            onChange={(e) => setCustomStart(e.target.value)}
+                            className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 transition-all text-sm`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`block text-xs ${theme.label} mb-1`}>End Time</label>
+                          <input
+                            type="time"
+                            value={customEnd}
+                            onChange={(e) => setCustomEnd(e.target.value)}
+                            className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 transition-all text-sm`}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

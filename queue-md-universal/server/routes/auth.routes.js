@@ -11,6 +11,8 @@ const authLimiter = rateLimit({
   message: { success: false, message: "Too many attempts. Please try after 15 mins." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
+  skip: () => process.env.NODE_ENV === 'test'
 });
 
 // 🔒 SECURITY: Sensitive auth limiter — 5 attempts per 15 min (forgot/reset/refresh) (L-02, L-03, L-09)
@@ -20,6 +22,8 @@ const sensitiveAuthLimiter = rateLimit({
   message: { success: false, message: "Too many attempts. Please try after 15 mins." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
+  skip: () => process.env.NODE_ENV === 'test'
 });
 
 /**

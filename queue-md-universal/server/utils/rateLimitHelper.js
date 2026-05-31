@@ -14,6 +14,8 @@ exports.createTenantLimiter = (options = {}) => {
   return rateLimit({
     windowMs: options.windowMs || 15 * 60 * 1000, // Default 15 minutes
     max: options.max || 100, // Default 100 requests per tenant/IP per windowMs
+    validate: false,
+    skip: () => process.env.NODE_ENV === 'test',
     keyGenerator: (req) => {
       // 🔒 Scopes limits strictly to the facilityId of the authenticated user
       if (req.user && req.user.facilityId) {

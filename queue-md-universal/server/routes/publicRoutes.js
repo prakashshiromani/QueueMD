@@ -12,6 +12,7 @@ const trackingLimiter = rateLimit({
     message: { success: false, message: "Too many tracking requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: false,
 });
 
 // Strict rate limit for identity verification (brute force protection)
@@ -21,6 +22,7 @@ const verifyLimiter = rateLimit({
     message: { success: false, message: "Too many verification attempts, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: false,
 });
 
 router.get('/track/:facilityId/:tokenNumber', trackingLimiter, getLiveTrackingStatus);
@@ -30,7 +32,7 @@ router.post('/lobby/:facilityId/verify', verifyLimiter, verifyPatientIdentity);
 // This endpoint allowed log injection, DoS attacks, and server info leakage.
 // In development, use server-side logging (Winston) instead.
 if (process.env.NODE_ENV === 'development') {
-    const devDebugLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
+    const devDebugLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, validate: false });
     router.post('/debug-log', devDebugLimiter, (req, res) => {
         // Sanitize: only log a subset of safe fields, never raw body dump
         const { level = 'info', message = '', component = 'client' } = req.body;

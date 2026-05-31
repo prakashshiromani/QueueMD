@@ -120,7 +120,19 @@ export default function Login() {
 
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Invalid credentials. Please try again.');
+      const errorData = err.response?.data;
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        const formattedErrors = errorData.errors
+          .map(e => {
+            const fieldName = e.field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            return `${fieldName}: ${e.message}`;
+          })
+          .join(' | ');
+        setError(formattedErrors);
+      } else {
+        setError(errorData?.message || err.message || 'Invalid credentials. Please try again.');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 

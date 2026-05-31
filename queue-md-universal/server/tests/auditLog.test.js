@@ -15,7 +15,7 @@ let AuditLog;
 
 const testAdminEmail = 'audit-admin@queuemd.com';
 const testStaffEmail = 'audit-staff@queuemd.com';
-const testPassword = 'securePassword123';
+const testPassword = 'SecurePassword123!';
 
 let adminToken;
 let staffToken;
@@ -62,7 +62,15 @@ beforeAll(async () => {
       role: 'receptionist'
     });
 
-  staffToken = staffRegisterRes.body.token || staffRegisterRes.body.accessToken;
+  // 🔒 SECURITY: Enforce receptionist role directly in DB to bypass public endpoint admin auto-assignment
+  await User.updateOne({ email: testStaffEmail }, { role: 'receptionist' });
+
+  // Log in again to get a fresh stateless JWT token reflecting the updated database role!
+  const loginRes = await request(app)
+    .post('/api/auth/login')
+    .send({ email: testStaffEmail, password: testPassword });
+
+  staffToken = loginRes.body.token || loginRes.body.accessToken;
 });
 
 afterAll(async () => {

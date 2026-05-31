@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from "framer-motion";
 
-export default function StaffEmptyState() {
+const StaffEmptyState = React.forwardRef((props, ref) => {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+    <div ref={ref} className="col-span-full flex flex-col items-center justify-center py-20 text-center">
       <motion.div
         animate={{ y: [0, -10, 0] }}
         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
@@ -17,4 +17,8 @@ export default function StaffEmptyState() {
       </p>
     </div>
   );
-}
+});
+
+StaffEmptyState.displayName = "StaffEmptyState";
+
+export default StaffEmptyState;

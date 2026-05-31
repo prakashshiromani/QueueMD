@@ -138,8 +138,7 @@ exports.getPatientClinicalHistory = async (req, res) => {
             facilityId
         })
         .populate("doctorId", "name specialization") // Doctor details
-        .sort({ createdAt: -1 }) // Latest visits first
-        .lean();
+        .sort({ createdAt: -1 }); // Latest visits first
 
         // Prepare response with formatted data
         const historyData = clinicalVisits.map((visit) => ({

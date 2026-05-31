@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, UserPlus, Calendar, Phone, Building2, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, UserPlus, Calendar, Phone, Building2, Clock, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { staffApi } from "../services/staffApi";
 import ImageUploader from "../components/ui/ImageUploader";
@@ -16,13 +16,25 @@ function hexToRgb(hex) {
 }
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SHIFTS = [
+const PREDEFINED_SHIFTS = [
   "09:00 AM - 05:00 PM",
   "10:00 AM - 06:00 PM",
   "08:00 AM - 04:00 PM",
-  "12:00 PM - 08:00 PM",
-  "Custom"
+  "12:00 PM - 08:00 PM"
 ];
+const SHIFTS = [...PREDEFINED_SHIFTS, "Custom"];
+
+function convert24To12(time24) {
+  if (!time24) return "";
+  const [hoursStr, minutesStr] = time24.split(":");
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr;
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const formattedHours = hours < 10 ? `0${hours}` : hours;
+  return `${formattedHours}:${minutes} ${ampm}`;
+}
 
 export default function AddStaff() {
   const navigate = useNavigate();
@@ -34,8 +46,11 @@ export default function AddStaff() {
   const primaryRgb = hexToRgb(config.theme.primary);
 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [customStart, setCustomStart] = useState("09:00");
+  const [customEnd, setCustomEnd] = useState("17:00");
   const [formData, setFormData] = useState({
-    name: "",
+    name: "Dr. ",
     email: "",
     password: "",
     role: "receptionist",
@@ -73,7 +88,14 @@ export default function AddStaff() {
 
     setLoading(true);
     try {
-      await staffApi.create(formData);
+      const finalShift = formData.shift === "Custom"
+        ? `${convert24To12(customStart)} - ${convert24To12(customEnd)}`
+        : formData.shift;
+
+      await staffApi.create({
+        ...formData,
+        shift: finalShift
+      });
       toast.success("Staff member added successfully! 🎉");
       navigate("/staff");
     } catch (error) {
@@ -140,7 +162,13 @@ export default function AddStaff() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (!val.startsWith("Dr. ")) {
+                      val = "Dr. ";
+                    }
+                    setFormData(p => ({ ...p, name: val }));
+                  }}
                   className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                   placeholder="Dr. Rajesh Kumar"
                   required
@@ -159,15 +187,26 @@ export default function AddStaff() {
               </div>
               <div>
                 <label className={`block text-sm ${theme.label} mb-1`}>Password *</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
-                  className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
-                  placeholder="••••••••"
-                  minLength={6}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
+                    className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl pl-4 pr-11 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
+                    placeholder="••••••••"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                      isDark ? "text-white/60 hover:text-white" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className={`block text-sm ${theme.label} mb-1`}>Phone (10 digits)</label>
@@ -253,6 +292,29 @@ export default function AddStaff() {
                     <option key={shift} value={shift} className={theme.optionBg}>{shift}</option>
                   ))}
                 </select>
+
+                {formData.shift === "Custom" && (
+                  <div className="grid grid-cols-2 gap-4 mt-3 p-4 bg-bg-primary/30 border border-border-muted/30 dark:border-white/5 rounded-xl">
+                    <div>
+                      <label className={`block text-xs ${theme.label} mb-1`}>Start Time</label>
+                      <input
+                        type="time"
+                        value={customStart}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 transition-all text-sm`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs ${theme.label} mb-1`}>End Time</label>
+                      <input
+                        type="time"
+                        value={customEnd}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 transition-all text-sm`}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

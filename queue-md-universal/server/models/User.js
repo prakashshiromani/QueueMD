@@ -58,6 +58,13 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ facilityId: 1, facilityType: 1, email: 1 }, { unique: true });
 userSchema.index({ facilityId: 1, facilityType: 1, role: 1, isActive: 1 });
 
+// 🧹 Pre-validate phone cleaning
+userSchema.pre("validate", function() {
+  if (this.phone) {
+    this.phone = this.phone.replace(/\D/g, '').slice(-10);
+  }
+});
+
 // 🔐 Pre-save password hashing
 userSchema.pre("save", async function() {
   if (!this.isModified("password")) return;

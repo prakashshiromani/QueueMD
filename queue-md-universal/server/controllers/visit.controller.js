@@ -20,8 +20,7 @@ exports.getPatientHistory = async (req, res) => {
 
     const visits = await ClinicalVisit.find(query)
     .sort({ createdAt: -1 }) // Latest visit first
-    .populate('doctorId', 'name specialization')
-    .lean();
+    .populate('doctorId', 'name specialization');
 
     // 🔒 SECURITY: Generate signed URLs for private medical documents (Item 4)
     const { getSignedUrl } = require('../utils/cloudinaryHelper');
@@ -62,8 +61,7 @@ exports.getPrescriptionData = async (req, res) => {
     const query = tenantQuery(req, { _id: req.params.id });
 
     const visit = await ClinicalVisit.findOne(query)
-    .populate('doctorId', 'name specialization signatureUrl')
-    .lean();
+    .populate('doctorId', 'name specialization signatureUrl');
 
     if (!visit) {
       return res.status(404).json({ success: false, message: 'Visit not found' });
