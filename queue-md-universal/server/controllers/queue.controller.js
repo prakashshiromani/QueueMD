@@ -398,6 +398,22 @@ exports.markPatientCompleted = async (req, res, next) => {
     // 🌍 Emit to public tracking room
     emitPublicQueueUpdate(facilityId);
 
+    // 🔥 NEW: Notification Create for Completed
+    try {
+      const completedNotif = await Notification.create({
+        facilityId,
+        facilityType: useType,
+        type: "appointment",
+        title: "Consultation Completed",
+        message: `Token #${getNextTokenPrefix(useType)}-${String(updated.tokenNumber).padStart(3, '0')} (${updated.patientName}) has completed their consultation.`,
+        isRead: false,
+        metadata: { tokenNumber: updated.tokenNumber, patientName: updated.patientName }
+      });
+      emitNotification(facilityId, completedNotif);
+    } catch (notifErr) {
+      logger.error(`Notification error during completion: ${notifErr.message}`);
+    }
+
     res.json({
       success: true,
       message: "Patient completed successfully",

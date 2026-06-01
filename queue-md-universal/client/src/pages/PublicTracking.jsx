@@ -1,15 +1,42 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Users, Activity, CheckCircle, RefreshCcw, Upload, Lock, FileText, LogOut, Calendar, Phone, Download } from 'lucide-react';
+import { Clock, Users, Activity, CheckCircle, RefreshCcw, Upload, Lock, FileText, LogOut, Calendar, Phone, Download, X } from 'lucide-react';
 import { socket } from '../services/socket';
 import UploadPrescriptionModal from '../components/UploadPrescriptionModal';
 import ViewPrescriptionsModal from '../components/ViewPrescriptionsModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
-import { formatTokenNumber } from '../utils/facilityTypeConfig';
-
+const playChime = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Play E5 then A5 chime notes
+    const playNote = (frequency, startTime, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, startTime);
+      
+      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    playNote(659.25, ctx.currentTime, 0.4); // E5
+    playNote(880.00, ctx.currentTime + 0.15, 0.6); // A5
+  } catch (err) {
+    console.warn("Audio context playback blocked or failed:", err);
+  }
+};
 
 export default function PublicTracking() {
   const { facilityId, tokenNumber } = useParams();
@@ -36,6 +63,15 @@ export default function PublicTracking() {
   const [activeTab, setActiveTab] = useState("timeline"); // 'timeline' | 'documents'
   const [phoneInput, setPhoneInput] = useState("");
   const [previewDoc, setPreviewDoc] = useState(null);
+
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const dataRef = React.useRef(null);
+
+  // Keep track of the latest data to compare status changes in callbacks
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   // ─── Helper: Format Phone Number ───
   const formatPhone = (val) => {
@@ -196,13 +232,38 @@ export default function PublicTracking() {
     }
   }, [facilityId, tokenNumber, fetchPatientHistory]);
 
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const res = await fetch(`/api/public/track/${facilityId}/${tokenNumber}/notifications`);
+      const json = await res.json();
+      if (json.success) {
+        setNotifications(json.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
   const fetchTrackingStatus = async () => {
     try {
       setIsRefreshing(true);
-      const res = await fetch(`http://localhost:5000/api/public/track/${facilityId}/${tokenNumber}`);
+      const res = await fetch(`/api/public/track/${facilityId}/${tokenNumber}`);
       const json = await res.json();
       
       if (json.success) {
+        const prevData = dataRef.current;
+        if (prevData && prevData.status !== json.data.status) {
+          if (json.data.status === 'in-progress') {
+            toast.success("🔔 Your Token has been called! Please proceed to the doctor.", { duration: 6000 });
+            playChime();
+          } else if (json.data.status === 'completed') {
+            toast.success("✅ Consultation completed. You can now upload prescriptions or bill.", { duration: 6000 });
+            playChime();
+          }
+        }
         setData(json.data);
         setError('');
       } else {
@@ -218,6 +279,7 @@ export default function PublicTracking() {
 
   useEffect(() => {
     fetchTrackingStatus();
+    fetchNotifications();
 
     // Setup Socket Connection for Public Tracking
     if (!socket.connected) {
@@ -230,6 +292,7 @@ export default function PublicTracking() {
     const handleUpdate = () => {
       console.log("Public Queue Update Received, Refetching Data...");
       fetchTrackingStatus();
+      fetchNotifications();
     };
 
     socket.on("public_queue_update", handleUpdate);
@@ -418,6 +481,50 @@ export default function PublicTracking() {
           <span className="text-lg font-bold text-slate-200">
             {data.currentServingToken !== "None" ? `#${formatTokenNumber(data.currentServingToken, data.facilityType)}` : data.currentServingToken}
           </span>
+        </div>
+
+        {/* ─── LIVE TIMELINE / ALERTS ─── */}
+        <div className="mt-6 bg-slate-950/40 p-4 rounded-2xl border border-slate-800/40">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Live Token Timeline</h3>
+          </div>
+          
+          {loadingNotifications && notifications.length === 0 ? (
+            <div className="flex flex-col gap-2.5 animate-pulse">
+              <div className="h-6 bg-slate-850/30 rounded w-3/4" />
+              <div className="h-4 bg-slate-850/30 rounded w-1/2" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-6 text-slate-500 text-xs">
+              Waiting for queue updates...
+            </div>
+          ) : (
+            <div className="relative pl-3 border-l border-slate-800/60 space-y-4 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+              {notifications.map((notif, index) => (
+                <div key={notif._id || index} className="relative group text-left">
+                  {/* Timeline dot */}
+                  <div className="absolute -left-[16.5px] top-1.5 w-2 h-2 rounded-full bg-slate-850 border border-slate-700 group-first:bg-blue-500 group-first:border-blue-400 transition-colors" />
+                  
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-xs font-bold text-slate-200 group-first:text-blue-400 transition-colors">
+                      {notif.title}
+                    </p>
+                    <span className="text-[10px] text-slate-500 shrink-0 font-medium">
+                      {new Date(notif.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                    {notif.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 🔐 SECURE PATIENT PORTAL SECTION */}

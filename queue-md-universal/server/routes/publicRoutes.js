@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { getLiveTrackingStatus, verifyPatientIdentity } = require('../controllers/publicController');
+const { getLiveTrackingStatus, verifyPatientIdentity, getPatientNotifications } = require('../controllers/publicController');
 
 const router = express.Router();
 
@@ -26,6 +26,7 @@ const verifyLimiter = rateLimit({
 });
 
 router.get('/track/:facilityId/:tokenNumber', trackingLimiter, getLiveTrackingStatus);
+router.get('/track/:facilityId/:tokenNumber/notifications', trackingLimiter, getPatientNotifications);
 router.post('/lobby/:facilityId/verify', verifyLimiter, verifyPatientIdentity);
 
 // 🔒 SECURITY: Removed unauthenticated /debug-log endpoint (VULN-03)

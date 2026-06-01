@@ -1,4 +1,5 @@
 const Queue = require('../models/Queue');
+const Notification = require('../models/Notification');
 
 exports.getLiveTrackingStatus = async (req, res) => {
     try {
@@ -133,5 +134,28 @@ exports.verifyPatientIdentity = async (req, res) => {
     } catch (error) {
         console.error("Verify Identity Error:", error);
         res.status(500).json({ success: false, message: "Verification failed" });
+    }
+};
+
+exports.getPatientNotifications = async (req, res) => {
+    try {
+        const { facilityId, tokenNumber } = req.params;
+
+        // Query notifications matching facilityId and containing tokenNumber in metadata
+        const notifications = await Notification.find({
+            facilityId,
+            $or: [
+                { "metadata.tokenNumber": Number(tokenNumber) },
+                { "metadata.tokenNumber": String(tokenNumber) }
+            ]
+        }).sort({ createdAt: -1 }).limit(20).lean();
+
+        res.status(200).json({
+            success: true,
+            data: notifications
+        });
+    } catch (error) {
+        console.error("Fetch patient notifications error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 };
