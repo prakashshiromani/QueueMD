@@ -96,6 +96,32 @@ exports.addPatient = async (req, res, next) => {
       });
     }
 
+    // 🔁 Re-visit Check: Patient already completed visit TODAY?
+    // Soft warning — not a hard block. forceAdd: true bypasses this.
+    if (!req.body.forceAdd) {
+      const { start: todayStartRevisit } = getISTRange("today");
+      const completedToday = await Queue.findOne({
+        facilityId,
+        facilityType: queueFacilityType,
+        $or: [
+          { patientId: patientId || "none" },
+          { phone: phoneRegex || phone }
+        ],
+        status: "completed",
+        createdAt: { $gte: todayStartRevisit }
+      });
+
+      if (completedToday) {
+        logger.info(`[RE-VISIT] Patient ${patientName} already completed today (Token #${completedToday.tokenNumber}). Asking for confirmation.`);
+        return res.status(200).json({
+          success: false,
+          requiresConfirmation: true,
+          completedToken: completedToday.tokenNumber,
+          message: `${patientName} already completed their visit today (Token #${getNextTokenPrefix(queueFacilityType)}-${String(completedToday.tokenNumber).padStart(3, '0')}). Re-add to queue?`
+        });
+      }
+    }
+
     // 🔥 Generate next token — LP-07 Fix: counter is now branch-aware
     // Each branch gets its OWN independent daily sequence starting from 1
     const { start: todayStart } = getISTRange("today");

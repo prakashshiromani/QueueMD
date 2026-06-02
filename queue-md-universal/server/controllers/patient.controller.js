@@ -2,6 +2,7 @@ const Patient = require("../models/Patient");
 const Notification = require("../models/Notification");
 const Queue = require("../models/Queue");
 const Counter = require("../models/Counter");
+const Facility = require("../models/Facility");
 const { emitQueueUpdate } = require("../sockets/queue.socket");
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
@@ -109,6 +110,31 @@ exports.addPatientToDirectory = async (req, res, next) => {
         });
       }
 
+      // 🔁 Re-visit Check: Existing patient already completed visit TODAY?
+      // Soft warning — not a hard block. forceAdd: true bypasses this.
+      if (!req.body.forceAdd) {
+        const { start: todayStartRevisit } = getISTRange("today");
+        const completedToday = await Queue.findOne({
+          facilityId,
+          $or: [
+            { patientId: patient._id },
+            { phone: phoneRegex || phone }
+          ],
+          status: "completed",
+          createdAt: { $gte: todayStartRevisit }
+        });
+
+        if (completedToday) {
+          logger.info(`[RE-VISIT] Patient ${finalName} already completed today (Token #${completedToday.tokenNumber}). Asking for confirmation.`);
+          return res.status(200).json({
+            success: false,
+            requiresConfirmation: true,
+            completedToken: completedToday.tokenNumber,
+            message: `${finalName} already completed their visit today (Token #${getNextTokenPrefix(assignedFacilityType)}-${String(completedToday.tokenNumber).padStart(3, '0')}). Re-register and add to queue?`
+          });
+        }
+      }
+
       // Update patient's information
       patient.name = finalName;
       if (email) patient.email = email;
@@ -150,81 +176,116 @@ exports.addPatientToDirectory = async (req, res, next) => {
       });
     }
 
-    // 2. Automatically Add to Queue
-    // LP-07 Fix: Counter is now branch-aware — each branch gets its own sequence
-    const safeBranchId = branchId || 'global';
-    const counterId = `token:${facilityId}:${assignedFacilityType}:${safeBranchId}`;
-    const { start: todayStart } = getISTRange("today");
-    const todayEntry = await Queue.findOne({
-      facilityId,
-      facilityType: assignedFacilityType,
-      ...(branchId ? { branchId } : {}),
-      createdAt: { $gte: todayStart }
-    });
-
-    if (!todayEntry) {
-      // No patients today yet: reset sequence to 0
-      await Counter.findOneAndUpdate(
-        { _id: counterId },
-        { seq: 0 },
-        { upsert: true, new: true }
-      );
-    } else {
-      let counter = await Counter.findById(counterId);
-      if (!counter) {
-        const lastToken = await Queue.findOne({
-          facilityId,
-          facilityType: assignedFacilityType,
-          ...(branchId ? { branchId } : {})
-        }).sort({ tokenNumber: -1 });
-        let startNum = lastToken ? lastToken.tokenNumber : 0;
-        try {
-          await Counter.create({ _id: counterId, seq: startNum });
-        } catch (err) {}
+    // Get auto-add setting from Facility
+    const facilityDoc = await Facility.findById(facilityId);
+    
+    // Helper to get custom settings fields (handles Mongoose Map type)
+    const getDbVal = (facilityObj, key, defaultVal) => {
+      if (!facilityObj || !facilityObj.customFields) return defaultVal;
+      if (typeof facilityObj.customFields.get === 'function') {
+        const val = facilityObj.customFields.get(key);
+        return val !== undefined && val !== null ? val : defaultVal;
       }
-    }
-    const nextToken = await getNextSequence(counterId);
+      const val = facilityObj.customFields[key];
+      return val !== undefined && val !== null ? val : defaultVal;
+    };
+    
+    const autoAddToQueue = getDbVal(facilityDoc, 'autoAddToQueue', true);
+    logger.info(`[AUTO-QUEUE] facilityId=${facilityId} | autoAddToQueue=${autoAddToQueue}`);
 
-    // Create Queue entry
-    const newQueueEntry = await Queue.create({
-      facilityId,
-      facilityType: assignedFacilityType,
-      branchId: branchId || null,   // ✅ Branch isolation
-      patientId: patient._id,
-      patientName: finalName,
-      phone,
-      customData: patient.customData || {},
-      doctorName: doctorName || "Unknown",
-      tokenNumber: nextToken,
-      status: "waiting",
-      createdAt: new Date()
-    });
+    let nextToken = null;
+    let newQueueEntry = null;
+
+    if (autoAddToQueue) {
+      // 2. Automatically Add to Queue
+      // LP-07 Fix: Counter is now branch-aware — each branch gets its own sequence
+      const safeBranchId = branchId || 'global';
+      const counterId = `token:${facilityId}:${assignedFacilityType}:${safeBranchId}`;
+      const { start: todayStart } = getISTRange("today");
+      const todayEntry = await Queue.findOne({
+        facilityId,
+        facilityType: assignedFacilityType,
+        ...(branchId ? { branchId } : {}),
+        createdAt: { $gte: todayStart }
+      });
+
+      if (!todayEntry) {
+        // No patients today yet: reset sequence to 0
+        await Counter.findOneAndUpdate(
+          { _id: counterId },
+          { seq: 0 },
+          { upsert: true, new: true }
+        );
+      } else {
+        let counter = await Counter.findById(counterId);
+        if (!counter) {
+          const lastToken = await Queue.findOne({
+            facilityId,
+            facilityType: assignedFacilityType,
+            ...(branchId ? { branchId } : {})
+          }).sort({ tokenNumber: -1 });
+          let startNum = lastToken ? lastToken.tokenNumber : 0;
+          try {
+            await Counter.create({ _id: counterId, seq: startNum });
+          } catch (err) {}
+        }
+      }
+      nextToken = await getNextSequence(counterId);
+
+      // Create Queue entry
+      newQueueEntry = await Queue.create({
+        facilityId,
+        facilityType: assignedFacilityType,
+        branchId: branchId || null,   // ✅ Branch isolation
+        patientId: patient._id,
+        patientName: finalName,
+        phone,
+        customData: patient.customData || {},
+        doctorName: doctorName || "Unknown",
+        tokenNumber: nextToken,
+        status: "waiting",
+        createdAt: new Date()
+      });
+
+      // Socket emit to queue
+      emitQueueUpdate(facilityId, assignedFacilityType, {
+        action: "add",
+        patient: newQueueEntry
+      });
+    }
 
     // LP-09 Fix: Track the last branch the patient visited
     if (branchId) {
       await Patient.findByIdAndUpdate(patient._id, { lastBranchId: branchId });
     }
 
-    // Socket emit to queue
-    emitQueueUpdate(facilityId, assignedFacilityType, {
-      action: "add",
-      patient: newQueueEntry
-    });
-
     // 3. Send Notification
     try {
-      const notifMessage = alreadyExists 
-        ? `${finalName} (Existing Patient) added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`
-        : `${finalName} has been added to the directory and queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`;
+      let notifMessage;
+      if (autoAddToQueue && nextToken) {
+        notifMessage = alreadyExists 
+          ? `${finalName} (Existing Patient) added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`
+          : `${finalName} has been added to the directory and queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}.`;
+      } else {
+        notifMessage = alreadyExists
+          ? `${finalName} (Existing Patient) profile has been updated in the central directory.`
+          : `${finalName} has been registered in the patient directory.`;
+      }
 
       const newNotif = await Notification.create({
         facilityId,
         facilityType: assignedFacilityType,
-        type: alreadyExists ? "queue_update" : "system",
-        title: alreadyExists ? "Patient Re-visited" : "New Patient Registered",
+        type: (alreadyExists && autoAddToQueue) ? "queue_update" : "system",
+        title: alreadyExists 
+          ? (autoAddToQueue ? "Patient Re-visited" : "Patient Info Updated") 
+          : "New Patient Registered",
         message: notifMessage,
         isRead: false,
-        metadata: { patientId: patient._id, patientName: finalName, tokenNumber: nextToken }
+        metadata: { 
+          patientId: patient._id, 
+          patientName: finalName, 
+          ...(autoAddToQueue && nextToken ? { tokenNumber: nextToken } : {}) 
+        }
       });
       // Real-time push
       emitNotification(facilityId, newNotif);
@@ -243,13 +304,26 @@ exports.addPatientToDirectory = async (req, res, next) => {
       details: { patientId: patient._id, patientName: finalName, phone }
     });
 
-    res.status(201).json({ 
-      success: true, 
-      alreadyExists,
-      message: alreadyExists ? `Existing patient found! Added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}` : "Patient added successfully",
-      data: patient,
-      queueInfo: { tokenNumber: nextToken }
-    });
+    if (autoAddToQueue && nextToken) {
+      res.status(201).json({ 
+        success: true, 
+        alreadyExists,
+        message: alreadyExists 
+          ? `Existing patient found! Added to queue with Token #${getNextTokenPrefix(assignedFacilityType)}-${String(nextToken).padStart(3, '0')}` 
+          : "Patient added successfully",
+        data: patient,
+        queueInfo: { tokenNumber: nextToken }
+      });
+    } else {
+      res.status(201).json({ 
+        success: true, 
+        alreadyExists,
+        message: alreadyExists 
+          ? "Existing patient found! Profile updated." 
+          : "Patient added successfully to directory",
+        data: patient
+      });
+    }
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({ success: false, message: "Patient already exists in directory" });

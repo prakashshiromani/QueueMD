@@ -41,7 +41,7 @@ export default function Login() {
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
 
   const handleForgotPasswordRequest = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!forgotEmail || !/^\S+@\S+\.\S+$/.test(forgotEmail)) {
       setForgotError('Please enter a valid email address');
       return;
@@ -327,7 +327,7 @@ export default function Login() {
             {/* Top Close Button */}
             <button
               onClick={closeForgotModal}
-              className="absolute right-6 top-6 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary transition-all active:scale-95 animate-none"
+              className="absolute right-6 top-6 w-10 h-10 z-50 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-text-secondary hover:text-text-primary transition-all active:scale-95 animate-none"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -427,9 +427,19 @@ export default function Login() {
                         required
                       />
                     </div>
-                    <span className="text-[10px] text-text-secondary opacity-50 font-bold ml-1 block leading-normal">
-                      Check your registered email for the verification code.
-                    </span>
+                    <div className="flex justify-between items-center mt-1 px-1">
+                      <span className="text-[10px] text-text-secondary opacity-50 font-bold leading-normal">
+                        Check your registered email for the verification code.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleForgotPasswordRequest()}
+                        disabled={forgotLoading}
+                        className="text-[10px] font-black text-blue-500 hover:text-blue-400 uppercase tracking-wider transition-colors disabled:text-text-secondary shrink-0 ml-2"
+                      >
+                        {forgotLoading ? "Resending..." : "Resend Code"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* New Password Input */}

@@ -3,10 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { registerApi } from '../../services/api';
 import { FACILITY_TYPES } from '../../utils/facilityTypeConfig';
 
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', email: '', password: '',
+    name: 'Dr. ', email: '', password: '',
     facilityName: '', facilityType: 'clinic', role: 'admin'
   });
   const [message, setMessage] = useState('');
@@ -21,8 +26,14 @@ export default function Register() {
     setError('');
     setMessage('');
     setLoading(true);
+    const formattedForm = {
+      ...form,
+      name: toPascalCase(form.name),
+      facilityName: toPascalCase(form.facilityName)
+    };
+    setForm(formattedForm);
     try {
-      await registerApi(form);
+      await registerApi(formattedForm);
       setMessage('✅ Account created successfully! Redirecting...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -117,7 +128,9 @@ export default function Register() {
                   <div className="relative group">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-teal-500 transition-colors">person</span>
                     <input
-                      type="text" name="name" value={form.name} onChange={handleChange} required
+                      type="text" name="name" value={form.name} onChange={handleChange}
+                      onBlur={(e) => setForm(prev => ({ ...prev, name: toPascalCase(e.target.value) }))}
+                      required
                       placeholder="Dr. Rahul Sharma"
                       className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 transition-all shadow-inner"
                     />
@@ -168,7 +181,9 @@ export default function Register() {
                   <div className="relative group">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary text-[20px] group-focus-within:text-purple-500 transition-colors">domain</span>
                     <input
-                      type="text" name="facilityName" value={form.facilityName} onChange={handleChange} required
+                      type="text" name="facilityName" value={form.facilityName} onChange={handleChange}
+                      onBlur={(e) => setForm(prev => ({ ...prev, facilityName: toPascalCase(e.target.value) }))}
+                      required
                       placeholder="e.g. City Health Clinic"
                       className="w-full h-[54px] bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-[14px] text-text-primary placeholder-text-secondary/30 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all shadow-inner"
                     />

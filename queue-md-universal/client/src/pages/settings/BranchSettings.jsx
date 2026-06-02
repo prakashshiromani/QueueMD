@@ -161,7 +161,7 @@ export const BranchesTab = ({ facilityId }) => {
                     onChange={() => handleToggleActive(branch._id, branch.isActive)}
                     className="sr-only peer"
                   />
-                  <div className="w-10 h-5.5 bg-border-muted peer-focus:ring-2 peer-focus:ring-primary-container rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4.5 after:w-4.5 after:transition-all"></div>
+                  <div className="w-11 h-6 bg-border-muted peer-focus:ring-2 peer-focus:ring-primary-container rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
 
                 {editingBranch?._id === branch._id ? (

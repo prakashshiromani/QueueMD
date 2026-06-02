@@ -21,7 +21,8 @@ const addPatientSchema = z.object({
   facilityType: z.enum(["clinic", "hospital", "pathlab", "dental", "physio", "other"]).optional(),
   consentGiven: z.boolean().default(true),
   branchId: z.string().nullable().optional().or(z.literal("")),
-  customData: z.record(z.any()).optional()
+  customData: z.record(z.any()).optional(),
+  forceAdd: z.boolean().optional()
 }).refine(data => data.name || data.patientName, {
   message: "Either name or patientName is required",
   path: ["name"]

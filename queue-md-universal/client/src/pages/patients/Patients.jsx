@@ -41,6 +41,9 @@ export default function Patients() {
   const [viewHistoryPatient, setViewHistoryPatient] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
+  // ✅ Re-visit confirmation state
+  const [reVisitConfirm, setReVisitConfirm] = useState(null);
+  // { patient, payload, completedToken, message, type: 'queue' | 'register' }
 
   const patientsPerPage = 10;
 
@@ -124,6 +127,13 @@ export default function Patients() {
       };
 
       const res = await addPatientApi(payload);
+
+      // 🔁 Re-visit check: backend needs confirmation before re-adding completed patient
+      if (res.requiresConfirmation) {
+        setReVisitConfirm({ patient, payload, completedToken: res.completedToken, message: res.message, type: 'queue' });
+        return;
+      }
+
       toast.success(`Token #${formatTokenNumber(res.data.tokenNumber, patient.facilityType)} generated for ${patient.name}!`);
 
     } catch (error) {
@@ -137,11 +147,14 @@ export default function Patients() {
   // ✅ Handle Add New Patient (CRM)
   const handleAddNewPatient = async (payload) => {
     try {
-      // 🔥 DEBUG: Show exactly what is being sent to backend
-      console.log("📤 [REGISTER PATIENT] Payload being sent:", JSON.stringify(payload, null, 2));
-      console.log("🏥 FacilityType in payload:", payload.facilityType);
-
       const res = await addPatientToDirectoryApi(payload);
+
+      // 🔁 Re-visit check: backend needs confirmation before re-adding completed patient
+      if (res.requiresConfirmation) {
+        setReVisitConfirm({ patient: null, payload, completedToken: res.completedToken, message: res.message, type: 'register' });
+        return;
+      }
+
       toast.success(res.message || "New patient registered successfully!");
       setShowAddModal(false);
       fetchPatients(); // Refresh list
@@ -167,6 +180,32 @@ export default function Patients() {
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to register patient";
       toast.error(msg);
+    }
+  };
+
+  // ✅ Force re-add after user confirms re-visit warning
+  const handleReVisitConfirm = async () => {
+    if (!reVisitConfirm) return;
+    const { payload, type, patient } = reVisitConfirm;
+    setReVisitConfirm(null);
+
+    try {
+      if (type === 'queue') {
+        setActionLoading(prev => ({ ...prev, [patient._id]: true }));
+        const res = await addPatientApi({ ...payload, forceAdd: true });
+        toast.success(`Token #${formatTokenNumber(res.data.tokenNumber, patient.facilityType)} generated for ${patient.name}!`);
+      } else {
+        const res = await addPatientToDirectoryApi({ ...payload, forceAdd: true });
+        toast.success(res.message || "Patient re-registered successfully!");
+        setShowAddModal(false);
+        fetchPatients();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to re-add patient");
+    } finally {
+      if (type === 'queue' && patient) {
+        setActionLoading(prev => ({ ...prev, [patient._id]: false }));
+      }
     }
   };
 
@@ -914,6 +953,43 @@ export default function Patients() {
         onClose={() => setViewHistoryPatient(null)}
         patient={viewHistoryPatient}
       />
+
+      {/* ✅ Re-Visit Confirmation Modal */}
+      {reVisitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-bg-secondary border border-amber-500/30 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <span className="material-symbols-outlined text-[24px]">warning</span>
+              </div>
+              <div>
+                <h2 className="text-[16px] font-black text-text-primary">Patient Already Visited Today</h2>
+                <p className="text-[13px] text-text-secondary mt-1 leading-relaxed">{reVisitConfirm.message}</p>
+              </div>
+            </div>
+            <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+              <p className="text-[12px] text-amber-400 font-semibold">
+                ⚠️ This may be an accidental double-entry. Only continue if the doctor has requested a follow-up visit.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReVisitConfirm(null)}
+                className="flex-1 py-3 rounded-xl bg-bg-primary border border-border-muted/50 dark:border-white/5 text-text-secondary font-black text-[13px] uppercase tracking-widest hover:text-text-primary transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReVisitConfirm}
+                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-[13px] uppercase tracking-widest transition flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                Yes, Add Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

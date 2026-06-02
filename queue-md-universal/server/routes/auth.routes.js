@@ -4,22 +4,22 @@ const router = express.Router();
 const { register, login, refreshToken, forgotPassword, resetPassword, changePassword, verifyPassword, logout, setupMFA, verifyAndEnableMFA, loginMFA } = require("../controllers/auth.controller");
 const { auth } = require("../middleware/auth.middleware");
 
-// 🔒 SECURITY: Auth limiter (login/register) — 10 attempts per 15 min
+// 🔒 SECURITY: Auth limiter (login/register) — 10 attempts per 5 min
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 5 minutes
   max: 10, // max 10 requests per IP
-  message: { success: false, message: "Too many attempts. Please try after 15 mins." },
+  message: { success: false, message: "Too many attempts. Please try after 5 mins." },
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
   skip: () => process.env.NODE_ENV === 'test'
 });
 
-// 🔒 SECURITY: Sensitive auth limiter — 5 attempts per 15 min (forgot/reset/refresh) (L-02, L-03, L-09)
+// 🔒 SECURITY: Sensitive auth limiter — 5 attempts per 5 min (forgot/reset/refresh) (L-02, L-03, L-09)
 const sensitiveAuthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 5 * 60 * 1000, // 5 minutes
   max: 5,
-  message: { success: false, message: "Too many attempts. Please try after 15 mins." },
+  message: { success: false, message: "Too many attempts. Please try after 5 mins." },
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,

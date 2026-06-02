@@ -14,7 +14,8 @@ const addPatientQueueSchema = z.object({
   doctorName: z.string().min(2, "Doctor name must be at least 2 characters").optional().or(z.literal("")),
   facilityType: z.enum(["clinic", "hospital", "pathlab", "dental", "physio", "other"]).optional(),
   branchId: z.string().nullable().optional().or(z.literal("")),
-  customData: z.record(z.any()).optional()
+  customData: z.record(z.any()).optional(),
+  forceAdd: z.boolean().optional()
 });
 
 const completeQueueSchema = z.object({

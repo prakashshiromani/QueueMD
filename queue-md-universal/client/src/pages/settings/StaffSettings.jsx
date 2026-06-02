@@ -12,6 +12,7 @@ const toPascalCase = (str) => {
 export const QueueSettingsTab = ({ facility, onSave, config }) => {
   const facilityId = facility?.facilityId || facility?._id;
   const localStorageKey = `queue-md-facility-settings-${facilityId}`;
+  const [savingKey, setSavingKey] = useState(null);
 
   const [settings, setSettings] = useState(() => {
     try {
@@ -31,7 +32,8 @@ export const QueueSettingsTab = ({ facility, onSave, config }) => {
         baseConsultTime: getDbVal('baseConsultTime') || savedParsed.baseConsultTime || config.baseConsultTime || 15,
         notificationTemplate: getDbVal('notificationTemplate') || savedParsed.notificationTemplate || config.notificationTemplate || '',
         maxQueueSize: getDbVal('maxQueueSize') || savedParsed.maxQueueSize || '',
-        unlimitedQueue: getDbVal('unlimitedQueue') ?? savedParsed.unlimitedQueue ?? true
+        unlimitedQueue: getDbVal('unlimitedQueue') ?? savedParsed.unlimitedQueue ?? true,
+        autoAddToQueue: getDbVal('autoAddToQueue') ?? savedParsed.autoAddToQueue ?? true
       };
     } catch (e) {
       console.error(e);
@@ -42,7 +44,8 @@ export const QueueSettingsTab = ({ facility, onSave, config }) => {
       baseConsultTime: config.baseConsultTime || 15,
       notificationTemplate: config.notificationTemplate || '',
       maxQueueSize: '',
-      unlimitedQueue: true
+      unlimitedQueue: true,
+      autoAddToQueue: true
     };
   });
 
@@ -61,15 +64,35 @@ export const QueueSettingsTab = ({ facility, onSave, config }) => {
         baseConsultTime: getDbVal('baseConsultTime') || prev.baseConsultTime,
         notificationTemplate: getDbVal('notificationTemplate') || prev.notificationTemplate,
         maxQueueSize: getDbVal('maxQueueSize') || prev.maxQueueSize,
-        unlimitedQueue: getDbVal('unlimitedQueue') ?? prev.unlimitedQueue
+        unlimitedQueue: getDbVal('unlimitedQueue') ?? prev.unlimitedQueue,
+        autoAddToQueue: getDbVal('autoAddToQueue') ?? prev.autoAddToQueue
       }));
     }
   }, [facility]);
 
-  const handleChange = (key, value) => {
+  // ✅ FIX: Save INSTANTLY to backend on toggle change (don't wait for parent "Save Changes" button)
+  const handleChange = async (key, value) => {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
+    // Also notify parent for non-critical fields (text inputs use parent save flow)
     onSave(key, value);
+
+    // For toggles: immediately persist to backend so server reads correct value
+    setSavingKey(key);
+    try {
+      await api.put('/facility/update', { facilityId, [key]: value });
+      // Update localStorage immediately too
+      const existing = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
+      localStorage.setItem(localStorageKey, JSON.stringify({ ...existing, [key]: value }));
+      toast.success(`${key === 'autoAddToQueue' ? 'Auto-Queue' : key === 'autoReset' ? 'Auto-Reset' : 'Queue'} setting saved!`);
+    } catch (err) {
+      console.error('Failed to save setting:', err);
+      toast.error('Failed to save setting. Please try again.');
+      // Revert UI on failure
+      setSettings(prev => ({ ...prev, [key]: !value }));
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   return (
@@ -91,22 +114,40 @@ export const QueueSettingsTab = ({ facility, onSave, config }) => {
       <div className="space-y-4">
         {[
           { key: 'autoReset', label: 'Auto-Reset Tokens Daily', desc: 'Reset token counter to 1 at midnight' },
-          { key: 'unlimitedQueue', label: 'Unlimited Queue Capacity', desc: 'Allow patients to join queue without restriction' }
+          { key: 'unlimitedQueue', label: 'Unlimited Queue Capacity', desc: 'Allow patients to join queue without restriction' },
+          { key: 'autoAddToQueue', label: 'Auto-Add Patients to Queue', desc: 'Automatically add newly registered directory patients directly into the active queue' }
         ].map((item) => (
           <div key={item.key} className="flex items-start justify-between p-4 bg-bg-primary rounded-2xl border border-border-muted/50 dark:border-white/5">
-            <div>
-              <p className="font-bold text-text-primary text-sm">{item.label}</p>
+            <div className="flex-1 pr-4">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-text-primary text-sm">{item.label}</p>
+                {item.key === 'autoAddToQueue' && (
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    settings[item.key]
+                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  }`}>
+                    {settings[item.key] ? 'Auto' : 'Manual'}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings[item.key]}
-                onChange={() => handleChange(item.key, !settings[item.key])}
-                className="sr-only peer"
-              />
-              <div className="w-10 h-5.5 bg-border-muted peer-focus:ring-2 peer-focus:ring-primary-container rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4.5 after:w-4.5 after:transition-all"></div>
-            </label>
+            <div className="flex items-center gap-2">
+              {savingKey === item.key && (
+                <span className="material-symbols-outlined text-[16px] text-text-secondary animate-spin">sync</span>
+              )}
+              <label className={`relative inline-flex items-center ${savingKey === item.key ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                <input
+                  type="checkbox"
+                  checked={settings[item.key]}
+                  onChange={() => savingKey === item.key ? null : handleChange(item.key, !settings[item.key])}
+                  className="sr-only peer"
+                  disabled={savingKey === item.key}
+                />
+                <div className="w-11 h-6 bg-border-muted peer-focus:ring-2 peer-focus:ring-primary-container rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+              </label>
+            </div>
           </div>
         ))}
       </div>
