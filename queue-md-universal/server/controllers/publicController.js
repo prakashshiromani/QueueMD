@@ -44,7 +44,7 @@ exports.getLiveTrackingStatus = async (req, res) => {
             .lean();
 
         // 4. Calculate accurate estimated wait time using prediction engine
-        const { calculateWaitPredictions } = require('../utils/waitTimeCalculator');
+        const { calculateWaitPredictions } = require('../services/waitTime.service');
         const stats = await calculateWaitPredictions(Queue, facilityId, patient.facilityType);
         const prediction = stats.predictions.find(p => p._id.toString() === patient._id.toString());
         let estimatedWaitTime = prediction ? prediction.estimatedWaitTime : 0;

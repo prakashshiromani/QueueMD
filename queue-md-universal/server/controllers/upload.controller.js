@@ -3,7 +3,7 @@ const { getCorrectedTimestamp } = require('../utils/timeSync');
 const upload = require('../middleware/multer');
 const logger = require('../utils/logger');
 const sharp = require('sharp');
-const { getSignedUrl } = require('../utils/cloudinaryHelper');
+const { getSignedUrl } = require('../services/cloudinary.service');
 
 exports.uploadImage = async (req, res) => {
   try {

@@ -1,7 +1,7 @@
 // server/controllers/auth.controller.js
 const User = require("../models/User");
 const logger = require("../utils/logger");
-const { logAudit } = require("../utils/auditLogger");
+const { logAudit } = require("../services/audit.service");
 const Facility = require("../models/Facility");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");

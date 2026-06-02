@@ -1,8 +1,8 @@
 const ClinicalVisit = require('../models/ClinicalVisit');
 const Facility = require('../models/Facility');
 const User = require('../models/User');
-const { tenantQuery } = require('../utils/tenantIsolation');
-const { logAudit } = require('../utils/auditLogger');
+const { tenantQuery } = require('../services/tenant.service');
+const { logAudit } = require('../services/audit.service');
 const logger = require('../utils/logger');
 
 // @desc    Get Patient History (EMR Lite)
@@ -23,7 +23,7 @@ exports.getPatientHistory = async (req, res) => {
     .populate('doctorId', 'name specialization');
 
     // 🔒 SECURITY: Generate signed URLs for private medical documents (Item 4)
-    const { getSignedUrl } = require('../utils/cloudinaryHelper');
+    const { getSignedUrl } = require('../services/cloudinary.service');
     visits.forEach(visit => {
       if (visit.documents && Array.isArray(visit.documents)) {
         visit.documents.forEach(doc => {
@@ -74,7 +74,7 @@ exports.getPrescriptionData = async (req, res) => {
 
     // 🔒 SECURITY: Generate signed URLs for private medical documents (Item 4)
     if (visit.documents && Array.isArray(visit.documents)) {
-      const { getSignedUrl } = require('../utils/cloudinaryHelper');
+      const { getSignedUrl } = require('../services/cloudinary.service');
       visit.documents.forEach(doc => {
         doc.url = getSignedUrl(doc.url, doc.type);
       });

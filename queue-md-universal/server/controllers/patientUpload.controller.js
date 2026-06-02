@@ -94,7 +94,7 @@ exports.uploadPrescription = async (req, res) => {
 exports.getUploadedDocuments = async (req, res) => {
     try {
         const { phone, facilityId, visitId } = req.patient;
-        const { getSignedUrl } = require('../utils/cloudinaryHelper');
+        const { getSignedUrl } = require('../services/cloudinary.service');
         
         const visit = await ClinicalVisit.findOne({
             patientPhone: phone,
@@ -129,7 +129,7 @@ exports.getPatientClinicalHistory = async (req, res) => {
     try {
         // req.patient comes from verifyUploadToken middleware
         const { phone, facilityId } = req.patient;
-        const { getSignedUrl } = require('../utils/cloudinaryHelper');
+        const { getSignedUrl } = require('../services/cloudinary.service');
 
         // Fetch all clinical visits for this patient in this facility
         // Strict isolation: facilityId + patientPhone

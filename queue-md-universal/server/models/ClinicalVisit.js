@@ -36,7 +36,7 @@ const clinicalVisitSchema = new mongoose.Schema({
 clinicalVisitSchema.index({ patientPhone: 1, facilityId: 1, createdAt: -1 });
 
 // 🔒 SECURITY: Enforce EMR field-level encryption for HIPAA compliance (Item 3)
-const mongooseFieldEncryption = require('../utils/mongooseFieldEncryption');
+const mongooseFieldEncryption = require('../services/encryption.service');
 clinicalVisitSchema.plugin(mongooseFieldEncryption, {
   fields: ['diagnosis', 'prescriptionNotes']
 });

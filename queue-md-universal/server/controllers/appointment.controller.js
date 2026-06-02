@@ -4,7 +4,7 @@ const Patient = require("../models/Patient");
 const Queue = require("../models/Queue");
 const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
 const logger = require("../utils/logger");
-const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
+const { validateBranchOwnership } = require("../services/branch.service"); // 🔒 LP-02 Fix
 
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
@@ -628,7 +628,7 @@ exports.deletePatient = async (req, res, next) => {
     );
 
     // 6. Write secure audit log
-    const { logAudit } = require("../utils/auditLogger");
+    const { logAudit } = require("../services/audit.service");
     await logAudit(req, {
       action: "PATIENT_DELETE_ERASURE_APPT",
       facilityId,

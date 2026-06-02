@@ -21,9 +21,6 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Documentation
-queue-md-universal/docs/
-
 # Assistant Context
 prakash-coding-assistant/
 

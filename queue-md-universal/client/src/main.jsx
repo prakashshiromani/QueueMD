@@ -2,8 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import ToastProvider from "./components/ToastProvider";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ToastProvider from "./components/providers/ToastProvider";
+import ErrorBoundary from "./components/providers/ErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

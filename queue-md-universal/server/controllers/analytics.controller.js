@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Queue = require("../models/Queue");
 const logger = require("../utils/logger");
-const { cleanupStaleTokens } = require("../utils/waitTimeCalculator");
+const { cleanupStaleTokens } = require("../services/waitTime.service");
 const { getISTRange } = require("../utils/dateHelpers");
 const { connection: redis } = require("../config/redis");
 

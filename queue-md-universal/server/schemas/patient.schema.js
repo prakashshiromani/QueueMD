@@ -1,4 +1,6 @@
-const { z } = require("zod");
+// @ts-nocheck
+const zod = require("zod");
+const z = zod.z;
 
 // Phone regex for Indian phone numbers (10 digits, optional country code)
 const phoneRegex = /^(?:\+91|91)?[6789]\d{9}$|^[0-9]{10}$/;

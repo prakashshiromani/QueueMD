@@ -1,5 +1,5 @@
 const AuditLog = require("../models/AuditLog");
-const { logAudit } = require("../utils/auditLogger");
+const { logAudit } = require("../services/audit.service");
 
 /**
  * Retrieves paginated, filterable, and searchable security audit logs for the authenticated facility.

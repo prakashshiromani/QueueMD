@@ -1,4 +1,24 @@
 # python_service/main.py
+#
+# FastAPI Microservice for Wait-Time Predictions.
+#
+# Future Scaling Package Structure:
+# python_service/
+# ├── app/
+# │   ├── __init__.py
+# │   ├── main.py              ← FastAPI app instance
+# │   ├── routes/
+# │   │   └── prediction.py    ← Prediction endpoints
+# │   ├── services/
+# │   │   └── wait_time.py     ← EMA calculation logic
+# │   └── models/
+# │       └── schemas.py       ← Pydantic request/response models
+# ├── tests/
+# │   └── test_prediction.py
+# ├── requirements.txt         ← Project dependencies
+# └── .env                     ← Environment variables
+#
+
 from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
 from bson import ObjectId

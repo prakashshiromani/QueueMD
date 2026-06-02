@@ -8,8 +8,8 @@ const { emitNotification } = require("../sockets/notification.socket");
 const { getPhoneRegex } = require("../utils/phoneHelper");
 const { getISTRange } = require("../utils/dateHelpers");
 const { getNextTokenPrefix } = require("../utils/facilityTypeConfig");
-const { tenantQuery, tenantData } = require("../utils/tenantIsolation");
-const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
+const { tenantQuery, tenantData } = require("../services/tenant.service");
+const { validateBranchOwnership } = require("../services/branch.service"); // 🔒 LP-02 Fix
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
@@ -233,7 +233,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
     }
 
     // 🔒 SECURITY: EMR compliance access auditing for registration (Item 3)
-    const { logAudit } = require("../utils/auditLogger");
+    const { logAudit } = require("../services/audit.service");
     await logAudit(req, {
       action: alreadyExists ? "PATIENT_REVISIT" : "PATIENT_REGISTER",
       facilityId,
@@ -395,7 +395,7 @@ exports.updatePatient = async (req, res, next) => {
 exports.deletePatient = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { logAudit } = require("../utils/auditLogger");
+    const { logAudit } = require("../services/audit.service");
 
     // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper
     const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });
@@ -460,7 +460,7 @@ exports.deletePatient = async (req, res, next) => {
 exports.exportPatientData = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { logAudit } = require("../utils/auditLogger");
+    const { logAudit } = require("../services/audit.service");
 
     // 🔒 SECURITY: Enforce multi-tenant isolation query wrapper
     const query = tenantQuery(req, { _id: id, isDeleted: { $ne: true } });

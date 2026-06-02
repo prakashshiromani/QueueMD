@@ -1,7 +1,7 @@
 const Facility = require("../models/Facility");
 const { facilitySchema } = require("../schemas/facility.schema");
 const logger = require("../utils/logger");
-const { logAudit } = require("../utils/auditLogger");
+const { logAudit } = require("../services/audit.service");
 
 // ✅ CREATE FACILITY
 exports.createFacility = async (req, res, next) => {

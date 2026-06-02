@@ -6,16 +6,17 @@ const { emitQueueUpdate, emitAnalyticsUpdate, emitPublicQueueUpdate } = require(
 const logger = require("../utils/logger");
 const { emitNotification } = require("../sockets/notification.socket");
 const { z } = require("zod");
-const { calculateWaitPredictions, cleanupStaleTokens } = require("../utils/waitTimeCalculator");
+const { calculateWaitPredictions, cleanupStaleTokens } = require("../services/waitTime.service");
 const Analytics = require("../models/Analytics");
 const Patient = require("../models/Patient");
 const notificationQueue = require('../jobs/notification.queue');
 const Counter = require("../models/Counter");
-const { validateBranchOwnership } = require("../utils/branchValidator"); // 🔒 LP-02 Fix
+const { validateBranchOwnership } = require("../services/branch.service"); // 🔒 LP-02 Fix
 const ClinicalVisit = require("../models/ClinicalVisit");
 const { getPhoneRegex } = require("../utils/phoneHelper");
-const { logAudit } = require("../utils/auditLogger");
+const { logAudit } = require("../services/audit.service");
 const { getISTRange } = require("../utils/dateHelpers");
+
 
 async function getNextSequence(id) {
   const counter = await Counter.findByIdAndUpdate(
