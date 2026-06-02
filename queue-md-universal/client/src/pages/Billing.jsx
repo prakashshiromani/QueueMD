@@ -19,6 +19,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 // Skeleton Loader Component
 const StatsSkeleton = () => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -264,7 +270,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                       type="text"
                       required
                       value={formData.patientName}
-                      onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, patientName: toPascalCase(e.target.value) })}
                       className={inputCls}
                       placeholder="e.g. Rahul Sharma"
                     />
@@ -334,7 +340,7 @@ const CreateInvoiceModal = ({ isOpen, onClose, onSuccess, config }) => {
                     <FileText className="absolute left-4 top-4 w-4 h-4 text-text-secondary/50 transition-colors group-focus-within:text-[var(--theme-primary)]" />
                     <textarea
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, description: toPascalCase(e.target.value) })}
                       rows="3"
                       className="w-full bg-bg-primary border border-border-muted/50 rounded-xl pl-11 pr-4 py-3.5 text-[14px] text-text-primary placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)] transition-all shadow-sm resize-none"
                       placeholder="Add notes about this invoice..."

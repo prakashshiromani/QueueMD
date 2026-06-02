@@ -14,6 +14,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 // ─────────────────────────────────────────────────────────────
 // SUB-COMPONENTS (Each Tab)
 // ─────────────────────────────────────────────────────────────
@@ -204,9 +210,13 @@ const FacilityProfileTab = ({ facility, onSave, config }) => {
   }, [facility]);
 
   const handleChange = (key, value) => {
-    const updated = { ...formData, [key]: value };
+    let formattedValue = value;
+    if (key === 'name' || key === 'address') {
+      formattedValue = toPascalCase(value);
+    }
+    const updated = { ...formData, [key]: formattedValue };
     setFormData(updated);
-    onSave(key, value);
+    onSave(key, formattedValue);
   };
 
   const handleLogoChange = (e) => {
@@ -498,14 +508,14 @@ const BranchesTab = ({ facilityId }) => {
             <input
               type="text"
               value={newBranch.name}
-              onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+              onChange={(e) => setNewBranch({ ...newBranch, name: toPascalCase(e.target.value) })}
               placeholder="Branch Name *"
               className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
             />
             <input
               type="text"
               value={newBranch.address}
-              onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+              onChange={(e) => setNewBranch({ ...newBranch, address: toPascalCase(e.target.value) })}
               placeholder="Address"
               className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none"
             />
@@ -536,12 +546,12 @@ const BranchesTab = ({ facilityId }) => {
                   <div className="space-y-2">
                     <input
                       value={editingBranch.name}
-                      onChange={(e) => setEditingBranch({ ...editingBranch, name: e.target.value })}
+                      onChange={(e) => setEditingBranch({ ...editingBranch, name: toPascalCase(e.target.value) })}
                       className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 outline-none text-text-primary font-bold text-sm px-3 py-1.5 rounded-lg w-full"
                     />
                     <input
                       value={editingBranch.address || ''}
-                      onChange={(e) => setEditingBranch({ ...editingBranch, address: e.target.value })}
+                      onChange={(e) => setEditingBranch({ ...editingBranch, address: toPascalCase(e.target.value) })}
                       className="bg-bg-secondary border border-border-muted/50 dark:border-white/5 outline-none text-text-secondary text-xs px-3 py-1.5 rounded-lg w-full"
                     />
                   </div>
@@ -1981,7 +1991,7 @@ const FacilityTypesTab = ({ facility }) => {
                 type="text"
                 disabled={editingKey && defaults.includes(editingKey)}
                 value={formData.label}
-                onChange={(e) => handleFieldChange('label', e.target.value)}
+                onChange={(e) => handleFieldChange('label', toPascalCase(e.target.value))}
                 placeholder="e.g. Cardiology"
                 className="w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-xl py-3 px-4 text-text-primary text-sm focus:outline-none focus:border-border-muted"
               />

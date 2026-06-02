@@ -9,6 +9,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '37, 99, 235';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) {
   const { facilityType: globalFacilityType } = useFacilityStore();
   
@@ -298,7 +304,7 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
                     <input
                       type="text"
                       value={formData.patientName}
-                      onChange={(e) => handleChange("patientName", e.target.value)}
+                      onChange={(e) => handleChange("patientName", toPascalCase(e.target.value))}
                       placeholder="Search or enter name"
                       className={`w-full h-[50px] bg-bg-primary border rounded-xl px-4 text-[14px] text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 transition-all ${
                         errors.patientName 
@@ -625,6 +631,8 @@ export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) 
                                     val = "SAM-" + val.replace(/^SAM-?/i, "");
                                   }
                                 }
+                              } else if (field.type !== "number" && field.type !== "select") {
+                                val = toPascalCase(val);
                               }
                               handleCustomChange(field.name, val);
                             }}

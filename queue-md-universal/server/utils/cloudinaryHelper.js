@@ -65,14 +65,25 @@ exports.getSignedUrl = (url, mimetype = 'image/jpeg') => {
   try {
     const isPdf = mimetype === 'application/pdf' || url.endsWith('.pdf');
     
-    // Generate signed URL
-    return cloudinary.url(publicId, {
+    // Extract format (extension) from the clean URL to preserve it in the signed URL
+    const cleanUrl = url.split('?')[0];
+    const dotIndex = cleanUrl.lastIndexOf('.');
+    const format = dotIndex !== -1 ? cleanUrl.substring(dotIndex + 1).toLowerCase() : null;
+
+    const options = {
       sign_url: true,
       type: 'private',
       resource_type: isPdf ? 'image' : 'image', // Cloudinary treats PDF uploads inside image folder as image
       expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiry
       secure: true
-    });
+    };
+
+    if (format) {
+      options.format = format;
+    }
+    
+    // Generate signed URL
+    return cloudinary.url(publicId, options);
   } catch (err) {
     logger.error(`[CLOUDINARY] Error generating signed URL: ${err.message}`);
     return url; // Fallback to raw URL

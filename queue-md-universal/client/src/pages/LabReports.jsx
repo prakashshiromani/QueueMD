@@ -29,6 +29,12 @@ export default function LabReports() {
     doctorName: ''
   });
 
+  // Helper to convert string to PascalCase (first letter of each word capitalized)
+  const toPascalCase = (str) => {
+    if (!str) return '';
+    return str.replace(/\b\w/g, char => char.toUpperCase());
+  };
+
   // Format phone number (Indian format, max 10 digits)
   const formatPhone = (value) => {
     const numbers = value.replace(/\D/g, "");
@@ -530,7 +536,7 @@ export default function LabReports() {
                             placeholder="e.g. Rahul Sharma"
                             className={inputCls}
                             value={formData.patientName}
-                            onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, patientName: toPascalCase(e.target.value) })}
                           />
                         </div>
                       </div>
@@ -574,7 +580,7 @@ export default function LabReports() {
                               placeholder="e.g. CBC, HbA1c, Urine"
                               className={inputCls}
                               value={formData.testType}
-                              onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
+                              onChange={(e) => setFormData({ ...formData, testType: toPascalCase(e.target.value) })}
                             />
                           </div>
                         </div>

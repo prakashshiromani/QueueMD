@@ -13,6 +13,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 const staffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
@@ -189,7 +195,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                     <input
                       type="text"
                       value={form.name}
-                      onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
+                      onChange={(e) => setForm(p => ({ ...p, name: toPascalCase(e.target.value) }))}
                       className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                     />
                     {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name[0]}</p>}
@@ -247,7 +253,7 @@ export default function StaffEditModal({ staff, isOpen, onClose, onSave, loading
                     <input
                       type="text"
                       value={form.specialization}
-                      onChange={(e) => setForm(p => ({ ...p, specialization: e.target.value }))}
+                      onChange={(e) => setForm(p => ({ ...p, specialization: toPascalCase(e.target.value) }))}
                       className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                       placeholder="e.g., Cardiology"
                     />

@@ -15,6 +15,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export default function Patients() {
   const { facilityId, facilityType } = useFacilityStore();
 
@@ -702,7 +708,7 @@ export default function Patients() {
                       <input
                         type="text"
                         value={editForm.name || ''}
-                        onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        onChange={e => setEditForm(f => ({ ...f, name: toPascalCase(e.target.value) }))}
                         className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                         required
                       />
@@ -822,7 +828,13 @@ export default function Patients() {
                               <input
                                 type={field.type || "text"}
                                 value={(editForm.customData && editForm.customData[field.name]) || ""}
-                                onChange={(e) => handleEditCustomChange(field.name, e.target.value)}
+                                onChange={(e) => {
+                                  let val = e.target.value;
+                                  if (field.name !== "sampleId" && field.type !== "number" && field.type !== "select") {
+                                    val = toPascalCase(val);
+                                  }
+                                  handleEditCustomChange(field.name, val);
+                                }}
                                 placeholder={field.placeholder || `Enter ${field.label}`}
                                 className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                                 required={field.required}

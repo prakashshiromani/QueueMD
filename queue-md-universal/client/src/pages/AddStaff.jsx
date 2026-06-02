@@ -15,6 +15,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const PREDEFINED_SHIFTS = [
   "09:00 AM - 05:00 PM",
@@ -167,7 +173,7 @@ export default function AddStaff() {
                     if (!val.startsWith("Dr. ")) {
                       val = "Dr. ";
                     }
-                    setFormData(p => ({ ...p, name: val }));
+                    setFormData(p => ({ ...p, name: toPascalCase(val) }));
                   }}
                   className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                   placeholder="Dr. Rajesh Kumar"
@@ -274,7 +280,7 @@ export default function AddStaff() {
                 <input
                   type="text"
                   value={formData.specialization}
-                  onChange={(e) => setFormData(p => ({ ...p, specialization: e.target.value }))}
+                  onChange={(e) => setFormData(p => ({ ...p, specialization: toPascalCase(e.target.value) }))}
                   className={`w-full ${theme.inputBg} ${theme.inputText} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/50 transition-all`}
                   placeholder="e.g., Cardiology, Dental"
                 />

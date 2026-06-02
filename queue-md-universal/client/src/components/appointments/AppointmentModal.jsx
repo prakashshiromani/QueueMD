@@ -11,6 +11,12 @@ function hexToRgb(hex) {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '37, 99, 235';
 }
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, appointment, selectedDate }) {
   const { facilityId, facilityType: globalFacilityType, selectedBranch } = useFacilityStore();
   
@@ -265,7 +271,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                   <span className={iconCls}>person</span>
                   <input 
                     value={form.patientName} 
-                    onChange={e => setForm({ ...form, patientName: e.target.value })} 
+                    onChange={e => setForm({ ...form, patientName: toPascalCase(e.target.value) })} 
                     className={`${inputCls} ${errors.patientName ? "border-red-500" : ""}`} 
                     placeholder="Patient Name" 
                   />
@@ -448,7 +454,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                         placeholder="Procedure (e.g. Root Canal)" 
                         className="w-full h-[44px] bg-bg-secondary border border-border-muted/50 rounded-lg px-4 text-[13px] text-text-primary focus:border-pink-500 transition-all outline-none" 
                         value={form.customData.procedure || ""}
-                        onChange={e => setForm({ ...form, customData: { ...form.customData, procedure: e.target.value }})}
+                        onChange={e => setForm({ ...form, customData: { ...form.customData, procedure: toPascalCase(e.target.value) }})}
                       />
                     </div>
                   )}
@@ -458,7 +464,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                         placeholder="Test Type (e.g. CBC, HbA1c, Urine)" 
                         className="w-full h-[44px] bg-bg-secondary border border-border-muted/50 rounded-lg px-4 text-[13px] text-text-primary focus:border-purple-500 transition-all outline-none" 
                         value={form.customData.testType || ""}
-                        onChange={e => setForm({ ...form, customData: { ...form.customData, testType: e.target.value }})}
+                        onChange={e => setForm({ ...form, customData: { ...form.customData, testType: toPascalCase(e.target.value) }})}
                       />
                       <input 
                         placeholder="Sample ID" 
@@ -487,7 +493,7 @@ export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, 
                   <span className="material-symbols-outlined absolute left-4 top-4 text-text-secondary text-[20px]">sticky_note_2</span>
                   <textarea 
                     value={form.notes} 
-                    onChange={e => setForm({ ...form, notes: e.target.value })} 
+                    onChange={e => setForm({ ...form, notes: toPascalCase(e.target.value) })} 
                     rows={3} 
                     className="w-full bg-bg-primary border border-border-muted/50 rounded-xl pl-11 pr-4 py-3 text-[14px] text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/20 focus:border-[var(--theme-primary)] transition-all resize-none shadow-sm" 
                     placeholder="Add any specific instructions or symptoms..."
