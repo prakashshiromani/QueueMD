@@ -3,7 +3,7 @@ const router = express.Router();
 const { createFacility, getFacilities, addBranch, updateBranch, deleteBranch, getBranches, getMyFacility, updateFacility, generateLobbyQR, completeOnboardingStep, archiveFacility, restoreFacility } = require("../controllers/facility.controller");
 const { auth, authorize } = require("../middleware/auth.middleware");
 
-router.post("/create", auth, createFacility);
+router.post("/create", auth, authorize("admin"), createFacility);
 router.get("/me", auth, getMyFacility);
 router.put("/update", auth, updateFacility);
 router.get("/", auth, getFacilities);

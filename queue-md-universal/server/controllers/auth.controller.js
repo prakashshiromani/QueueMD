@@ -345,11 +345,20 @@ exports.forgotPassword = async (req, res, next) => {
 
     // Also generate a 6-digit numeric OTP and save to DB for OTP-based reset flows (tests and client UI modal)
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // In development or testing, log it for convenience
+    if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+      logger.debug(`[DEV ONLY] OTP for ${email}: ${otpCode}`);
+    }
+
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+    const otpHash = await bcrypt.hash(otpCode, saltRounds);
+
     await User.updateOne(
       { _id: user._id },
       { 
         $set: { 
-          resetPasswordOTP: otpCode, 
+          resetPasswordOTP: otpHash, 
           resetPasswordExpires: new Date(Date.now() + 15 * 60 * 1000) 
         } 
       }
@@ -428,15 +437,16 @@ exports.resetPassword = async (req, res, next) => {
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      // 123456 bypass for test/dev environment
-      const isDevBypass = code === "123456" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development");
-      if (!isDevBypass) {
-        if (!user.resetPasswordOTP || user.resetPasswordOTP !== code) {
-          return res.status(400).json({ success: false, message: "Invalid verification code." });
-        }
-        if (!user.resetPasswordExpires || user.resetPasswordExpires < Date.now()) {
-          return res.status(400).json({ success: false, message: "Verification code has expired." });
-        }
+      if (!user.resetPasswordOTP) {
+        return res.status(400).json({ success: false, message: "Invalid verification code." });
+      }
+      if (!user.resetPasswordExpires || user.resetPasswordExpires < Date.now()) {
+        return res.status(400).json({ success: false, message: "Verification code has expired." });
+      }
+
+      const isValidOTP = await bcrypt.compare(code, user.resetPasswordOTP);
+      if (!isValidOTP) {
+        return res.status(400).json({ success: false, message: "Invalid verification code." });
       }
     }
 

@@ -26,6 +26,28 @@ const sensitiveAuthLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === 'test'
 });
 
+// 🔒 SECURITY: Rate limiter for changing/verifying password — 5 attempts per 15 min
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { success: false, message: "Too many password change attempts. Please wait." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+  skip: () => process.env.NODE_ENV === 'test'
+});
+
+// 🔒 SECURITY: Rate limiter for MFA login attempts — 5 attempts per 5 min
+const mfaLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,
+  message: { success: false, message: "Too many MFA attempts. Please try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+  skip: () => process.env.NODE_ENV === 'test'
+});
+
 /**
  * @swagger
  * /auth/register:
@@ -194,15 +216,15 @@ router.post("/reset-password", sensitiveAuthLimiter, resetPassword);
  *       400: { description: Invalid input or incorrect current password }
  *       401: { description: Unauthorized }
  */
-router.put("/change-password", auth, changePassword);
-router.post("/verify-password", auth, verifyPassword);
+router.put("/change-password", auth, changePasswordLimiter, changePassword);
+router.post("/verify-password", auth, changePasswordLimiter, verifyPassword);
 
 router.post("/logout", auth, logout);
 
 // 🔒 SECURITY: Multi-Factor Authentication TOTP routes (Item 2)
 router.post("/mfa/setup", auth, setupMFA);
 router.post("/mfa/verify", auth, verifyAndEnableMFA);
-router.post("/mfa/login", loginMFA);
+router.post("/mfa/login", mfaLimiter, loginMFA);
 
 module.exports = router;
 

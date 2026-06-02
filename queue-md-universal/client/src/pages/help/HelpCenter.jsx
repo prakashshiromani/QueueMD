@@ -162,6 +162,16 @@ Assign roles under Settings > Staff, where you can add staff emails to send invi
   const [docsLang, setDocsLang] = useState('hinglish');
   const [codeTab, setCodeTab] = useState('fetch-queue');
 
+  // Helper to calculate remaining SLA time
+  const getRemainingSLA = (deadline) => {
+    if (!deadline) return '';
+    const diff = new Date(deadline) - new Date();
+    if (diff <= 0) return "⚠️ Overdue";
+    const hrs = Math.floor(diff / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    return `${hrs}h ${mins}m left`;
+  };
+
   // Fetch tickets from API
   const loadTickets = async () => {
     setLoadingTickets(true);
@@ -550,7 +560,14 @@ Assign roles under Settings > Staff, where you can add staff emails to send invi
                             }`}
                           >
                             <div className="flex justify-between items-start gap-2">
-                              <span className="text-[10px] text-[var(--theme-primary)] font-black uppercase tracking-widest">{ticket.category}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-[var(--theme-primary)] font-black uppercase tracking-widest">{ticket.category}</span>
+                                {ticket.isProTicket && (
+                                  <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                    🌟 Pro Priority
+                                  </span>
+                                )}
+                              </div>
                               <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
                                 ticket.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                                 ticket.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
@@ -565,9 +582,16 @@ Assign roles under Settings > Staff, where you can add staff emails to send invi
                             </h4>
                             <p className="text-xs text-text-secondary opacity-75 line-clamp-2 mt-1 leading-relaxed">{ticket.description}</p>
                             <div className="flex justify-between items-center mt-4 pt-3 border-t border-border-muted/30 dark:border-white/5">
-                              <span className="text-[10px] text-text-secondary opacity-50">
-                                {new Date(ticket.createdAt).toLocaleDateString()}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-text-secondary opacity-50">
+                                  {new Date(ticket.createdAt).toLocaleDateString()}
+                                </span>
+                                {ticket.slaDeadline && ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                                  <span className={`text-[9px] font-bold mt-0.5 ${new Date(ticket.slaDeadline) - new Date() <= 0 ? 'text-red-500 animate-pulse' : 'text-purple-400'}`}>
+                                    SLA: {getRemainingSLA(ticket.slaDeadline)}
+                                  </span>
+                                )}
+                              </div>
                               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
                                 ticket.status === 'resolved' ? 'bg-green-55/10 text-green-500 border-green-500/20' :
                                 ticket.status === 'open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
@@ -588,15 +612,27 @@ Assign roles under Settings > Staff, where you can add staff emails to send invi
                     <div className="lg:col-span-7 bg-bg-secondary/80 backdrop-blur-md border border-border-muted/50 dark:border-white/10 rounded-2xl p-6 space-y-6 flex flex-col h-[580px] shadow-xl relative">
                       <div className="flex items-center justify-between border-b border-border-muted/30 dark:border-white/10 pb-4">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-black text-text-primary text-[15px] line-clamp-1">{selectedTicket.subject}</h3>
                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${
                               selectedTicket.status === 'resolved' ? 'bg-green-55/10 text-green-500 border-green-500/20' : 'bg-[rgba(var(--theme-primary-rgb),0.1)] text-[var(--theme-primary)] border-[rgba(var(--theme-primary-rgb),0.2)]'
                             }`}>
                               {selectedTicket.status}
                             </span>
+                            {selectedTicket.isProTicket && (
+                              <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded flex items-center gap-0.5">
+                                🌟 Pro Priority
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[10px] text-text-secondary opacity-60 uppercase font-bold tracking-wider">Category: {selectedTicket.category}</span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-[10px] text-text-secondary opacity-60 uppercase font-bold tracking-wider">Category: {selectedTicket.category}</span>
+                            {selectedTicket.slaDeadline && selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
+                              <span className={`text-[10px] font-bold ${new Date(selectedTicket.slaDeadline) - new Date() <= 0 ? 'text-red-500 animate-pulse font-black' : 'text-purple-400'}`}>
+                                • SLA: {getRemainingSLA(selectedTicket.slaDeadline)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           {selectedTicket.status !== 'resolved' && (

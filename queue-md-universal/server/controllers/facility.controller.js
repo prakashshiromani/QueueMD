@@ -272,10 +272,12 @@ exports.completeOnboardingStep = async (req, res, next) => {
 
             // Sign a fresh JWT access token with the updated facilityType
             const jwt = require("jsonwebtoken");
+            const crypto = require("crypto");
+            const jti = crypto.randomBytes(16).toString("hex");
             newAccessToken = jwt.sign(
-                { id: req.user.id, facilityId: facilityId, facilityType: facilityType, role: req.user.role },
+                { id: req.user.id, facilityId: facilityId, facilityType: facilityType, role: req.user.role, jti },
                 process.env.JWT_SECRET,
-                { expiresIn: process.env.JWT_EXPIRE || '15m' }
+                { expiresIn: process.env.JWT_EXPIRE || '2h', algorithm: 'HS256' }
             );
         }
 
@@ -408,7 +410,7 @@ exports.completeOnboardingStep = async (req, res, next) => {
         });
     } catch (error) {
         logger.error("Onboarding error stack: " + error.stack);
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+        next(error);
     }
 };
 

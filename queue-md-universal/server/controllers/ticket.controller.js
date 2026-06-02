@@ -1,5 +1,7 @@
 const Ticket = require("../models/Ticket");
 const User = require("../models/User");
+const Facility = require("../models/Facility");
+const notificationQueue = require("../jobs/notification.queue");
 const logger = require("../utils/logger");
 
 // ✅ CREATE Ticket + Auto First Response
@@ -11,23 +13,53 @@ exports.createTicket = async (req, res, next) => {
     const userDoc = await User.findById(userId);
     const userName = userDoc ? userDoc.name : "User";
 
+    const facility = await Facility.findById(facilityId);
+    const isPro = facility ? (facility.subscriptionPlan === "pro" && facility.subscriptionStatus === "active") : false;
+
+    let finalPriority = priority || "medium";
+    if (isPro && ["medium", "low"].includes(finalPriority)) {
+      finalPriority = "high";
+    }
+
+    const slaHours = isPro ? 2 : 24;
+    const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
+
     const ticket = await Ticket.create({
       facilityId,
       userId,
       subject,
       description,
       category: category || "technical",
-      priority: priority || "medium",
+      priority: finalPriority,
+      isProTicket: isPro,
+      slaDeadline,
       comments: [{
         userId: null,
         userName: "Support Bot",
         role: "system",
-        message: `👋 Hi ${userName}! Aapka ticket #${subject.slice(0, 10)}... receive ho gaya hai. Hum 24hrs mein respond karenge.`,
+        message: `👋 Hi ${userName}! Aapka ticket #${subject.slice(0, 10)}... receive ho gaya hai. ${
+          isPro 
+            ? "Aap premium Pro customer hain, isliye aapka ticket 2 hours ke SLA under resolve kiya jayega." 
+            : "Hum 24 hours ke standard SLA under respond karenge."
+        }`,
         createdAt: new Date()
       }]
     });
 
-    logger.info(`🎫 Ticket Created: ${ticket._id} by ${userName}`);
+    // BullMQ SLA Reminder Job: 30 minutes before SLA deadline
+    try {
+      const delayMs = Math.max(0, (slaHours * 60 * 60 * 1000) - (30 * 60 * 1000));
+      await notificationQueue.add(
+        'sla-reminder',
+        { ticketId: ticket._id, facilityId, type: 'sla-warning' },
+        { delay: delayMs }
+      );
+      logger.info(`⏰ SLA reminder job queued for Ticket ${ticket._id} in ${delayMs / 60000} minutes`);
+    } catch (queueErr) {
+      logger.error(`Failed to queue SLA reminder job: ${queueErr.message}`);
+    }
+
+    logger.info(`🎫 Ticket Created: ${ticket._id} by ${userName} (isPro: ${isPro}, priority: ${finalPriority})`);
     res.status(201).json({ success: true, data: ticket });
   } catch (err) {
     next(err);
@@ -146,6 +178,18 @@ exports.updateTicketStatus = async (req, res, next) => {
     }
 
     res.json({ success: true, data: ticket });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ GET Pro Tickets (Admin support dashboard)
+exports.getProTickets = async (req, res, next) => {
+  try {
+    const proTickets = await Ticket.find({ isProTicket: true, status: { $ne: 'closed' } })
+      .sort({ priority: 1, slaDeadline: 1 })
+      .populate('facilityId', 'name contact');
+    res.json({ success: true, tickets: proTickets });
   } catch (err) {
     next(err);
   }

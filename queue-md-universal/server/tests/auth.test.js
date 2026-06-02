@@ -143,7 +143,6 @@ describe('Password Reset Flows', () => {
     // Verify OTP was stored in DB
     const updatedUser = await User.findOne({ email: testEmail });
     expect(updatedUser.resetPasswordOTP).toBeDefined();
-    expect(updatedUser.resetPasswordOTP.length).toBe(6);
   });
 
   it('should fail reset with invalid OTP code', async () => {
@@ -155,7 +154,18 @@ describe('Password Reset Flows', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('should successfully reset password with development code 123456', async () => {
+  it('should successfully reset password with valid OTP code', async () => {
+    // Manually set a known hashed OTP in DB
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedOTP = await bcrypt.hash('123456', salt);
+    await User.updateOne({ email: testEmail }, {
+      $set: {
+        resetPasswordOTP: hashedOTP,
+        resetPasswordExpires: new Date(Date.now() + 15 * 60 * 1000)
+      }
+    });
+
     const res = await request(app)
       .post('/api/auth/reset-password')
       .send({ email: testEmail, code: '123456', newPassword });

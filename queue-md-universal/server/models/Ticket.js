@@ -30,6 +30,13 @@ const ticketSchema = new mongoose.Schema({
     default: "open",
     index: true 
   },
+  isProTicket: { 
+    type: Boolean, 
+    default: false 
+  },
+  slaDeadline: { 
+    type: Date 
+  },
   comments: [commentSchema]
 }, { timestamps: true });
 

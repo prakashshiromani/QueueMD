@@ -1,5 +1,6 @@
 const Queue = require('../models/Queue');
 const Notification = require('../models/Notification');
+const logger = require('../utils/logger');
 
 exports.getLiveTrackingStatus = async (req, res) => {
     try {
@@ -62,12 +63,11 @@ exports.getLiveTrackingStatus = async (req, res) => {
                 peopleAhead: ['in-progress', 'completed'].includes(patient.status) ? 0 : peopleAhead,
                 estimatedWaitTime: ['in-progress', 'completed'].includes(patient.status) ? 0 : estimatedWaitTime,
                 currentServingToken: currentServing ? currentServing.tokenNumber : "None",
-                facilityType: patient.facilityType,
                 status: patient.status
             }
         });
     } catch (error) {
-        console.error("Public Tracking Error:", error);
+        logger.error("[PUBLIC] Public Tracking Error: " + error.message, { stack: error.stack });
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
@@ -118,7 +118,7 @@ exports.verifyPatientIdentity = async (req, res) => {
                 tokenId: visit.tokenNumber
             },
             process.env.JWT_SECRET,
-            { expiresIn: '15m' } // 15 mins validity
+            { expiresIn: '15m', algorithm: 'HS256' } // 15 mins validity
         );
 
         // 3. Send masked name for privacy
@@ -132,7 +132,7 @@ exports.verifyPatientIdentity = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Verify Identity Error:", error);
+        logger.error("[PUBLIC] Verify Identity Error: " + error.message, { stack: error.stack });
         res.status(500).json({ success: false, message: "Verification failed" });
     }
 };
@@ -150,12 +150,19 @@ exports.getPatientNotifications = async (req, res) => {
             ]
         }).sort({ createdAt: -1 }).limit(20).lean();
 
+        // 🔒 SECURITY: Limit exposed notification data to safe properties (VULN-L01)
+        const safeNotifications = notifications.map(n => ({
+            title: n.title,
+            type: n.type,
+            createdAt: n.createdAt
+        }));
+
         res.status(200).json({
             success: true,
-            data: notifications
+            data: safeNotifications
         });
     } catch (error) {
-        console.error("Fetch patient notifications error:", error);
+        logger.error("[PUBLIC] Fetch patient notifications error: " + error.message, { stack: error.stack });
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };

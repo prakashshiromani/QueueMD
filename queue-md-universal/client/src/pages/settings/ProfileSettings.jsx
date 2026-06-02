@@ -29,6 +29,30 @@ export const MyAccountTab = ({ user }) => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: '', colorClass: 'bg-border-muted/30 dark:bg-white/5' };
+    let score = 0;
+    if (pwd.length >= 12) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[a-z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
+
+    let label = 'Weak';
+    let colorClass = 'bg-rose-500';
+    if (score === 5) {
+      label = 'Strong & Secure';
+      colorClass = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
+    } else if (score >= 3) {
+      label = 'Medium Strength';
+      colorClass = 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]';
+    } else if (score > 0) {
+      colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+    }
+
+    return { score, label, colorClass };
+  };
+
   const validatePassword = () => {
     const errs = {};
     if (!formData.currentPassword) {
@@ -36,8 +60,18 @@ export const MyAccountTab = ({ user }) => {
     }
     if (!formData.newPassword) {
       errs.newPassword = 'New password is required';
-    } else if (formData.newPassword.length < 6) {
-      errs.newPassword = 'Min 6 characters required';
+    } else {
+      if (formData.newPassword.length < 12) {
+        errs.newPassword = 'Password must be at least 12 characters';
+      } else if (!/[a-z]/.test(formData.newPassword)) {
+        errs.newPassword = 'Must contain at least one lowercase letter';
+      } else if (!/[A-Z]/.test(formData.newPassword)) {
+        errs.newPassword = 'Must contain at least one uppercase letter';
+      } else if (!/[0-9]/.test(formData.newPassword)) {
+        errs.newPassword = 'Must contain at least one number';
+      } else if (!/[^a-zA-Z0-9]/.test(formData.newPassword)) {
+        errs.newPassword = 'Must contain at least one special character';
+      }
     }
     if (formData.newPassword !== formData.confirmNewPassword) {
       errs.confirmNewPassword = 'Passwords do not match';
@@ -105,7 +139,20 @@ export const MyAccountTab = ({ user }) => {
 
       {/* Password Change */}
       <form onSubmit={handlePasswordUpdate} className="space-y-4 pt-6 border-t border-border-muted/30 dark:border-white/5">
-        <h4 className="font-bold text-text-primary">Change Password</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-text-primary">Change Password</h4>
+          {formData.newPassword && (
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg transition-all duration-300 ${
+              getPasswordStrength(formData.newPassword).score === 5
+                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                : getPasswordStrength(formData.newPassword).score >= 3
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+            }`}>
+              {getPasswordStrength(formData.newPassword).label}
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
@@ -136,6 +183,57 @@ export const MyAccountTab = ({ user }) => {
               {errors[field.key] && <p className="text-rose-500 text-xs mt-1">{errors[field.key]}</p>}
             </div>
           ))}
+        </div>
+
+        {/* Dynamic Password Strength Progress Bar & Checklist */}
+        <div className="p-4 bg-bg-secondary/50 rounded-2xl border border-border-muted/30 dark:border-white/5 space-y-3 transition-all duration-300">
+          <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] font-black text-text-secondary">
+            <span>Password Creation Instructions</span>
+            {formData.newPassword && (
+              <span className="font-sans normal-case tracking-normal font-bold">
+                {Math.min(100, Math.round((getPasswordStrength(formData.newPassword).score / 5) * 100))}% Met
+              </span>
+            )}
+          </div>
+          
+          {/* Strength Bar */}
+          <div className="w-full h-1.5 bg-border-muted/30 dark:bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ease-out ${getPasswordStrength(formData.newPassword).colorClass}`}
+              style={{ width: `${(getPasswordStrength(formData.newPassword).score / 5) * 100}%` }}
+            ></div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 pt-1.5">
+            {[
+              { label: 'Minimum 12 characters', met: formData.newPassword.length >= 12 },
+              { label: 'One uppercase letter (A-Z)', met: /[A-Z]/.test(formData.newPassword) },
+              { label: 'One lowercase letter (a-z)', met: /[a-z]/.test(formData.newPassword) },
+              { label: 'One number (0-9)', met: /[0-9]/.test(formData.newPassword) },
+              { label: 'One special character (e.g. @$!%*?&)', met: /[^a-zA-Z0-9]/.test(formData.newPassword) },
+            ].map((req, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs transition-all duration-300">
+                <span className={`material-symbols-outlined text-[16px] transition-all duration-300 ${
+                  formData.newPassword
+                    ? req.met
+                      ? 'text-emerald-500 font-bold scale-110'
+                      : 'text-text-secondary opacity-60'
+                    : 'text-text-secondary opacity-40'
+                }`}>
+                  {formData.newPassword && req.met ? 'check_circle' : 'circle'}
+                </span>
+                <span className={`transition-all duration-300 ${
+                  formData.newPassword
+                    ? req.met
+                      ? 'text-emerald-500 font-medium'
+                      : 'text-text-primary'
+                    : 'text-text-secondary opacity-70'
+                }`}>
+                  {req.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <button

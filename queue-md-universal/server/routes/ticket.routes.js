@@ -2,11 +2,15 @@ const express = require("express");
 const router = express.Router();
 const { 
   createTicket, getTickets, getTicket, 
-  addComment, updateTicketStatus 
+  addComment, updateTicketStatus, getProTickets 
 } = require("../controllers/ticket.controller");
-const { auth } = require("../middleware/auth.middleware");
+const { auth, authorize } = require("../middleware/auth.middleware");
 
 router.use(auth); // All routes protected by JWT token auth
+
+// Admin Dashboard - Pro support tickets filter route.
+// MUST be before /:id route so it doesn't match :id = "pro"
+router.get("/pro", authorize("admin"), getProTickets);
 
 router.route("/")
   .post(createTicket)

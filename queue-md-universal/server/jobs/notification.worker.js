@@ -10,6 +10,51 @@ connectDB();
 
 // Worker background me chalta rahega
 const worker = new Worker('notificationQueue', async (job) => {
+  if (job.name === 'sla-reminder') {
+    const { ticketId, facilityId } = job.data;
+    logger.info(`[WORKER] Processing SLA Reminder for Ticket: ${ticketId}`);
+
+    const Ticket = require('../models/Ticket');
+    const ticket = await Ticket.findById(ticketId);
+
+    if (!ticket) {
+      logger.warn(`[WORKER] SLA Job skipped: Ticket ${ticketId} not found`);
+      return { status: 'skipped', message: 'Ticket not found' };
+    }
+
+    if (ticket.status === 'resolved' || ticket.status === 'closed') {
+      logger.info(`[WORKER] SLA Reminder skipped: Ticket ${ticketId} already ${ticket.status}`);
+      return { status: 'skipped', message: `Ticket already ${ticket.status}` };
+    }
+
+    logger.info(`🚨 SLA Warning: Ticket ${ticketId} (${ticket.subject}) is approaching deadline!`);
+
+    try {
+      const Facility = require('../models/Facility');
+      const facility = await Facility.findById(facilityId);
+      const facilityType = facility ? facility.facilityType : 'clinic';
+
+      const NotificationModel = require('../models/Notification');
+      await NotificationModel.create({
+        facilityId,
+        facilityType,
+        type: 'system',
+        title: '🚨 Support SLA Reminder',
+        message: `Ticket #${ticketId.toString().slice(-6)}: "${ticket.subject}" ki SLA deadline approaching hai!`,
+        metadata: {
+          ticketId: ticket._id,
+          priority: ticket.priority,
+          slaDeadline: ticket.slaDeadline
+        }
+      });
+      logger.info(`[WORKER] In-app notification created for SLA warning on ticket ${ticketId}`);
+    } catch (err) {
+      logger.error(`[WORKER] Failed to create SLA warning notification: ${err.message}`);
+    }
+
+    return { status: 'alerted', message: `SLA warning issued for ticket ${ticketId}` };
+  }
+
   const { queueEntryId } = job.data;
 
   // 🔒 SECURITY: Fetch clinical information directly from Mongoose to keep Redis payloads sanitised (Item 8)

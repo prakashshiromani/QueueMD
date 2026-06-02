@@ -89,7 +89,6 @@ export const SubscriptionTab = () => {
               ["SMS/WhatsApp Alerts", "❌", "✅"],
               ["Advanced Analytics", "❌", "✅"],
               ["Priority Support", "❌", "✅"],
-              ["PDF Invoice Export", "❌", "✅"],
               ["Custom Branding", "❌", "✅"]
             ].map(([feature, freeVal, proVal]) => (
               <tr key={feature} className="border-b border-border-muted/30 dark:border-white/5 last:border-0 hover:bg-bg-secondary/30 transition-colors">

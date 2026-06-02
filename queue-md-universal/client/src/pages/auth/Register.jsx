@@ -8,6 +8,30 @@ const toPascalCase = (str) => {
   return str.replace(/\b\w/g, char => char.toUpperCase());
 };
 
+const getPasswordStrength = (pwd) => {
+  if (!pwd) return { score: 0, label: '', colorClass: 'bg-white/10' };
+  let score = 0;
+  if (pwd.length >= 12) score += 1;
+  if (/[A-Z]/.test(pwd)) score += 1;
+  if (/[a-z]/.test(pwd)) score += 1;
+  if (/[0-9]/.test(pwd)) score += 1;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score += 1;
+
+  let label = 'Weak';
+  let colorClass = 'bg-rose-500';
+  if (score === 5) {
+    label = 'Strong & Secure';
+    colorClass = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
+  } else if (score >= 3) {
+    label = 'Medium Strength';
+    colorClass = 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]';
+  } else if (score > 0) {
+    colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+  }
+
+  return { score, label, colorClass };
+};
+
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -163,9 +187,56 @@ export default function Register() {
                       <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                     </button>
                   </div>
-                  <span className="text-[10px] text-text-secondary/60 ml-1 mt-1 block leading-normal">
-                    Must be at least 12 characters, including 1 uppercase, 1 lowercase, 1 number, and 1 special character.
-                  </span>
+                  {/* Dynamic Password Strength Progress Bar & Checklist */}
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3 transition-all duration-300 mt-2">
+                    <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] font-black text-text-secondary">
+                      <span>Password Requirements</span>
+                      {form.password && (
+                        <span className="font-sans normal-case tracking-normal font-bold">
+                          {Math.min(100, Math.round((getPasswordStrength(form.password).score / 5) * 100))}% Met
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Strength Bar */}
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 ease-out ${getPasswordStrength(form.password).colorClass}`}
+                        style={{ width: `${(getPasswordStrength(form.password).score / 5) * 100}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      {[
+                        { label: 'Minimum 12 characters', met: form.password.length >= 12 },
+                        { label: 'One uppercase letter (A-Z)', met: /[A-Z]/.test(form.password) },
+                        { label: 'One lowercase letter (a-z)', met: /[a-z]/.test(form.password) },
+                        { label: 'One number (0-9)', met: /[0-9]/.test(form.password) },
+                        { label: 'One special character (e.g. @$!%*?&)', met: /[^a-zA-Z0-9]/.test(form.password) },
+                      ].map((req, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-xs transition-all duration-300">
+                          <span className={`material-symbols-outlined text-[15px] transition-all duration-300 ${
+                            form.password
+                              ? req.met
+                                ? 'text-emerald-500 font-bold scale-110'
+                                : 'text-text-secondary opacity-60'
+                              : 'text-text-secondary opacity-45'
+                          }`}>
+                            {form.password && req.met ? 'check_circle' : 'circle'}
+                          </span>
+                          <span className={`transition-all duration-300 text-[11px] ${
+                            form.password
+                              ? req.met
+                                ? 'text-emerald-500 font-medium'
+                                : 'text-text-primary'
+                              : 'text-text-secondary/70'
+                          }`}>
+                            {req.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 

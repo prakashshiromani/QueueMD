@@ -12,6 +12,36 @@ import { SkeletonQueue, SkeletonCard } from "../../components/ui/Skeletons";
 import OnboardingWizard from "../../components/features/facility/OnboardingWizard";
 import WaitTimeBadge from "../../components/ui/WaitTimeBadge";
 
+const playChime = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Play E5 then A5 chime notes
+    const playNote = (frequency, startTime, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, startTime);
+      
+      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    playNote(659.25, ctx.currentTime, 0.4); // E5
+    playNote(880.00, ctx.currentTime + 0.15, 0.6); // A5
+  } catch (err) {
+    console.warn("Audio context playback blocked or failed:", err);
+  }
+};
+
 export default function Dashboard() {
   const { user } = useAuthStore();
   const { facilityId, facilityType, setFacilityType, isDemoMode, toggleDemoMode, selectedBranch, setSelectedBranch } = useFacilityStore();
@@ -145,6 +175,19 @@ export default function Dashboard() {
         });
       } else if (data.action === "next") {
         setCurrentPatient(data.patient);
+
+        // Play sound chime if enabled in preferences
+        try {
+          const storedPrefs = localStorage.getItem(`queue-md-notifs-${facilityId}`);
+          const parsed = storedPrefs ? JSON.parse(storedPrefs) : null;
+          // default to true if setting doesn't exist or is true
+          if (!parsed || parsed.sound !== false) {
+            playChime();
+          }
+        } catch (e) {
+          console.error("Error playing sound chime on queue update:", e);
+        }
+
         setQueue(prev => {
           let newQueue = prev.filter(p => p._id !== data.patient._id);
           // Apply new predictions from the backend

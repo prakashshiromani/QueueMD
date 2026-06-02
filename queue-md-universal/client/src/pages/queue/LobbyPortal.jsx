@@ -10,6 +10,36 @@ import ViewPrescriptionsModal from '../../components/features/prescription/ViewP
 import { createPortal } from 'react-dom';
 import { formatTokenNumber } from '../../utils/facilityTypeConfig';
 
+const playChime = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Play E5 then A5 chime notes
+    const playNote = (frequency, startTime, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, startTime);
+      
+      gain.gain.setValueAtTime(0.12, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    playNote(659.25, ctx.currentTime, 0.4); // E5
+    playNote(880.00, ctx.currentTime + 0.15, 0.6); // A5
+  } catch (err) {
+    console.warn("Audio context playback blocked or failed:", err);
+  }
+};
+
 const patientApi = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '/api',
     headers: {
@@ -264,7 +294,23 @@ const LobbyPortal = () => {
                 try {
                     const formattedPhone = `+91 ${phone.replace(/\s/g, '')}`;
                     const res = await patientApi.post(`/lobby/${facilityId}/status`, { phone: formattedPhone, tokenNumber: token });
-                    setLiveData(res.data.data);
+                    
+                    // Play sound chime if status has changed to active or completed
+                    setLiveData(prev => {
+                        const prevStatus = prev?.myStatus;
+                        const nextStatus = res.data.data?.myStatus;
+                        if (prevStatus && prevStatus !== nextStatus) {
+                            if (['in-progress', 'in-room', 'completed'].includes(nextStatus)) {
+                                playChime();
+                                if (nextStatus === 'completed') {
+                                    toast.success("✅ Consultation completed. You can now upload prescriptions or view billing.");
+                                } else {
+                                    toast.success("🔔 Your Token has been called! Please proceed to the cabin.");
+                                }
+                            }
+                        }
+                        return res.data.data;
+                    });
                 } catch (err) {
                     console.error("Auto-refresh failed", err);
                 }

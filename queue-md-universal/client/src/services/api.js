@@ -363,5 +363,10 @@ export const updateTicketStatusApi = async (ticketId, status) => {
   return response.data.data;
 };
 
+export const fetchProTicketsApi = async () => {
+  const response = await api.get('/tickets/pro');
+  return response.data.tickets;
+};
+
 export default api;
 
