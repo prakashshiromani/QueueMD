@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { socket } from '../services/socket';
 import toast from 'react-hot-toast';
-import { Upload, Lock, FileText, LogOut, Calendar, Activity, RefreshCcw, Download } from 'lucide-react';
+import { Upload, Lock, FileText, LogOut, Calendar, Activity, RefreshCcw, Download, X } from 'lucide-react';
 import UploadPrescriptionModal from '../components/UploadPrescriptionModal';
 import ViewPrescriptionsModal from '../components/ViewPrescriptionsModal';
 import { createPortal } from 'react-dom';
