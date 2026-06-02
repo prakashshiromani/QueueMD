@@ -24,6 +24,24 @@ const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Lock scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileNavOpen]);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   // Debounced Search API call
   useEffect(() => {
@@ -136,7 +154,14 @@ const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
       >
         {/* TopNavBar */}
         <header className="h-16 flex-shrink-0 z-50 border-b border-border-muted bg-bg-primary/80 backdrop-blur-md flex items-center justify-between px-6">
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center md:hidden gap-3">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="p-1.5 -ml-1 text-text-secondary hover:text-text-primary rounded-xl active:scale-95 transition-all flex items-center justify-center hover:bg-surface-variant/50"
+              aria-label="Open navigation menu"
+            >
+              <span className="material-symbols-outlined text-[24px]">menu</span>
+            </button>
             <h1 className="text-xl font-black tracking-tighter text-primary-container">QueueMD</h1>
           </div>
           <div className="hidden md:flex items-center gap-4 flex-1">
@@ -306,7 +331,55 @@ const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
         onClose={() => setSelectedPatient(null)} 
         patient={selectedPatient} 
       />
-      
+
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-xs z-[70] transition-opacity duration-300 md:hidden ${
+          mobileNavOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setMobileNavOpen(false)}
+      />
+
+      {/* Mobile Slide-in Drawer */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-bg-primary border-r border-border-muted/30 z-[80] flex flex-col transition-transform duration-300 ease-in-out md:hidden shadow-2xl ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="px-6 py-4 border-b border-border-muted/30 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">QueueMD</h2>
+            <p className="text-text-secondary text-[11px]">Healthcare Management</p>
+          </div>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            className="p-1.5 text-text-secondary hover:text-text-primary rounded-xl active:scale-95 transition-all flex items-center justify-center hover:bg-surface-variant/50"
+            aria-label="Close navigation menu"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <nav className="flex-1 space-y-0.5 py-4 overflow-y-auto overflow-x-hidden scrollbar-hide">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                onClick={() => setMobileNavOpen(false)}
+                className={`flex items-center gap-3 px-6 py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-300 border-r-4 ${isActive
+                    ? 'text-[var(--theme-primary)] bg-[rgba(var(--theme-primary-rgb),0.05)] border-[var(--theme-primary)]'
+                    : 'text-text-secondary hover:bg-surface-variant/30 hover:text-text-primary hover:translate-x-1 border-transparent'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                {item.name}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
       {/* 🔥 Global Premium Toast System */}
       <ToastContainer />
     </div>
