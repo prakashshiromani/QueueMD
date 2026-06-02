@@ -433,17 +433,17 @@ export const NotificationsTab = ({ facilityId }) => {
       ))}
 
       {/* Pro Features (WhatsApp / SMS) */}
-      <div className={`p-4 rounded-2xl border ${isPro ? 'bg-blue-50/50 border-blue-200' : 'bg-amber-500/5 border-amber-500/20'}`}>
-        <p className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${isPro ? 'text-blue-600' : 'text-amber-500'}`}>
+      <div className={`p-4 rounded-2xl border ${isPro ? 'bg-blue-500/5 border-blue-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+        <p className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${isPro ? 'text-blue-500' : 'text-amber-500'}`}>
           <span className="material-symbols-outlined text-[16px]">{isPro ? 'verified' : 'lock'}</span>
           {isPro ? 'Pro Integrations Active' : 'Integrations Premium Channel'}
         </p>
         <div className="space-y-2.5 mt-3">
           {['WhatsApp Notifications', 'Direct SMS Broadcast Alerts'].map((feature) => (
             <div key={feature} className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary font-medium">{feature}</span>
+              <span className="text-text-primary font-medium">{feature}</span>
               {isPro ? (
-                <span className="px-2.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold uppercase tracking-wider text-[9px]">Enabled</span>
+                <span className="px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase tracking-wider text-[9px]">Enabled</span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-muted/50 dark:border-white/5 font-bold uppercase tracking-wider text-[9px]">Upgrade to Pro</span>
               )}
