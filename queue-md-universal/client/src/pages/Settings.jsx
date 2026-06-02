@@ -2428,6 +2428,7 @@ export default function Settings() {
   const [pendingChanges, setPendingChanges] = useState({});
   const [facilityData, setFacilityData] = useState(null);
   const [loadingFacility, setLoadingFacility] = useState(true);
+  const [showMobileTabsDropdown, setShowMobileTabsDropdown] = useState(false);
 
   // LIFTED FONT SIZE STATE
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('fontSize') || 'medium');
@@ -2468,6 +2469,19 @@ export default function Settings() {
   useEffect(() => {
     fetchFacilityData();
   }, [fetchFacilityData]);
+
+  // Click outside to close mobile tab dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('[data-mobile-tabs-container]')) {
+        setShowMobileTabsDropdown(false);
+      }
+    };
+    if (showMobileTabsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMobileTabsDropdown]);
 
   const handleSave = async () => {
     if (Object.keys(pendingChanges).length === 0) {
@@ -2592,25 +2606,49 @@ export default function Settings() {
               })}
             </div>
 
-            {/* Mobile: Horizontal Scroll */}
-            <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${isActive
-                      ? 'text-white'
-                      : 'text-text-secondary bg-bg-secondary border border-border-muted/50 dark:border-white/5'
-                      }`}
-                    style={isActive ? { backgroundColor: config.theme.primary } : {}}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                );
-              })}
+            {/* Mobile: Custom Dropdown Menu */}
+            <div className="lg:hidden relative mb-4" data-mobile-tabs-container>
+              <button
+                onClick={() => setShowMobileTabsDropdown(!showMobileTabsDropdown)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl text-xs font-bold text-text-primary active:scale-[0.98] transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[18px]" style={{ color: config.theme.primary }}>
+                    {tabs.find(t => t.id === activeTab)?.icon}
+                  </span>
+                  <span>{tabs.find(t => t.id === activeTab)?.label}</span>
+                </div>
+                <span className="material-symbols-outlined transition-transform duration-200" style={{ transform: showMobileTabsDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  expand_more
+                </span>
+              </button>
+              
+              {showMobileTabsDropdown && (
+                <div className="absolute top-[105%] left-0 w-full bg-bg-secondary border border-border-muted/50 dark:border-white/5 rounded-2xl shadow-xl p-2 z-30 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setActiveTab(tab.id);
+                          setShowMobileTabsDropdown(false);
+                        }}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-200 text-xs font-bold ${isActive
+                          ? 'text-white shadow-sm'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-bg-primary'
+                          }`}
+                        style={isActive ? {
+                          backgroundColor: config.theme.primary,
+                        } : {}}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
