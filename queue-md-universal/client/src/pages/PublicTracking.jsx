@@ -281,13 +281,10 @@ export default function PublicTracking() {
     fetchTrackingStatus();
     fetchNotifications();
 
-    // Setup Socket Connection for Public Tracking
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // Join the public room specifically for this facility
-    socket.emit("join_public_room", { facilityId });
+    const onConnect = () => {
+      console.log("Socket connected on tracking page, joining room:", facilityId);
+      socket.emit("join_public_room", { facilityId });
+    };
 
     const handleUpdate = () => {
       console.log("Public Queue Update Received, Refetching Data...");
@@ -295,14 +292,20 @@ export default function PublicTracking() {
       fetchNotifications();
     };
 
+    if (socket.connected) {
+      onConnect();
+    }
+
+    socket.on("connect", onConnect);
     socket.on("public_queue_update", handleUpdate);
 
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     return () => {
+      socket.off("connect", onConnect);
       socket.off("public_queue_update", handleUpdate);
-      // Optional: leave public room, but simple disconnect is fine since it's an unauth page
-      if (socket.connected) {
-         socket.disconnect();
-      }
     };
   }, [facilityId, tokenNumber]);
 
