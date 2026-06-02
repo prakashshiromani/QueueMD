@@ -28,9 +28,9 @@ Data isolation is strictly enforced at the database and application levels.
 
 ## 4. Background Job Processing
 - **BullMQ & Redis:** Used to handle asynchronous tasks that shouldn't block the main Node.js event loop.
-- **Notification Worker:** A dedicated Node process (`npm run worker` → `jobs/notification.worker.js`) listens to the Redis queue to process and send SMS/WhatsApp notifications to patients when their token is approaching. Uses exponential backoff retry (3 attempts, 5-second initial delay).
-- **Subscription Expiry Cron (`jobs/subscriptionExpiryCron.js`):** A `node-cron` job scheduled at midnight daily (`0 0 * * *`) that finds all Pro facilities with a past `subscriptionEnd` date and automatically downgrades them to the Free plan. In development, it also runs once on server startup.
-- **Directory Sync Cron (`jobs/directorySync.job.js`):** Periodic cron job that reconciles queue entries back into the persistent `Patient` directory, handling any edge-case orphaned records.
+- **Notification Worker:** A dedicated Node process (`npm run worker` ➔ `jobs/workers/notification.worker.js`) listens to the Redis queue to process and send SMS/WhatsApp notifications to patients when their token is approaching. Uses exponential backoff retry (3 attempts, 5-second initial delay).
+- **Subscription Expiry Cron (`jobs/crons/subscriptionExpiry.job.js`):** A `node-cron` job scheduled at midnight daily (`0 0 * * *`) that finds all Pro facilities with a past `subscriptionEnd` date and automatically downgrades them to the Free plan. In development, it also runs once on server startup.
+- **Directory Sync Cron (`jobs/crons/directorySync.job.js`):** Periodic cron job that reconciles queue entries back into the persistent `Patient` directory, handling any edge-case orphaned records.
 
 ## 5. Python FastAPI Microservice (`python_service/`)
 A lightweight Python FastAPI service provides supplementary ML-assisted wait-time predictions:

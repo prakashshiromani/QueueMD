@@ -156,8 +156,8 @@ const handleQueueUpdate = (data) => {
 ---
 
 ### 4.5 UI Elements
-1. **Branch Management Tab (`Settings.jsx`)**:
-   - A dedicated **Manage Branches** sub-section inside the Settings page.
+1. **Branch Management Tab (`BranchSettings.jsx` via `Settings.jsx`)**:
+   - A dedicated **Manage Branches** sub-section inside the Settings page layout, extracted into a modular `BranchSettings.jsx` component.
    - Admin features: Inline form to add branches, inline name/address edit inputs, slide toggles for active status, and custom delete buttons.
 2. **Sticky Branch Dropdown Selector (`Dashboard.jsx` & `Analytics.jsx`)**:
    - A modern dropdown select widget next to the Department badge.
@@ -167,7 +167,7 @@ const handleQueueUpdate = (data) => {
 
 ## 5. Backward Compatibility & Migration
 Because legacy queues existed before branch tracking was implemented, a data migration strategy was required:
-- **Migration Script (`server/scripts/migrate-branches.js`)**:
+- **Migration Script (`server/scripts/migrations/migrate-branches.js`)**:
   - Connects to MongoDB.
   - Finds all Queue records where `branchId` does not exist (`{ branchId: { $exists: false } }`).
   - Sets the `branchId` to `null` to ensure consistent data structure and avoid undefined lookup issues.
@@ -238,9 +238,9 @@ Through a deep analysis of the current implementation across controllers, models
 To resolve these security vulnerabilities and logical gaps, the following enhancements should be implemented in future cycles:
 
 ### 8.1 Enforcing Strict Branch Authorization Middleware
-Implement a utility function to validate branch ownership on the server side:
+Implement a service function to validate branch ownership on the server side:
 ```javascript
-// server/utils/branchValidator.js
+// server/services/branch.service.js
 const Facility = require("../models/Facility");
 
 exports.validateBranchOwnership = async (facilityId, branchId) => {
@@ -256,7 +256,7 @@ exports.validateBranchOwnership = async (facilityId, branchId) => {
 ```
 Apply this check in `createAppointment`, `addPatient`, and `addPatientToDirectory`:
 ```javascript
-const { validateBranchOwnership } = require("../utils/branchValidator");
+const { validateBranchOwnership } = require("../services/branch.service");
 
 if (branchId) {
   const isValid = await validateBranchOwnership(facilityId, branchId);

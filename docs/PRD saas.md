@@ -44,9 +44,9 @@ QueueMD is a universal queue management system aimed at healthcare and wellness 
 - Real-time appointment socket events via `appointment.socket.js`.
 
 ### 3.6 Notification System
-- `Notifications.jsx` page and `NotificationPage.jsx` for in-app notification feeds.
+- `Notifications.jsx` page and `NotificationPage.jsx` for in-app notification feeds (under `pages/notifications/`).
 - `notificationStore.js` tracks unread counts and notification list.
-- BullMQ-powered background worker (`notification.worker.js`) for non-blocking async SMS/WhatsApp delivery.
+- BullMQ-powered background worker (`jobs/workers/notification.worker.js`) for non-blocking async SMS/WhatsApp delivery.
 - `Notification.js` model persists notification records.
 - `notification.controller.js` + `notification.routes.js` for CRUD.
 
@@ -56,22 +56,22 @@ QueueMD is a universal queue management system aimed at healthcare and wellness 
 ### 3.8 Automated Notifications
 - BullMQ powered background worker for sending non-blocking asynchronous alerts to patients.
 - Exponential backoff retry policy (3 attempts, 5-second initial delay).
-- `directorySync.job.js` — Scheduled cron job that synchronizes orphaned queue entries back into the persistent Patient Directory.
+- `jobs/crons/directorySync.job.js` — Scheduled cron job that synchronizes orphaned queue entries back into the persistent Patient Directory.
 
 ### 3.9 SaaS Billing & Monetization
 - **Free Tier:** Basic queue limits, standard wait-time calculations.
 - **Pro Tier:** Unlimited queues, advanced Analytics Dashboard, AI-assisted wait-time predictions, PDF invoice generation, and full audit history.
 - Integrated Razorpay checkout with webhook-driven status updates and HMAC SHA256 signature verification.
-- `subscriptionExpiryCron.js` — Daily `node-cron` job (runs at 00:00) that automatically downgrades expired Pro facilities to the Free plan.
+- `jobs/crons/subscriptionExpiry.job.js` — Daily `node-cron` job (runs at 00:00) that automatically downgrades expired Pro facilities to the Free plan.
 - `requirePro` middleware (exported from `auth.middleware.js`) blocks premium routes for non-Pro facilities.
 - `Subscription.js` model tracks subscription lifecycle events.
 - `billingStore.js` (Zustand) manages invoice state client-side.
 
 ### 3.10 Help Center
-- `HelpCenter.jsx` — Comprehensive in-app knowledge base with searchable FAQ, feature walkthroughs, and contextual guides.
+- `HelpCenter.jsx` (under `pages/help/`) — Comprehensive in-app knowledge base with searchable FAQ, feature walkthroughs, and contextual guides.
 
 ### 3.11 Settings
-- `Settings.jsx` — Full facility profile manager: branding, base timers, accent color picker, font size, compact mode, subscription plan view, and staff access controls.
+- `Settings.jsx` (under `pages/settings/`) — The coordinator component for settings. Delegates to modular components: `ProfileSettings.jsx`, `BranchSettings.jsx`, `StaffSettings.jsx`, `SubscriptionSettings.jsx`, and `AppearanceSettings.jsx` for managing branding, base timers, accent color picker, font size, compact mode, subscription plan view, and staff access controls.
 
 ## 4. Non-Functional Requirements
 - **Performance:** Complex aggregations must run in <200ms using compound MongoDB indexes. Python microservice predictions serve in <50ms from in-memory averaged data.

@@ -166,108 +166,78 @@ We introduced a high-fidelity **Pause/Resume (On Hold)** feature:
 - **Resume Patient:** When the patient returns, clicking "Resume" moves them back to `'waiting'` status. They keep their position relative to their original token sequence.
 - **Real-time Recalculations:** Both actions trigger an instant Socket.io broadcast to update wait times for all other waiting patients.
 
----
-
-## 📂 9. Comprehensive Project Folder Structure
+## 9. Comprehensive Project Folder Structure
 
 Below is the complete folder structure representing the logical layout of the QueueMD platform:
 
 ```text
-queue-md-universal/
+QueueMD/
 ├── docs/                             # Full Product and Tech Architecture documentation
 │   ├── PRD saas.md                   # Product Requirements Document
 │   ├── saas.md                       # Initial SaaS High-Level Outline
 │   ├── saas1.md                      # [CURRENT] Core Detailed Architectural Document
 │   └── WAIT_TIME_LOGIC.md            # Detailed wait-time logic mathematical documentation
-├── client/                           # React Frontend Application (Vite + Tailwind/CSS)
-│   ├── public/                       # Static public assets
-│   ├── src/                          # Main Frontend Source folder
-│   │   ├── assets/                   # SVG, PNG Icons and visual branding resources
-│   │   ├── components/               # Reusable Modular UI Components
-│   │   │   ├── AddPatientForm.jsx    # Pop-up layout to register patients
-│   │   │   ├── FacilitySelector.jsx  # Department selector bar
-│   │   │   ├── Layout.jsx            # Core Dark-Mode responsive page shell wrapper
-│   │   │   ├── OnboardingWizard.jsx  # Stepper guide for onboarding new facilities
-│   │   │   ├── QueueList.jsx         # Rendered list of active waiting tickets
-│   │   │   ├── Skeletons.jsx         # Loading state fallback visual layouts
-│   │   │   └── WaitTimeBadge.jsx     # Live AI calculation indicator badge
-│   │   ├── pages/                    # Core Router Page Views
-│   │   │   ├── AddStaff.jsx          # Register and manage staff profiles with Pro limits verification
-│   │   │   ├── Analytics.jsx         # Highly detailed interactive charts page
-│   │   │   ├── Appointments.jsx      # Doctor calendar scheduling
-│   │   │   ├── Billing.jsx           # Pro Invoice list & Razorpay upgrade view
-│   │   │   ├── CreateInvoice.jsx     # Automated billing page layout
-│   │   │   ├── Dashboard.jsx         # Doctor & Receptionist active workflow panel
-│   │   │   ├── LobbyPortal.jsx       # Public patient verification view
-│   │   │   ├── Login.jsx             # Secure dual-token account entry page
-│   │   │   ├── Patients.jsx          # Interactive global Patient Directory
-│   │   │   ├── PublicTracking.jsx    # Real-time mobile wait tracking portal
-│   │   │   ├── Register.jsx          # Multi-tenant registration onboarding panel
-│   │   │   ├── Settings.jsx          # Dynamic facility profile manager
-│   │   │   └── Staff.jsx             # Active staff members list with animated usage progression indicators
-│   │   ├── store/                    # Zustand global state modules
-│   │   │   ├── authStore.js          # Authentication state & cookie handler
-│   │   │   └── facilityStore.js      # Isolation scopes & Demo Mode toggle
-│   │   ├── services/                 # Network Connection layer
-│   │   │   ├── api.js                # Axios wrapper with silent refresh handlers
-│   │   │   └── socket.js             # Singleton Socket.io client instance
-│   │   ├── utils/                    # Common configuration values
-│   │   │   └── facilityTypeConfig.js # Dynamic styling configuration
-│   │   ├── App.css                   # Layout overrides and keyframe animations
-│   │   ├── App.jsx                   # Central React routing definition
-│   │   ├── index.css                 # Custom glassmorphic Vanilla CSS tokens
-│   │   └── main.jsx                  # Main DOM entrypoint
-│   ├── tailwind.config.js            # Frontend CSS structural alignments
-│   ├── vite.config.js                # Frontend compiler definition
-│   └── package.json                  # Frontend dependencies
-├── server/                           # Node.js + Express Backend Server Application
-│   ├── config/                       # Secure global environment drivers
-│   │   ├── cloudinary.js             # EMR document file upload storage hook
-│   │   ├── db.js                     # MongoDB Mongoose driver hook
-│   │   └── redis.js                  # Redis host cache configuration
-│   ├── controllers/                  # Route request endpoint handlers
-│   │   ├── analytics.controller.js   # Advanced database chart calculators
-│   │   ├── appointment.controller.js # Calendar management handlers
-│   │   ├── auth.controller.js        # Secure signup, refresh, and Dual-JWT login
-│   │   ├── billing.controller.js     # Invoice generation operations
-│   │   ├── facility.controller.js    # Tenant onboarding operations
-│   │   ├── lab.controller.js         # Lab analysis logs
-│   │   ├── lobby.controller.js       # Secured lobby tracking logic
-│   │   ├── patient.controller.js     # Global Patient Directory CRUD
-│   │   ├── patientUpload.controller.js # Prescription/PDF Cloudinary pipeline
-│   │   ├── publicController.js       # Masked public estimated wait tracking API
-│   │   ├── queue.controller.js       # Core Queue lifecycle operations
-│   │   ├── subscription.controller.js# Razorpay checkouts & webhook verify
-│   │   └── user.controller.js        # Staff user management & tier-based gating controller
-│   ├── jobs/                         # Asynchronous BullMQ background worker system
-│   │   ├── notification.queue.js     # Redis-backed task queue
-│   │   └── notification.worker.js    # Queue consumer execution loop
-│   ├── middleware/                   # Authentication and Security hooks
-│   │   ├── auth.middleware.js        # Decodes user credentials and injects tenant
-│   │   ├── rateLimiter.js            # Enforces brute-force limits
-│   │   └── requirePro.js             # SaaS upgrade plan barrier check
-│   ├── models/                       # Mongoose MongoDB Data Models
-│   │   ├── Queue.js                  # Active waiting queue schemas
-│   │   ├── Patient.js                # Global persistent patient directory
-│   │   ├── ClinicalVisit.js          # Unified EMR patient history charts
-│   │   ├── Facility.js               # Multi-tenant business profiles
-│   │   ├── User.js                   # Staff & doctor authorization accounts
-│   │   ├── Appointment.js            # Chronological scheduling calendar entries
-│   │   └── Invoice.js                # Financial billing transaction collection
-│   ├── routes/                       # Express server API endpoints
-│   ├── sockets/                      # Real-time WebSocket handlers
-│   │   ├── queue.socket.js           # Multi-department rooms emitter
-│   │   └── notification.socket.js    # Centralized clinic alert signals
-│   ├── utils/                        # Server calculations and static configs
-│   │   ├── waitTimeCalculator.js     # EMA rolling algorithm module
-│   │   └── facilityTypeConfig.js     # Global baseline timers configuration
-│   ├── server.js                     # Main application initialization file
-│   └── package.json                  # Backend packages config
+│
+├── queue-md-universal/
+│   ├── client/                       # React Frontend Application (Vite + Tailwind/CSS)
+│   │   ├── public/                   # Static public assets
+│   │   ├── src/                      # Main Frontend Source folder
+│   │   │   ├── assets/               # SVG, PNG Icons and visual branding resources
+│   │   │   ├── components/           # Reusable Modular UI Components
+│   │   │   │   ├── layout/           # Page layouts (Layout.jsx, ProtectedRoute.jsx)
+│   │   │   │   ├── providers/        # Context Providers (ToastProvider.jsx, ErrorBoundary.jsx)
+│   │   │   │   ├── ui/               # Base UI kits (Button, Modal, ImageUploader, Loaders)
+│   │   │   │   └── features/         # Feature-specific components grouped by domain
+│   │   │   │       ├── patient/      # AddPatientForm, PatientHistoryTimeline, etc.
+│   │   │   │       ├── queue/        # QueueList.jsx
+│   │   │   │       ├── staff/        # StaffEditModal.jsx
+│   │   │   │       ├── appointments/ # CalendarView, DayView, AppointmentModal
+│   │   │   │       ├── charts/       # AIInsightsCard, DailyTrendChart, etc.
+│   │   │   │       └── notifications/ # NotificationCard.jsx
+│   │   │   ├── pages/                # Core Router Page Views grouped by feature
+│   │   │   │   ├── auth/             # Login.jsx, Register.jsx
+│   │   │   │   ├── dashboard/        # Dashboard.jsx
+│   │   │   │   ├── queue/            # LobbyPortal.jsx
+│   │   │   │   ├── patients/         # Patients.jsx
+│   │   │   │   ├── appointments/     # Appointments.jsx
+│   │   │   │   ├── analytics/        # Analytics.jsx
+│   │   │   │   ├── billing/          # Billing.jsx, CreateInvoice.jsx
+│   │   │   │   ├── lab/              # LabReports.jsx
+│   │   │   │   ├── staff/            # Staff.jsx, AddStaff.jsx
+│   │   │   │   ├── settings/         # Settings.jsx (split coordinator) + sub-components
+│   │   │   │   └── notifications/    # Notifications.jsx
+│   │   │   ├── hooks/                # Custom React Hooks (useToast.jsx, useAuth.js, useSocket.js)
+│   │   │   ├── store/                # Zustand global state modules
+│   │   │   ├── services/             # Network services (api.js, socket.js, labApi.js, staffApi.js)
+│   │   │   ├── utils/                # Utility configs (facilityTypeConfig.js)
+│   │   │   ├── App.css               # Keyframe animations
+│   │   │   ├── App.jsx               # Central React routing definition
+│   │   │   ├── index.css             # Glassmorphic Vanilla CSS tokens
+│   │   │   └── main.jsx              # Main DOM entrypoint
+│   │
+│   ├── server/                       # Node.js + Express Backend Server Application
+│   │   ├── config/                   # Global database and cache drivers (db.js, redis.js, cloudinary.js)
+│   │   ├── middleware/               # Auth, rate-limiter, requirement validation
+│   │   ├── models/                   # Mongoose MongoDB Data Models (Queue, Patient, User, etc.)
+│   │   ├── schemas/                  # Zod validation schemas
+│   │   ├── controllers/              # Route request endpoint handlers
+│   │   ├── routes/                   # Express server API endpoints
+│   │   ├── services/                 # Core business services (waitTime, audit, tenant, branch, etc.)
+│   │   ├── jobs/                     # Background queue processors
+│   │   │   ├── queues/               # BullMQ queue configurations
+│   │   │   ├── workers/              # BullMQ queue workers (notification.worker.js)
+│   │   │   └── crons/                # Scheduled background tasks (subscriptionExpiry, directorySync)
+│   │   ├── sockets/                  # Real-time WebSocket namespaces
+│   │   ├── utils/                    # Server-side Winston logger, date helpers
+│   │   ├── scripts/                  # Seeds and database migration actions
+│   │   │   ├── seeds/                # Seed scripts for dev environments
+│   │   │   └── migrations/           # Schema migration utilities (migrate-branches.js)
+│   │   └── server.js                 # Express server initialization entry
 ```
 
 ---
 
-## 📂 10. Step-by-Step Codebase Directory Walkthrough
+## 10. Step-by-Step Codebase Directory Walkthrough
 
 Below is a complete file-by-file structural walkthrough of the active QueueMD codebase:
 
@@ -283,22 +253,25 @@ Below is a complete file-by-file structural walkthrough of the active QueueMD co
   - **[analytics.controller.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/controllers/analytics.controller.js):** Aggregates daily charts, completion rates, traffic trends, and department-specific insights.
   - **[patientUpload.controller.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/controllers/patientUpload.controller.js):** Connects `multer` buffers with Cloudinary upload streams to securely attach documentation to clinical histories.
   - **[user.controller.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/controllers/user.controller.js):** Handles core staff user management (CRUD operations) and implements SaaS tier capacity limitations (e.g. Free plan capped at 5 staff members).
-- **`/utils` (Prediction & Helper Classes):**
-  - **[waitTimeCalculator.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/utils/waitTimeCalculator.js):** Rolling EMA wait time calculator and database synchronizer.
+- **`/services` (Business logic layer):**
+  - **[waitTime.service.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/services/waitTime.service.js):** Rolling EMA wait time calculator and database synchronizer.
+  - **[tenant.service.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/services/tenant.service.js):** Isolated tenant checks and verification logic.
+  - **[branch.service.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/server/services/branch.service.js):** Validate branch ownership dynamically.
 
 ### 10.2 Frontend Client Directory (`/client`)
-- **`/src/pages` (Main Views):**
-  - **[Dashboard.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/Dashboard.jsx):** The rich interactive Doctor/Receptionist panel showing active servings, waiting queues, on-hold patients, and live stats.
-  - **[LobbyPortal.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/LobbyPortal.jsx):** Public dashboard for patients entering their credentials to track queues in real-time.
-  - **[Analytics.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/Analytics.jsx):** High-end business performance dashboards tracking hourly traffic, completion rates, and active wait trends.
-  - **[Staff.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/Staff.jsx):** Displays active staff members and visual progress indicators for Free tier limits, blocking additions and prompting upgrades once the capacity threshold is reached.
-  - **[AddStaff.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/AddStaff.jsx):** Dedicated registration UI for new clinic operators, verifying limits dynamically on the client side.
+- **`/src/pages` (Main Views grouped by feature):**
+  - **[Dashboard.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/dashboard/Dashboard.jsx):** The rich interactive Doctor/Receptionist panel showing active servings, waiting queues, on-hold patients, and live stats.
+  - **[LobbyPortal.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/queue/LobbyPortal.jsx):** Public dashboard for patients entering their credentials to track queues in real-time.
+  - **[Analytics.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/analytics/Analytics.jsx):** High-end business performance dashboards tracking hourly traffic, completion rates, and active wait trends.
+  - **[Staff.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/staff/Staff.jsx):** Displays active staff members and visual progress indicators for Free tier limits.
+  - **[AddStaff.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/staff/AddStaff.jsx):** Dedicated registration UI for new clinic operators, verifying limits dynamically on the client side.
+  - **[Settings.jsx](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/pages/settings/Settings.jsx):** The coordinator view. Orchestrates tabs, fetches facility metadata, and delegates forms to sub-settings components.
 - **`/src/store` (Zustand Stores):**
   - **[authStore.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/store/authStore.js):** Manages user session state, automatic token silent refreshes, and access token buffers.
   - **[facilityStore.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/store/facilityStore.js):** Manages Demo Mode states, active facility types, and isolated branch scopes.
 - **`/src/services` (API & Socket):**
   - **[api.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/services/api.js):** Configured Axios wrapper with automatic token refresh headers.
-  - **[socket.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/services/socket.js):** Enforces a singular singular socket client instance across all React sub-pages to optimize network traffic.
+  - **[socket.js](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/queue-md-universal/client/src/services/socket.js):** Enforces a singular socket client instance across all React sub-pages to optimize network traffic.
 
 ---
 
