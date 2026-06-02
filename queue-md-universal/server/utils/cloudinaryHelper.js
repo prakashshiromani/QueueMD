@@ -23,10 +23,16 @@ const getPublicIdFromUrl = (url) => {
     // Slice all parts after /private/ or /upload/
     let pathParts = parts.slice(deliveryIndex + 1);
     
-    // If the next tag is a version string (e.g. v1718293849), skip it
-    if (pathParts[0].startsWith('v') && !isNaN(pathParts[0].substring(1))) {
-      pathParts = pathParts.slice(1);
-    }
+    // Filter out signature parts (e.g. s--RnVC0GHE--) and version strings (e.g. v1780385410)
+    pathParts = pathParts.filter(part => {
+      if (part.startsWith('s--') && part.endsWith('--')) {
+        return false;
+      }
+      if (part.startsWith('v') && !isNaN(part.substring(1))) {
+        return false;
+      }
+      return true;
+    });
 
     const fullPath = pathParts.join('/');
     
