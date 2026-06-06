@@ -21,6 +21,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useFacilityStore } from './store/facilityStore';
 import { connectSocket } from './services/socket';
+import ConnectionStatus from './components/ui/ConnectionStatus';
 
 export default function App() {
   const { isAuthenticated, user, token } = useAuthStore();
@@ -59,6 +60,7 @@ export default function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ConnectionStatus />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { useSocketStore } from "../store/socketStore";
 
 // Use environment variable or fallback to relative URL
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "/";
@@ -17,6 +18,7 @@ export const socket = io(SOCKET_URL, {
 
 // Connection event listeners
 socket.on("connect", () => {
+  useSocketStore.getState().setSocketStatus("connected");
   // Intentionally minimal — no sensitive info logged in production
   if (import.meta.env.DEV) {
     console.log("✅ Socket connected:", socket.id);
@@ -24,12 +26,14 @@ socket.on("connect", () => {
 });
 
 socket.on("connect_error", (error) => {
+  useSocketStore.getState().setSocketStatus("error");
   if (import.meta.env.DEV) {
     console.error("❌ Socket connection error:", error.message);
   }
 });
 
 socket.on("disconnect", (reason) => {
+  useSocketStore.getState().setSocketStatus("disconnected");
   if (import.meta.env.DEV) {
     console.log("⚠️ Socket disconnected:", reason);
   }
@@ -37,6 +41,7 @@ socket.on("disconnect", (reason) => {
 
 // 🔒 SECURITY: Handle server-side auth errors from room joins
 socket.on("error", (err) => {
+  useSocketStore.getState().setSocketStatus("error");
   if (import.meta.env.DEV) {
     console.warn("🔒 Socket error:", err?.message);
   }
@@ -58,6 +63,7 @@ export const connectSocket = (facilityId, facilityType, accessToken) => {
   }
 
   if (!socket.connected) {
+    useSocketStore.getState().setSocketStatus("connecting");
     socket.connect();
 
     // Remove previous handler to prevent duplicate triggers
