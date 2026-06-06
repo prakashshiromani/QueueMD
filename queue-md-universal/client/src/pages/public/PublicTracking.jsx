@@ -288,31 +288,45 @@ export default function PublicTracking() {
     fetchNotifications();
 
     const onConnect = () => {
-      console.log("Socket connected on tracking page, joining room:", facilityId);
+      if (import.meta.env.DEV) {
+        console.log("Socket connected on tracking page, joining room:", facilityId);
+      }
       socket.emit("join_public_room", { facilityId });
     };
 
     const handleUpdate = () => {
-      console.log("Public Queue Update Received, Refetching Data...");
+      if (import.meta.env.DEV) {
+        console.log("Public Queue Update Received, Refetching Data...");
+      }
       fetchTrackingStatus();
       fetchNotifications();
     };
 
-    if (socket.connected) {
-      onConnect();
-    }
-
+    // Register listeners first
     socket.on("connect", onConnect);
     socket.on("public_queue_update", handleUpdate);
+    socket.on("reconnect", onConnect);
 
-    if (!socket.connected) {
+    // Then connect/check status
+    if (socket.connected) {
+      onConnect();
+    } else {
       socket.connect();
     }
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("public_queue_update", handleUpdate);
+      socket.off("reconnect", onConnect);
     };
+  }, [facilityId, tokenNumber]);
+
+  // Polling fallback to ensure status stays in sync even if sockets fail
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTrackingStatus();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [facilityId, tokenNumber]);
 
   if (loading) {

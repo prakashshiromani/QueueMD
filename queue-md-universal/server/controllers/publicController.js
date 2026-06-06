@@ -151,8 +151,11 @@ exports.getPatientNotifications = async (req, res) => {
         }).sort({ createdAt: -1 }).limit(20).lean();
 
         // 🔒 SECURITY: Limit exposed notification data to safe properties (VULN-L01)
+        // Message contains only token number and event details, which is safe to expose.
         const safeNotifications = notifications.map(n => ({
+            _id: n._id,
             title: n.title,
+            message: n.message,
             type: n.type,
             createdAt: n.createdAt
         }));
