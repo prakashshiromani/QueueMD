@@ -125,7 +125,13 @@ const LobbyPortal = () => {
     const handlePhoneChange = (val) => {
         let numbers = val.replace(/\D/g, "");
         if (numbers.length > 10) {
-            numbers = numbers.slice(-10);
+            if (numbers.startsWith("91") && numbers.length === 12) {
+                numbers = numbers.slice(2);
+            } else if (numbers.startsWith("0") && numbers.length === 11) {
+                numbers = numbers.slice(1);
+            } else {
+                numbers = numbers.slice(0, 10);
+            }
         }
         let formatted = numbers;
         if (numbers.length > 5) {
