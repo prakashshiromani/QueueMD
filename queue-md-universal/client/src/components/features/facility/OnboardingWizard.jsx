@@ -17,6 +17,12 @@ const fallbackConfig = {
     other: { icon: '🏥', label: 'Clinic/Other' }
 };
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+    if (!str) return '';
+    return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 const OnboardingWizard = ({ onComplete }) => {
     const [step, setStep] = useState(1);
     const [facilityType, setFacilityType] = useState('clinic');
@@ -211,7 +217,7 @@ const OnboardingWizard = ({ onComplete }) => {
                                                 type="text" 
                                                 placeholder="Receptionist Name (e.g. Priya)" 
                                                 value={staffName}
-                                                onChange={e => setStaffName(e.target.value)}
+                                                onChange={e => setStaffName(toPascalCase(e.target.value))}
                                                 className="w-full p-4 bg-bg-primary border border-border-muted/60 dark:border-white/5 rounded-xl outline-none focus:border-blue-500 text-text-primary placeholder-text-secondary/45 font-semibold transition-all" 
                                             />
                                         </div>

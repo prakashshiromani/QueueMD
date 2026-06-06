@@ -3,6 +3,12 @@ import { useFacilityStore } from '../../../store/facilityStore';
 import { FACILITY_TYPES, getFacilityConfig } from '../../../utils/facilityTypeConfig';
 import { addPatientApi, searchPatientsApi } from '../../../services/api';
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 /**
  * AddPatientForm renders universal fields and dynamic custom fields 
  * based on the active facilityType config.
@@ -138,8 +144,9 @@ const AddPatientForm = ({ handleAddPatient }) => {
                 type="text"
                 value={patientName}
                 onChange={(e) => {
-                  setPatientName(e.target.value);
-                  handleSearch(e.target.value);
+                  const val = toPascalCase(e.target.value);
+                  setPatientName(val);
+                  handleSearch(val);
                 }}
                 required
                 className="w-full bg-white/5 border border-white/10 rounded-md py-2 pl-10 pr-3 text-[14px] text-text-primary focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all backdrop-blur-md shadow-inner"

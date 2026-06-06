@@ -5,6 +5,12 @@ import Layout from '../../components/layout/Layout';
 import { useBillingStore } from '../../store/billingStore';
 import { useFacilityStore } from '../../store/facilityStore';
 
+// Helper to convert string to PascalCase (first letter of each word capitalized)
+const toPascalCase = (str) => {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 const CreateInvoice = () => {
   const navigate = useNavigate();
   const { createInvoice, loading } = useBillingStore();
@@ -151,7 +157,7 @@ const CreateInvoice = () => {
                       placeholder="Patient name..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-[14px] text-text-primary focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-inner"
                       value={invoiceData.patientName}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, patientName: e.target.value })}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, patientName: toPascalCase(e.target.value) })}
                       required
                     />
                   </div>

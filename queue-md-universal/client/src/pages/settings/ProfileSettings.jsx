@@ -130,7 +130,7 @@ export const MyAccountTab = ({ user }) => {
           <input
             type="text"
             value={formData.displayName}
-            onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, displayName: toPascalCase(e.target.value) })}
             className="w-full bg-bg-primary border border-border-muted/50 dark:border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-text-primary focus:outline-none focus:border-border-muted transition-all text-sm"
             placeholder="Enter your name"
           />
