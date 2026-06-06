@@ -5,6 +5,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { formatTokenNumber } from '../../../utils/facilityTypeConfig';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone, facilityType }) => {
   const [step, setStep] = useState(initialPhone ? 'UPLOAD' : 'VERIFY'); // VERIFY | UPLOAD | SUCCESS
   const [phone, setPhone] = useState('');
@@ -24,7 +26,7 @@ const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: init
             ? initialPhone 
             : `+91 ${initialPhone.replace(/\D/g, '').slice(-10)}`;
           
-          const res = await axios.post(`/api/public/lobby/${facilityId}/verify`, {
+          const res = await axios.post(`${API_BASE_URL}/public/lobby/${facilityId}/verify`, {
             phone: formattedPhone,
             tokenNumber: Number(tokenNumber)
           });
@@ -73,7 +75,7 @@ const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: init
     setLoading(true);
     try {
       const formattedPhone = `+91 ${phone}`;
-      const res = await axios.post(`/api/public/lobby/${facilityId}/verify`, {
+      const res = await axios.post(`${API_BASE_URL}/public/lobby/${facilityId}/verify`, {
         phone: formattedPhone,
         tokenNumber: Number(tokenNumber)
       });
@@ -110,7 +112,7 @@ const UploadPrescriptionModal = ({ onClose, facilityId, tokenNumber, phone: init
     formData.append('prescription', file);
 
     try {
-      await axios.post('/api/patient/upload-prescription', formData, {
+      await axios.post(`${API_BASE_URL}/patient/upload-prescription`, formData, {
         headers: { 
           'Authorization': `Bearer ${uploadToken}`
         }

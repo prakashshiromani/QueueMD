@@ -5,8 +5,10 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 const sendLog = (msg, data) => {
-  axios.post('/api/public/debug-log', { msg, data }).catch(() => {});
+  axios.post(`${API_BASE_URL}/public/debug-log`, { msg, data }).catch(() => {});
 };
 
 const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initialPhone, onView }) => {
@@ -30,7 +32,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
             : `+91 ${initialPhone.replace(/\D/g, '').slice(-10)}`;
           
           sendLog("👀 [ViewPrescriptionsModal] calling /verify API with phone: " + formattedPhone + " tokenNumber: " + tokenNumber);
-          const res = await axios.post(`/api/public/lobby/${facilityId}/verify`, {
+          const res = await axios.post(`${API_BASE_URL}/public/lobby/${facilityId}/verify`, {
             phone: formattedPhone,
             tokenNumber: Number(tokenNumber)
           });
@@ -90,7 +92,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
     setLoading(true);
     try {
       const formattedPhone = `+91 ${phone}`;
-      const res = await axios.post(`/api/public/lobby/${facilityId}/verify`, {
+      const res = await axios.post(`${API_BASE_URL}/public/lobby/${facilityId}/verify`, {
         phone: formattedPhone,
         tokenNumber: Number(tokenNumber)
       });
@@ -113,7 +115,7 @@ const ViewPrescriptionsModal = ({ onClose, facilityId, tokenNumber, phone: initi
   const fetchDocuments = async (token) => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/patient/documents', {
+      const res = await axios.get(`${API_BASE_URL}/patient/documents`, {
         headers: { 
           'Authorization': `Bearer ${token}`
         }

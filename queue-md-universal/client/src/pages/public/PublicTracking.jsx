@@ -8,6 +8,8 @@ import ViewPrescriptionsModal from '../../components/features/prescription/ViewP
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 const playChime = () => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -136,7 +138,7 @@ export default function PublicTracking() {
     
     try {
       const response = await axios.get(
-        `/api/patient/history`,
+        `${API_BASE_URL}/patient/history`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -176,7 +178,7 @@ export default function PublicTracking() {
     try {
       const formattedPhone = `+91 ${phoneInput}`;
       const response = await axios.post(
-        `/api/public/lobby/${facilityId}/verify`,
+        `${API_BASE_URL}/public/lobby/${facilityId}/verify`,
         {
           phone: formattedPhone,
           tokenNumber: Number(tokenNumber)
@@ -241,7 +243,7 @@ export default function PublicTracking() {
   const fetchNotifications = async () => {
     try {
       setLoadingNotifications(true);
-      const res = await fetch(`/api/public/track/${facilityId}/${tokenNumber}/notifications`);
+      const res = await fetch(`${API_BASE_URL}/public/track/${facilityId}/${tokenNumber}/notifications`);
       const json = await res.json();
       if (json.success) {
         setNotifications(json.data || []);
@@ -256,7 +258,7 @@ export default function PublicTracking() {
   const fetchTrackingStatus = async () => {
     try {
       setIsRefreshing(true);
-      const res = await fetch(`/api/public/track/${facilityId}/${tokenNumber}`);
+      const res = await fetch(`${API_BASE_URL}/public/track/${facilityId}/${tokenNumber}`);
       const json = await res.json();
       
       if (json.success) {
