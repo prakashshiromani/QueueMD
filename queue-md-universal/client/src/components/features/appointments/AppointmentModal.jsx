@@ -4,18 +4,7 @@ import { FACILITY_TYPES } from "../../../utils/facilityTypeConfig";
 import { staffApi } from "../../../services/staffApi";
 import api from "../../../services/api";
 import toast from "react-hot-toast";
-
-// Helper to convert hex to RGB string
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '37, 99, 235';
-}
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { hexToRgb, toPascalCase } from "../../../utils/helpers";
 
 export default function AppointmentModal({ isOpen, onClose, onSubmit, onDelete, appointment, selectedDate }) {
   const { facilityId, facilityType: globalFacilityType, selectedBranch } = useFacilityStore();

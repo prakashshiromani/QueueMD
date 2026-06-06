@@ -9,6 +9,7 @@ import { staffApi } from '../../services/staffApi';
 import { Beaker, Search, Filter, Calendar, Plus, X, FlaskConical, Clock, User, Phone, CheckCircle2, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { toPascalCase } from '../../utils/helpers';
 
 export default function LabReports() {
   const { facilityId } = useFacilityStore();
@@ -28,12 +29,6 @@ export default function LabReports() {
     sampleId: `SAM-${Math.floor(1000 + Math.random() * 9000)}`,
     doctorName: ''
   });
-
-  // Helper to convert string to PascalCase (first letter of each word capitalized)
-  const toPascalCase = (str) => {
-    if (!str) return '';
-    return str.replace(/\b\w/g, char => char.toUpperCase());
-  };
 
   // Format phone number (Indian format, max 10 digits)
   const formatPhone = (value) => {

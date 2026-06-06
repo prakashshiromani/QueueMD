@@ -2,18 +2,7 @@ import { useState, useEffect } from "react";
 import { FACILITY_TYPES, getFacilityConfig } from "../../../utils/facilityTypeConfig";
 import { useFacilityStore } from "../../../store/facilityStore";
 import { staffApi } from "../../../services/staffApi";
-
-// Helper to convert hex to RGB string
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '37, 99, 235';
-}
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { hexToRgb, toPascalCase } from "../../../utils/helpers";
 
 export default function AddPatientModal({ isOpen, onClose, onSubmit, loading }) {
   const { facilityType: globalFacilityType } = useFacilityStore();

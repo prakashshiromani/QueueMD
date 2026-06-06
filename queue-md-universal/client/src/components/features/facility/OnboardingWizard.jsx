@@ -17,11 +17,7 @@ const fallbackConfig = {
     other: { icon: '🏥', label: 'Clinic/Other' }
 };
 
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-    if (!str) return '';
-    return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { toPascalCase } from '../../../utils/helpers';
 
 const OnboardingWizard = ({ onComplete }) => {
     const [step, setStep] = useState(1);

@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFacilityStore } from '../../../store/facilityStore';
 import { FACILITY_TYPES, getFacilityConfig } from '../../../utils/facilityTypeConfig';
 import { addPatientApi, searchPatientsApi } from '../../../services/api';
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { toPascalCase } from '../../../utils/helpers';
 
 /**
  * AddPatientForm renders universal fields and dynamic custom fields 

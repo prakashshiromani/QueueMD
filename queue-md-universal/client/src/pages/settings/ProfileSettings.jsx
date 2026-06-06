@@ -3,12 +3,7 @@ import api, { changePasswordApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import ImageUploader from '../../components/ui/ImageUploader';
 import { useBillingStore } from '../../store/billingStore';
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { toPascalCase } from '../../utils/helpers';
 
 export const MyAccountTab = ({ user }) => {
   const [formData, setFormData] = useState({

@@ -7,6 +7,7 @@ import { getFacilityConfig } from '../../utils/facilityTypeConfig';
 import { useToast } from '../../hooks/useToast';
 import { searchPatientsApi } from '../../services/api';
 import PatientHistoryDrawer from '../features/patient/PatientHistoryDrawer';
+import { hexToRgb } from '../../utils/helpers';
 
 const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
   const { user, logout } = useAuthStore();
@@ -385,11 +386,5 @@ const Layout = ({ children, scaled = true, maxWidth = 'max-w-5xl' }) => {
     </div>
   );
 };
-
-// Helper to convert hex to RGB string for use with opacity in tailwind/css
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : null;
-}
 
 export default Layout;

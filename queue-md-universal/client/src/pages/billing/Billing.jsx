@@ -12,18 +12,7 @@ import { getFacilityConfig } from '../../utils/facilityTypeConfig';
 import { format } from 'date-fns';
 import Layout from '../../components/layout/Layout';
 import AnimatePage from '../../components/layout/AnimatePage';
-
-// Helper to convert hex to RGB string for use with opacity in inline styles
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
-}
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { hexToRgb, toPascalCase } from '../../utils/helpers';
 
 // Skeleton Loader Component
 const StatsSkeleton = () => (

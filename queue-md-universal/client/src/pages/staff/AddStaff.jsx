@@ -8,18 +8,7 @@ import ImageUploader from "../../components/ui/ImageUploader";
 import { useFacilityStore } from "../../store/facilityStore";
 import { useAuthStore } from "../../store/authStore";
 import { getFacilityConfig, FACILITY_TYPES } from "../../utils/facilityTypeConfig";
-
-// Helper to convert hex to RGB string
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
-}
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { hexToRgb, toPascalCase } from "../../utils/helpers";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const PREDEFINED_SHIFTS = [

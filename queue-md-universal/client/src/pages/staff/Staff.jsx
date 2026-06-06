@@ -12,12 +12,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useFacilityStore } from "../../store/facilityStore";
 import { getFacilityConfig } from "../../utils/facilityTypeConfig";
 import { socket } from "../../services/socket";
-
-// Helper to convert hex to RGB string
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '59, 130, 246';
-}
+import { hexToRgb } from "../../utils/helpers";
 
 export default function StaffPage() {
   const { user } = useAuthStore();

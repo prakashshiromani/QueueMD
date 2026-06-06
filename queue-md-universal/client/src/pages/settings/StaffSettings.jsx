@@ -2,12 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { FACILITY_TYPES, saveCustomFacilityTypes } from '../../utils/facilityTypeConfig';
-
-// Helper to convert string to PascalCase (first letter of each word capitalized)
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { toPascalCase } from '../../utils/helpers';
 
 export const QueueSettingsTab = ({ facility, onSave, config }) => {
   const facilityId = facility?.facilityId || facility?._id;

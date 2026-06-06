@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerApi } from '../../services/api';
 import { FACILITY_TYPES } from '../../utils/facilityTypeConfig';
-
-const toPascalCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\b\w/g, char => char.toUpperCase());
-};
+import { toPascalCase } from '../../utils/helpers';
 
 const getPasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: '', colorClass: 'bg-white/10' };
