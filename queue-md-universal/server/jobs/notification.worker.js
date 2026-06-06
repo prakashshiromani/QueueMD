@@ -141,4 +141,26 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// ==========================================
+// RENDER FREE TIER WORKAROUND: Health Check
+// ==========================================
+const express = require('express');
+const app = express();
+// Avoid port conflict with the main server (port 5000) when running locally
+const PORT = process.env.NODE_ENV === 'production' ? (process.env.PORT || 3001) : 3001;
+
+// Render ko batane ke liye ki ye service alive hai
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'QueueMD BullMQ Worker is running smoothly! 🚀',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.listen(PORT, () => {
+  logger.info(`[Worker] Health check server listening on port ${PORT}`);
+});
+
 module.exports = worker;
+
