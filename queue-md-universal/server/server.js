@@ -65,38 +65,28 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Keep false for Cloudinary image loading
 }));
 
-// 🔒 SECURITY: Environment-aware CORS with strict allowed origins array (VULN-11, Item 1)
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : (process.env.NODE_ENV === 'production' 
-     ? ['https://queuemd-client.com', 'https://admin.queuemd.com'] 
-     : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174']);
-
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
     if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.ALLOWED_ORIGINS 
+      ? process.env.ALLOWED_ORIGINS.split(',') 
+      : [process.env.CLIENT_URL, 'http://localhost:5173'];
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isClientUrl = process.env.CLIENT_URL && origin === process.env.CLIENT_URL;
-
-    if (isProduction) {
-      // Production: ONLY allow configured allowed origins
-      if (allowedOrigins.includes(origin) || isClientUrl) {
-        return callback(null, true);
-      }
-      return callback(new Error("CORS policy blocked this request"), false);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
     } else {
-      // Development: allow localhost origins + allowed origins
-      const isLocalhost = origin.startsWith("http://localhost:") || origin === "http://localhost" || origin.startsWith("http://127.0.0.1:");
-      if (isLocalhost || allowedOrigins.includes(origin) || isClientUrl) {
-        return callback(null, true);
-      }
-      return callback(new Error("CORS policy blocked this request"), false);
+      console.error(`❌ CORS Blocked: ${origin} not in allowed origins`);
+      callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key']
+};
+
+app.use(cors(corsOptions));
 
 // 🔒 SECURITY: Global NoSQL Injection Prevention middleware (Item 3)
 const mongoSanitize = require('express-mongo-sanitize');
