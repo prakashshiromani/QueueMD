@@ -36,6 +36,11 @@ if os.path.exists(server_env):
 
 app = FastAPI(title="QueueMD Wait-Time Predictor")
 
+# Health check route (Render/Deployment health check)
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "QueueMD AI Prediction Service"}
+
 mongo_uri = os.getenv("MONGO_URI")
 if not mongo_uri:
     # Try another fallback if needed
@@ -118,3 +123,11 @@ def predict_wait(facility_id: str, facility_type: str = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == '__main__':
+    import uvicorn
+    # Read port from PORT env variable (essential for Render deployment)
+    port = int(os.environ.get('PORT', 8000))
+    # Run server binding to 0.0.0.0 (localhost won't work in container/cloud environments)
+    uvicorn.run("app:app", host='0.0.0.0', port=port, reload=False)
