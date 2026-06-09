@@ -1,4 +1,4 @@
-# python_service/main.py
+# python_service/app.py
 #
 # FastAPI Microservice for Wait-Time Predictions.
 #
@@ -6,7 +6,7 @@
 # python_service/
 # ├── app/
 # │   ├── __init__.py
-# │   ├── main.py              ← FastAPI app instance
+# │   ├── app.py               ← FastAPI app instance
 # │   ├── routes/
 # │   │   └── prediction.py    ← Prediction endpoints
 # │   ├── services/

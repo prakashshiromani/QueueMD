@@ -110,7 +110,7 @@ QueueMD/                             ← Workspace Root
 │   │   └── server.js                # App gateway entry point
 │   │
 │   └── python_service/              ← FastAPI Wait-Time Predictor
-│       ├── main.py                  # Predictor API and MongoDB query engine
+│       ├── app.py                   # Predictor API and MongoDB query engine
 │       └── requirements.txt         # FastAPI & PyMongo dependencies
 │
 ├── docs/                            ← Architecture Diagrams & Specifications
@@ -191,7 +191,7 @@ npm run dev
 ### 4. Run the Predictor Microservice
 ```bash
 cd queue-md-universal/python_service
-uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+uvicorn app:app --host 127.0.0.1 --port 8000 --reload
 ```
 - **Predictor URL**: `http://localhost:8000`
 - **Try endpoint**: `GET /predict-wait/{facility_id}?facility_type=clinic`
