@@ -255,4 +255,4 @@ Contributions welcome! Please open a Pull Request:
 
 This project is licensed under the **[MIT License](file:///c:/Users/Prakash%20Max/OneDrive/Desktop/QueueMD/LICENSE)**.
 
-**Created with ❤️ by [Prakash Shiromani](https://github.com/prakashshiromani)**
+**Created with ❤️ by [Prakash Kumar Shiromani](https://github.com/prakashshiromani)**
