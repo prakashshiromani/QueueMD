@@ -7,6 +7,7 @@
  */
 
 const { FACILITY_TYPES } = require("../utils/facilityTypeConfig");
+const { getISTRange } = require("../utils/dateHelpers");
 
 // 🔹 EMA Calculation (Recent data ko zyada importance)
 const calculateEMA = (durations, alpha = 0.3) => {
@@ -120,14 +121,13 @@ exports.calculateWaitTimes = async (Queue, facilityId, facilityType) => {
  */
 exports.cleanupStaleDayTokens = async (Queue, facilityId) => {
   try {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const { start: todayStart } = getISTRange("today");
 
     const result = await Queue.updateMany(
       {
         facilityId,
         status: { $in: ["waiting", "in-progress"] },
-        createdAt: { $lt: startOfDay }
+        createdAt: { $lt: todayStart }
       },
       {
         $set: {

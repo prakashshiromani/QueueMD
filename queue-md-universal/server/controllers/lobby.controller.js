@@ -1,5 +1,6 @@
 const Queue = require('../models/Queue');
 const { getPhoneRegex } = require('../utils/phoneHelper');
+const { getISTRange } = require('../utils/dateHelpers');
 
 exports.getLiveLobbyStatus = async (req, res, next) => {
     try {
@@ -26,14 +27,13 @@ exports.getLiveLobbyStatus = async (req, res, next) => {
         }
 
         // 2. Aaj ki waiting list (People Ahead calculate karne ke liye)
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        const { start: todayStart } = getISTRange("today");
 
         const todaysWaitingList = await Queue.find({
             facilityId,
             facilityType: myVisit.facilityType,
             status: 'waiting',
-            createdAt: { $gte: startOfDay }
+            createdAt: { $gte: todayStart }
         }).sort({ createdAt: 1 }).lean();
 
         // 3. Patient ka position nikalo

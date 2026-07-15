@@ -198,38 +198,12 @@ exports.addPatientToDirectory = async (req, res, next) => {
 
     if (autoAddToQueue) {
       // 2. Automatically Add to Queue
-      // LP-07 Fix: Counter is now branch-aware — each branch gets its own sequence
+      // LP-07 Fix & Sprint 1: Counter is now branch-aware and date-aware (atomic day-rollover)
       const safeBranchId = branchId || 'global';
-      const counterId = `token:${facilityId}:${assignedFacilityType}:${safeBranchId}`;
       const { start: todayStart } = getISTRange("today");
-      const todayEntry = await Queue.findOne({
-        facilityId,
-        facilityType: assignedFacilityType,
-        ...(branchId ? { branchId } : {}),
-        createdAt: { $gte: todayStart }
-      });
+      const dayKey = new Date(todayStart.getTime() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const counterId = `token:${facilityId}:${assignedFacilityType}:${safeBranchId}:${dayKey}`;
 
-      if (!todayEntry) {
-        // No patients today yet: reset sequence to 0
-        await Counter.findOneAndUpdate(
-          { _id: counterId },
-          { seq: 0 },
-          { upsert: true, new: true }
-        );
-      } else {
-        let counter = await Counter.findById(counterId);
-        if (!counter) {
-          const lastToken = await Queue.findOne({
-            facilityId,
-            facilityType: assignedFacilityType,
-            ...(branchId ? { branchId } : {})
-          }).sort({ tokenNumber: -1 });
-          let startNum = lastToken ? lastToken.tokenNumber : 0;
-          try {
-            await Counter.create({ _id: counterId, seq: startNum });
-          } catch (err) {}
-        }
-      }
       nextToken = await getNextSequence(counterId);
 
       // Create Queue entry
@@ -244,6 +218,7 @@ exports.addPatientToDirectory = async (req, res, next) => {
         doctorName: doctorName || "Unknown",
         tokenNumber: nextToken,
         status: "waiting",
+        dayKey,
         createdAt: new Date()
       });
 

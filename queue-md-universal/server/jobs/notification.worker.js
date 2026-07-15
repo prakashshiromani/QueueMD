@@ -120,6 +120,10 @@ const worker = new Worker('notificationQueue', async (job) => {
   removeOnFail: { count: 500 }
 });
 
+worker.on('error', (err) => {
+  logger.error(`❌ BullMQ Worker Error: ${err.message}`);
+});
+
 // ✅ Startup Log Messages
 logger.info('👷 Worker started for queue: notificationQueue');
 logger.info(`🔗 Connected to Redis: ${process.env.REDIS_HOST || 'Remote Upstash'}`);

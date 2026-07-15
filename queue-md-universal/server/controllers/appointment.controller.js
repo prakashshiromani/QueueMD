@@ -6,6 +6,13 @@ const { emitAppointmentUpdate } = require("../sockets/appointment.socket");
 const logger = require("../utils/logger");
 const { validateBranchOwnership } = require("../services/branch.service"); // 🔒 LP-02 Fix
 
+const getStartOfISTDay = (date) => {
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const d = new Date(date.getTime() + istOffset);
+  d.setUTCHours(0, 0, 0, 0);
+  return new Date(d.getTime() - istOffset);
+};
+
 // ✅ 1. Create Appointment (New Booking)
 exports.createAppointment = async (req, res, next) => {
   try {
@@ -96,10 +103,8 @@ exports.createAppointment = async (req, res, next) => {
     const tokenNumber = `APPT-${String(nextSeq).padStart(3, '0')}`;
 
     // 📅 SMART DATE CHECK: Aaj ki appointment hai ya future ki?
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const apptDate = new Date(appointmentDate);
-    apptDate.setHours(0, 0, 0, 0);
+    const todayStart = getStartOfISTDay(new Date());
+    const apptDate = getStartOfISTDay(new Date(appointmentDate));
     const isToday = apptDate.getTime() === todayStart.getTime();
 
     logger.debug(`Appointment date check: apptDate=${apptDate.toISOString()}, isToday=${isToday}`);
@@ -234,10 +239,8 @@ exports.getTodaySchedule = async (req, res, next) => {
     const { branchId } = req.query; // 📍 Extract branchId filter if any
     
     // 🔥 Robust Date Range (Start of Day to End of Day)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = getStartOfISTDay(new Date());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
     const query = {
       facilityId,
@@ -499,14 +502,12 @@ exports.syncToDirectory = async (req, res, next) => {
     });
 
     // 📅 Date check
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = getStartOfISTDay(new Date());
 
     let synced = 0;
 
     for (const apt of appointments) {
-      const apptDate = new Date(apt.appointmentDate);
-      apptDate.setHours(0, 0, 0, 0);
+      const apptDate = getStartOfISTDay(new Date(apt.appointmentDate));
       const isToday = apptDate.getTime() === todayStart.getTime();
       const isPast = apptDate.getTime() < todayStart.getTime();
       // Visible if appointment is today or in the past

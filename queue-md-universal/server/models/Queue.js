@@ -39,8 +39,20 @@ const queueSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["waiting", "in-progress", "completed", "cancelled", "delivered", "paused"],
+    enum: ["waiting", "in-progress", "completed", "cancelled", "delivered", "paused", "no-show"],
     default: "waiting",
+    index: true
+  },
+  dayKey: {
+    type: String,
+    required: true,
+    default: function() {
+      // Default to today's date in IST format (YYYY-MM-DD)
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const now = new Date();
+      const istDate = new Date(now.getTime() + istOffset);
+      return istDate.toISOString().split('T')[0];
+    },
     index: true
   },
   pausedAt: { type: Date, default: null },
@@ -68,5 +80,17 @@ queueSchema.index({ facilityId: 1, facilityType: 1, createdAt: 1 });
 // ✅ NEW: Public Tracking Optimized Index
 queueSchema.index({ facilityId: 1, status: 1, createdAt: 1 });
 queueSchema.index({ facilityId: 1, doctorName: 1, status: 1, completedAt: -1 });
+
+// 🔒 SECURITY (Sprint 1): Enforce physically unique tokens per day/branch/type
+queueSchema.index(
+  { facilityId: 1, facilityType: 1, branchId: 1, tokenNumber: 1, dayKey: 1 },
+  { unique: true }
+);
+
+// 🔒 SECURITY (Sprint 1): Prevent multiple active appointments/queue check-ins for the same registered patient
+queueSchema.index(
+  { facilityId: 1, facilityType: 1, patientId: 1 },
+  { unique: true, partialFilterExpression: { status: { $in: ["waiting", "in-progress"] }, patientId: { $exists: true, $ne: null } } }
+);
 
 module.exports = mongoose.model("Queue", queueSchema);

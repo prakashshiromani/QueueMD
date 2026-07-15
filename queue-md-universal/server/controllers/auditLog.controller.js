@@ -1,5 +1,6 @@
 const AuditLog = require("../models/AuditLog");
 const { logAudit } = require("../services/audit.service");
+const { getISTRange } = require("../utils/dateHelpers");
 
 /**
  * Retrieves paginated, filterable, and searchable security audit logs for the authenticated facility.
@@ -79,8 +80,7 @@ exports.getAuditStats = async (req, res, next) => {
   try {
     const { facilityId } = req.user;
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const { start: startOfToday } = getISTRange("today");
 
     const [todayLogins, todayFailed, criticalCount] = await Promise.all([
       AuditLog.countDocuments({

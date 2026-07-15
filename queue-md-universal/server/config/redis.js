@@ -1,4 +1,5 @@
 const IORedis = require('ioredis');
+const logger = require('../utils/logger');
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const isSecure = redisUrl.startsWith('rediss://');
@@ -18,5 +19,9 @@ if (isSecure) {
 
 // BullMQ ke liye connection config (maxRetriesPerRequest: null zaroori hai)
 const connection = new IORedis(redisUrl, redisOptions);
+
+connection.on('error', (err) => {
+  logger.error(`❌ Redis Connection Error: ${err.message}`);
+});
 
 module.exports = { connection };

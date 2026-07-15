@@ -122,40 +122,13 @@ exports.addPatient = async (req, res, next) => {
       }
     }
 
-    // 🔥 Generate next token — LP-07 Fix: counter is now branch-aware
+    // 🔥 Generate next token — LP-07 Fix & Sprint 1: counter is now branch-aware and date-aware (atomic day-rollover)
     // Each branch gets its OWN independent daily sequence starting from 1
     const { start: todayStart } = getISTRange("today");
     const safeBranchId = branchId || 'global';
-    const counterId = `token:${facilityId}:${queueFacilityType}:${safeBranchId}`;
+    const dayKey = new Date(todayStart.getTime() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const counterId = `token:${facilityId}:${queueFacilityType}:${safeBranchId}:${dayKey}`;
 
-    const todayEntry = await Queue.findOne({
-      facilityId,
-      facilityType: queueFacilityType,
-      ...(branchId ? { branchId } : {}),
-      createdAt: { $gte: todayStart }
-    });
-
-    if (!todayEntry) {
-      // No patients in this branch today yet: reset sequence to 0
-      await Counter.findOneAndUpdate(
-        { _id: counterId },
-        { seq: 0 },
-        { upsert: true, new: true }
-      );
-    } else {
-      let counter = await Counter.findById(counterId);
-      if (!counter) {
-        const lastToken = await Queue.findOne({
-          facilityId,
-          facilityType: queueFacilityType,
-          ...(branchId ? { branchId } : {})
-        }).sort({ tokenNumber: -1 });
-        let startNum = lastToken ? lastToken.tokenNumber : 0;
-        try {
-          await Counter.create({ _id: counterId, seq: startNum });
-        } catch (err) { /* ignore duplicate */ }
-      }
-    }
     const nextToken = await getNextSequence(counterId);
 
     // ✅ Update patient's lastVisit + totalVisits + lastBranchId WITHOUT changing facilityType
@@ -183,6 +156,7 @@ exports.addPatient = async (req, res, next) => {
       doctorName: doctorName || "Unknown",
       tokenNumber: nextToken,
       status: "waiting",
+      dayKey,
       createdAt: new Date()
     });
 
@@ -280,14 +254,13 @@ exports.getCompletedCount = async (req, res, next) => {
     const { type, branchId } = req.query;
     const facilityType = type || jwtFacilityType;
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const { start: todayStart } = getISTRange("today");
 
     const query = {
       facilityId,
       facilityType,
       status: "completed",
-      completedAt: { $gte: startOfDay },
+      completedAt: { $gte: todayStart },
       isLabOrder: { $ne: true }
     };
 
@@ -368,12 +341,12 @@ exports.markPatientCompleted = async (req, res, next) => {
         facilityId,
         facilityType: useType,
         doctorId: req.user.id,
-        diagnosis: consultationNotes || "Routine Consultation Checkup",
-        prescriptionNotes: typeof prescription === 'string' ? prescription : (prescription?.notes || "Rx:\n1. Tab Paracetamol 650mg - 1-0-1 - after food x 3 days\n2. Tab Cetirizine 10mg - 0-0-1 - at bedtime x 5 days"),
+        diagnosis: consultationNotes || "",
+        prescriptionNotes: typeof prescription === 'string' ? prescription : (prescription?.notes || ""),
         vitals: {
-          bp: updated.customData?.vitals?.bp || "120/80",
-          weight: updated.customData?.vitals?.weight || 70,
-          temperature: updated.customData?.vitals?.temperature || 98.6
+          bp: updated.customData?.vitals?.bp || "",
+          weight: updated.customData?.vitals?.weight || null,
+          temperature: updated.customData?.vitals?.temperature || null
         }
       });
       logger.info(`[ClinicalVisit] Created visit for patient: ${updated.patientName}`);

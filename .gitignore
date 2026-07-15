@@ -31,3 +31,7 @@ graphify-out/
 
 # Documentation
 docs/
+
+# Python Cache
+__pycache__/
+*.pyc

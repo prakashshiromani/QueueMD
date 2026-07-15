@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const { labOrderSchema } = require("../schemas/lab.schema");
 const logger = require('../utils/logger');
 const { emitQueueUpdate } = require('../sockets/queue.socket');
+const { getISTRange } = require('../utils/dateHelpers');
 
 // ✅ GET ALL LAB REPORTS (with pagination & filters)
 exports.getLabReports = async (req, res, next) => {
@@ -77,16 +78,8 @@ exports.getLabReports = async (req, res, next) => {
 
     // Filter by date (today, this week, etc.)
     if (date) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (date === 'today') {
-        query.createdAt = { $gte: today };
-      } else if (date === 'week') {
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        query.createdAt = { $gte: weekAgo };
-      }
+      const { start: dateStart } = getISTRange(date === 'week' ? '7d' : 'today');
+      query.createdAt = { $gte: dateStart };
     }
 
     // Pagination
@@ -121,9 +114,8 @@ exports.getLabStats = async (req, res, next) => {
     // Build date filter
     let dateFilter = {};
     if (date === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dateFilter = { createdAt: { $gte: today } };
+      const { start: todayStart } = getISTRange('today');
+      dateFilter = { createdAt: { $gte: todayStart } };
     }
 
     // Aggregate stats
