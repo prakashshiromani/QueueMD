@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../../components/layout/Layout";
 import { useAuthStore } from "../../store/authStore";
@@ -64,13 +65,13 @@ export default function Dashboard() {
         .catch(err => console.error("Error fetching branches for selector:", err));
     }
   }, [facilityId]);
+  const queryClient = useQueryClient();
 
-  // ✅ Load initial data (memoized to fix useEffect exhaustive-deps warning)
-  const loadData = useCallback(async () => {
-    if (!facilityId) return;
-    setLoading(true);
-    try {
-      // Pass current facilityType (from Demo Mode) to backend
+  // ✅ TanStack Query for caching and automatic state synchronization
+  const { data: dashboardData, isLoading, refetch } = useQuery({
+    queryKey: ['dashboard', facilityId, facilityType, selectedBranch],
+    queryFn: async () => {
+      if (!facilityId) return null;
       const [queueData, pausedData, statsData, completedCount, facilityRes] = await Promise.all([
         fetchQueueApi('waiting', facilityType),
         fetchQueueApi('paused', facilityType),
@@ -78,151 +79,78 @@ export default function Dashboard() {
         fetchCompletedCountApi(facilityType),
         api.get('/facility/me')
       ]);
-      
-      setQueue(queueData || []);
-      setPausedQueue(pausedData || []);
-      queueRef.current = queueData || [];
-      
-      setStats({
-        waiting: queueData?.length || 0,
-        avgWait: statsData?.efficiency || statsData?.avgWaitTime || 7,
-        aiPredictedWait: statsData?.aiPredictedWait || 10,
-        confidence: statsData?.confidence || 'medium',
-        completed: completedCount || 0
-      });
 
-      if (facilityRes.data && facilityRes.data.data && !facilityRes.data.data.onboardingCompleted) {
+      const inProgress = await fetchQueueApi('in-progress', facilityType);
+
+      return {
+        queue: queueData || [],
+        pausedQueue: pausedData || [],
+        stats: {
+          waiting: queueData?.length || 0,
+          avgWait: statsData?.efficiency || statsData?.avgWaitTime || 7,
+          aiPredictedWait: statsData?.aiPredictedWait || 10,
+          confidence: statsData?.confidence || 'medium',
+          completed: completedCount || 0
+        },
+        currentPatient: inProgress?.[0] || null,
+        showWizard: facilityRes.data && facilityRes.data.data && !facilityRes.data.data.onboardingCompleted
+      };
+    },
+    enabled: !!facilityId,
+  });
+
+  // Sync TanStack Query cache to state for backward-compatibility with UI event handlers
+  useEffect(() => {
+    if (dashboardData) {
+      setQueue(dashboardData.queue);
+      setPausedQueue(dashboardData.pausedQueue);
+      setCurrentPatient(dashboardData.currentPatient);
+      setStats(dashboardData.stats);
+      queueRef.current = dashboardData.queue;
+      if (dashboardData.showWizard) {
         setShowWizard(true);
       }
-
-      // Find in-progress patient for this department
-      const inProgress = await fetchQueueApi('in-progress', facilityType);
-      setCurrentPatient(inProgress?.[0] || null);
-
-    } catch (err) {
-      toast.error("Failed to sync dashboard");
-    } finally {
-      setLoading(false);
     }
-  }, [facilityId, facilityType, selectedBranch]);
+  }, [dashboardData]);
+
+  // Combine query loading state with action loading state
+  const isDataLoading = isLoading || loading;
 
   // ✅ Socket Real-Time Sync
   useEffect(() => {
     if (!facilityId) return;
-    loadData();
 
     // 🔒 LP-01 Fix: Join branch-specific socket room so server only sends data for this branch.
-    // Replaced join_facility (global) with join_facility_branch (branch-scoped + global).
     socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
     setLiveIndicator(socket.connected);
 
     const handleQueueUpdate = (data) => {
-      // Safety Check: ID & Type must match
       if (data.facilityId !== facilityId || data.facilityType !== facilityType) return;
-      // ✅ LP-01 Fix: No client-side branch filter needed — server already scoped the broadcast.
-
       setLiveIndicator(true);
 
-      // Sync stats (avgWait, aiPredictedWait, confidence) globally for all actions
-      if (data.stats) {
-        setStats(prev => ({ 
-          ...prev, 
-          avgWait: data.stats.avgWaitTime !== undefined ? data.stats.avgWaitTime : prev.avgWait,
-          aiPredictedWait: data.stats.aiPredictedWait !== undefined ? data.stats.aiPredictedWait : prev.aiPredictedWait,
-          confidence: data.stats.confidence || prev.confidence
-        }));
-      }
+      // Invalidate queries so TanStack Query refetches the queue lists and stats automatically!
+      queryClient.invalidateQueries({ queryKey: ['dashboard', facilityId, facilityType, selectedBranch] });
 
-      if (data.action === "add") {
-        setQueue(prev => {
-          if (prev.some(p => p._id === data.patient._id)) return prev;
-          let newQueue = [...prev, data.patient];
-          if (data.stats && data.stats.predictions) {
-            newQueue = newQueue.map(q => {
-              const match = data.stats.predictions.find(p => p._id === q._id);
-              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
-            });
-          }
-          return newQueue;
-        });
-      } else if (data.action === "paused") {
-        setQueue(prev => {
-          let newQueue = prev.filter(p => p._id !== data.patient._id);
-          if (data.stats && data.stats.predictions) {
-            newQueue = newQueue.map(q => {
-              const match = data.stats.predictions.find(p => p._id === q._id);
-              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
-            });
-          }
-          return newQueue;
-        });
-        setPausedQueue(prev => {
-          if (prev.some(p => p._id === data.patient._id)) return prev;
-          return [...prev, data.patient];
-        });
-      } else if (data.action === "resumed") {
-        setPausedQueue(prev => prev.filter(p => p._id !== data.patient._id));
-        setQueue(prev => {
-          if (prev.some(p => p._id === data.patient._id)) return prev;
-          let newQueue = [...prev, data.patient].sort((a,b) => a.tokenNumber - b.tokenNumber);
-          if (data.stats && data.stats.predictions) {
-            newQueue = newQueue.map(q => {
-              const match = data.stats.predictions.find(p => p._id === q._id);
-              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
-            });
-          }
-          return newQueue;
-        });
-      } else if (data.action === "next") {
-        setCurrentPatient(data.patient);
-
-        // Play sound chime if enabled in preferences
+      // Action-specific side effects (like playing chime)
+      if (data.action === "next") {
         try {
           const storedPrefs = localStorage.getItem(`queue-md-notifs-${facilityId}`);
           const parsed = storedPrefs ? JSON.parse(storedPrefs) : null;
-          // default to true if setting doesn't exist or is true
           if (!parsed || parsed.sound !== false) {
             playChime();
           }
         } catch (e) {
           console.error("Error playing sound chime on queue update:", e);
         }
-
-        setQueue(prev => {
-          let newQueue = prev.filter(p => p._id !== data.patient._id);
-          // Apply new predictions from the backend
-          if (data.stats && data.stats.predictions) {
-            newQueue = newQueue.map(q => {
-              const match = data.stats.predictions.find(p => p._id === q._id);
-              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
-            });
-          }
-          return newQueue;
-        });
-      } else if (data.action === "completed") {
-        setCurrentPatient(null);
-        setQueue(prev => {
-          let newQueue = prev.filter(p => p._id !== data.patient._id);
-          if (data.stats && data.stats.predictions) {
-            newQueue = newQueue.map(q => {
-              const match = data.stats.predictions.find(p => p._id === q._id);
-              return match ? { ...q, estimatedWaitTime: match.estimatedWaitTime } : q;
-            });
-          }
-          return newQueue;
-        });
-        setStats(prev => ({ 
-          ...prev, 
-          completed: (prev.completed || 0) + 1
-        }));
       }
     };
 
     const handleDisconnect = () => setLiveIndicator(false);
     const handleConnect = () => {
       setLiveIndicator(true);
-      // 🔒 LP-01 Fix: Re-join branch-specific room on reconnect
       socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
+      // Task 26: Trigger a full cache invalidation and refetch on socket reconnect
+      queryClient.invalidateQueries({ queryKey: ['dashboard', facilityId, facilityType, selectedBranch] });
     };
 
     socket.on("queue_update", handleQueueUpdate);
@@ -234,7 +162,7 @@ export default function Dashboard() {
       socket.off("disconnect", handleDisconnect);
       socket.off("connect", handleConnect);
     };
-  }, [facilityId, facilityType, loadData]);
+  }, [facilityId, facilityType, selectedBranch, queryClient]);
 
   // ✅ Actions
   const handleCallNext = async () => {
@@ -442,7 +370,7 @@ export default function Dashboard() {
 
         {/* 📊 Premium Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {loading && stats.waiting === 0 && stats.completed === 0 ? (
+          {isDataLoading && stats.waiting === 0 && stats.completed === 0 ? (
             <>
               <SkeletonCard />
               <SkeletonCard />
@@ -564,7 +492,7 @@ export default function Dashboard() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleComplete}
-                      disabled={loading}
+                      disabled={isDataLoading}
                       className="w-full h-[54px] rounded-xl text-white font-black text-[14px] uppercase tracking-widest shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
                       style={{ 
                         backgroundColor: config.theme.primary,
@@ -604,7 +532,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex-1 overflow-y-auto max-h-[450px] p-4 space-y-3 custom-scrollbar">
-              {loading && queue.length === 0 ? (
+              {isDataLoading && queue.length === 0 ? (
                 <SkeletonQueue />
               ) : (
                 <>
@@ -704,7 +632,7 @@ export default function Dashboard() {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCallNext}
-                disabled={queue.length === 0 || loading}
+                disabled={queue.length === 0 || isDataLoading}
                 className="w-full h-[56px] rounded-xl text-white font-black text-[15px] uppercase tracking-[0.1em] shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ 
                     backgroundColor: config.theme.primary,

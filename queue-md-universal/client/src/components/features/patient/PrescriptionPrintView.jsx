@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaPrint, FaTimes, FaQrcode } from 'react-icons/fa';
+import { Printer, X, QrCode } from 'lucide-react';
 import api from '../../../services/api'; // Axios instance
 
 const PrescriptionPrintView = ({ visitId, onClose }) => {
@@ -37,10 +37,10 @@ const PrescriptionPrintView = ({ visitId, onClose }) => {
       {/* Action Buttons (Hidden during print) */}
       <div className="absolute top-5 right-5 flex gap-3 no-print z-50">
         <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-lg transition">
-          <FaPrint /> Print / Save PDF
+          <Printer size={18} /> Print / Save PDF
         </button>
-        <button onClick={onClose} className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition">
-          <FaTimes />
+        <button onClick={onClose} className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition flex items-center justify-center">
+          <X size={18} />
         </button>
       </div>
 
@@ -109,7 +109,7 @@ const PrescriptionPrintView = ({ visitId, onClose }) => {
           <div className="flex flex-col items-center">
              {/* QR Code for Feedback/Payment */}
              <div className="bg-white p-2 rounded mb-1">
-               <FaQrcode className="text-black text-3xl" />
+               <QrCode className="text-black text-3xl" />
              </div>
              <span className="text-[10px] uppercase tracking-widest text-text-secondary/60 dark:text-gray-500">Scan for Feedback</span>
           </div>

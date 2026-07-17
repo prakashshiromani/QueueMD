@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStethoscope, FaNotesMedical, FaHeartbeat } from 'react-icons/fa';
+import { Stethoscope, Activity, HeartPulse } from 'lucide-react';
 import PrescriptionPrintView from './PrescriptionPrintView';
 
 const PatientHistoryTimeline = ({ visits, onAddQuickNote }) => {
@@ -65,7 +65,7 @@ const PatientHistoryTimeline = ({ visits, onAddQuickNote }) => {
                   </button>
                   <button 
                     onClick={() => onAddQuickNote(visit._id)}
-                    className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400 rounded-full hover:bg-blue-200 dark:hover:bg-blue-600/40 transition flex items-center gap-1 font-medium"
+                    className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-600/20 text-blue-700 dark:bg-blue-400 rounded-full hover:bg-blue-200 dark:hover:bg-blue-600/40 transition flex items-center gap-1 font-medium"
                   >
                     <span className="material-symbols-outlined text-[14px]">note_add</span> Note
                   </button>
@@ -76,19 +76,19 @@ const PatientHistoryTimeline = ({ visits, onAddQuickNote }) => {
               <div className="space-y-2 text-sm text-text-secondary dark:text-gray-300 font-inter mt-3">
                 {visit.diagnosis && (
                   <div className="flex items-start gap-2">
-                    <FaStethoscope className="text-blue-500 dark:text-blue-400 mt-1 flex-shrink-0" />
+                    <Stethoscope className="text-blue-500 dark:text-blue-400 mt-1 flex-shrink-0" size={16} />
                     <p><span className="font-bold text-text-primary">Diagnosis:</span> {visit.diagnosis}</p>
                   </div>
                 )}
                 {visit.prescriptionNotes && (
                   <div className="flex items-start gap-2">
-                    <FaNotesMedical className="text-green-600 dark:text-green-400 mt-1 flex-shrink-0" />
+                    <Activity className="text-green-600 dark:text-green-400 mt-1 flex-shrink-0" size={16} />
                     <p><span className="font-bold text-text-primary">Rx:</span> {visit.prescriptionNotes}</p>
                   </div>
                 )}
                 {visit.vitals?.bp && (
                   <div className="flex items-start gap-2">
-                    <FaHeartbeat className="text-red-500 dark:text-red-400 mt-1 flex-shrink-0" />
+                    <HeartPulse className="text-red-500 dark:text-red-400 mt-1 flex-shrink-0" size={16} />
                     <p><span className="font-bold text-text-primary">Vitals:</span> BP: {visit.vitals.bp} | Wt: {visit.vitals.weight}kg</p>
                   </div>
                 )}

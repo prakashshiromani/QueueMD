@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { useFacilityStore } from "../../store/facilityStore";
 import api from "../../services/api";
@@ -6,14 +6,15 @@ import { FACILITY_TYPES, formatTokenNumber } from "../../utils/facilityTypeConfi
 import Layout from "../../components/layout/Layout";
 import { socket } from "../../services/socket";
 
-// Chart Components
-import HourlyBarChart from "../../components/features/charts/HourlyBarChart";
-import DailyTrendChart from "../../components/features/charts/DailyTrendChart";
-import FacilityDonutChart from "../../components/features/charts/FacilityDonutChart";
-import TopDoctorsCard from "../../components/features/charts/TopDoctorsCard";
+// Lazy-loaded Chart Components
+const HourlyBarChart = lazy(() => import("../../components/features/charts/HourlyBarChart"));
+const DailyTrendChart = lazy(() => import("../../components/features/charts/DailyTrendChart"));
+const FacilityDonutChart = lazy(() => import("../../components/features/charts/FacilityDonutChart"));
+const TopDoctorsCard = lazy(() => import("../../components/features/charts/TopDoctorsCard"));
+const AIInsightsCard = lazy(() => import("../../components/features/charts/AIInsightsCard"));
+
 import ChartSkeleton from "../../components/features/charts/ChartSkeleton";
 import AnimatePage from "../../components/layout/AnimatePage";
-import AIInsightsCard from "../../components/features/charts/AIInsightsCard";
 import { SkeletonTable } from "../../components/ui/Skeletons";
 import { motion, AnimatePresence } from "framer-motion";
 import PatientHistoryDrawer from "../../components/features/patient/PatientHistoryDrawer";
@@ -524,57 +525,59 @@ export default function Analytics() {
         </div>
 
         {/* ── CHARTS ─────────────────────────────────────────────── */}
-        <div className="space-y-5">
-          {/* Hourly Traffic */}
-          <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.4)] to-transparent" />
-            <div className="flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">bar_chart</span>
-              <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Hourly Traffic</h3>
+        <Suspense fallback={<div className="space-y-5"><ChartSkeleton /><ChartSkeleton /></div>}>
+          <div className="space-y-5">
+            {/* Hourly Traffic */}
+            <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.4)] to-transparent" />
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">bar_chart</span>
+                <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Hourly Traffic</h3>
+              </div>
+              <HourlyBarChart data={hourlyData} loading={chartsLoading} />
             </div>
-            <HourlyBarChart data={hourlyData} loading={chartsLoading} />
-          </div>
 
-          {/* Trend + Donut */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div className="lg:col-span-8 rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.3)] to-transparent" />
-              <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">show_chart</span>
-                <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Patient Flow Trend</h3>
+            {/* Trend + Donut */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <div className="lg:col-span-8 rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.3)] to-transparent" />
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">show_chart</span>
+                  <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Patient Flow Trend</h3>
+                </div>
+                <DailyTrendChart data={dailyData} loading={chartsLoading} />
               </div>
-              <DailyTrendChart data={dailyData} loading={chartsLoading} />
-            </div>
-            <div className="lg:col-span-4 rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.3)] to-transparent" />
-              <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">donut_large</span>
-                <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Facility Distribution</h3>
+              <div className="lg:col-span-4 rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--theme-primary-rgb),0.3)] to-transparent" />
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">donut_large</span>
+                  <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Facility Distribution</h3>
+                </div>
+                <FacilityDonutChart data={facilityData} loading={chartsLoading} />
               </div>
-              <FacilityDonutChart data={facilityData} loading={chartsLoading} />
             </div>
-          </div>
 
-          {/* Top Doctors + AI Insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary dark:bg-[#1e293b]/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-              <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-[18px] text-amber-400">emoji_events</span>
-                <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Top Doctors</h3>
+            {/* Top Doctors + AI Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary dark:bg-[#1e293b]/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[18px] text-amber-400">emoji_events</span>
+                  <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">Top Doctors</h3>
+                </div>
+                <TopDoctorsCard data={topDoctors} loading={chartsLoading} />
               </div>
-              <TopDoctorsCard data={topDoctors} loading={chartsLoading} />
-            </div>
-            <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary dark:bg-[#1e293b]/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-              <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">psychology</span>
-                <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">QueueMD AI Insights</h3>
+              <div className="rounded-2xl border border-border-muted/40 dark:border-white/8 bg-bg-secondary dark:bg-[#1e293b]/80 backdrop-blur-md p-5 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--theme-primary)]">psychology</span>
+                  <h3 className="text-[12px] font-black text-text-primary uppercase tracking-widest">QueueMD AI Insights</h3>
+                </div>
+                <AIInsightsCard data={aiInsights} loading={chartsLoading} />
               </div>
-              <AIInsightsCard data={aiInsights} loading={chartsLoading} />
             </div>
           </div>
-        </div>
+        </Suspense>
 
         {/* ── SEARCH + TABLE ─────────────────────────────────────── */}
         <div className="space-y-4">
