@@ -1,18 +1,4 @@
-# ── STAGE 1: BUILD FRONTEND ──────────────────────────────────
-FROM node:20-alpine AS client-builder
-WORKDIR /app/client
-
-# Copy package descriptors and install dependencies
-COPY client/package*.json ./
-RUN npm ci --silent
-
-# Copy client codebase and build static assets
-COPY client/ ./
-# Inject production environments during build stage
-ENV VITE_API_URL=/api
-RUN npm run build
-
-# ── STAGE 2: PREPARE SERVER & DEPENDENCIES ───────────────────
+# ── STAGE 1: PREPARE SERVER & DEPENDENCIES ───────────────────
 FROM node:20-alpine AS server-builder
 WORKDIR /app/server
 
@@ -23,7 +9,7 @@ RUN npm ci --only=production --silent
 # Copy server code
 COPY server/ ./
 
-# ── STAGE 3: FINAL SECURE RUNTIME CONTAINER ─────────────────
+# ── STAGE 2: FINAL SECURE RUNTIME CONTAINER ─────────────────
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
@@ -34,9 +20,6 @@ ENV PORT=5000
 # Install dumb-init for proper process supervision (avoids PID 1 signal leakage)
 RUN apk add --no-cache dumb-init
 
-# Copy built frontend assets into server's public folder
-COPY --from=client-builder /app/client/dist ./server/public
-
 # Copy pre-configured production dependencies and server runtime
 COPY --from=server-builder /app/server ./server
 
@@ -46,7 +29,7 @@ RUN chown -R node:node /app
 # 🔒 SECURITY: Switch container execution to non-root privileges
 USER node
 
-# Expose port for inbound API and asset traffic
+# Expose port for inbound API traffic
 EXPOSE 5000
 
 # Run server with process supervisor

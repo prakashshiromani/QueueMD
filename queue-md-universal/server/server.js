@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./config/env"); // Validate environment variables on boot
 const logger = require("./utils/logger");
 
 process.on("uncaughtException", (err) => {

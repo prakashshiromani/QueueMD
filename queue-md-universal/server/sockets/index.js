@@ -131,7 +131,10 @@ const getIO = () => {
 // LP-01 Fix: Now supports optional branchId for branch-scoped rooms.
 const getRoomHash = (facilityId, suffix = "", branchId = null) => {
   const crypto = require("crypto");
-  const secret = process.env.JWT_SECRET || "fallback_salt_value_123";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("Security Error: JWT_SECRET environment variable is missing during room hashing!");
+  }
   const hashInput = branchId
     ? `${String(facilityId).trim()}_${String(suffix).trim()}_${String(branchId).trim()}`
     : `${String(facilityId).trim()}_${String(suffix).trim()}`;
