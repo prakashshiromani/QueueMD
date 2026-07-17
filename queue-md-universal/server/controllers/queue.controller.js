@@ -234,10 +234,23 @@ exports.getQueue = async (req, res, next) => {
       .sort(status === "waiting" ? { tokenNumber: 1 } : { updatedAt: -1 })
       .limit(parseInt(limit));
 
+    // A3: stateVersion support - fetch version number from Redis
+    const branchIdValue = branchId && branchId !== 'null' && branchId !== '' ? branchId : 'global';
+    const redisKey = `queue_ver:${facilityId}:${facilityType}:${branchIdValue}`;
+    let version = 1;
+    try {
+      const { connection: redis } = require("../config/redis");
+      const v = await redis.get(redisKey);
+      version = v ? parseInt(v) : 1;
+    } catch (e) {
+      logger.error(`[GET QUEUE] Error getting queue version from Redis: ${e.message}`);
+    }
+
     res.json({
       success: true,
       count: queue.length,
-      queue
+      queue,
+      version
     });
   } catch (err) {
     next(err);

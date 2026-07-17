@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
 import { useSocketStore } from "../store/socketStore";
+import { useAuthStore } from "../store/authStore";
 
 // Use environment variable or fallback to relative URL
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "/";
@@ -11,7 +12,8 @@ export const socket = io(SOCKET_URL, {
   autoConnect: false, // We manually connect after login
   reconnection: true,
   reconnectionDelay: 1000,
-  reconnectionAttempts: 5,
+  reconnectionDelayMax: 10000, // Exponential backoff cap (A1)
+  reconnectionAttempts: Infinity, // Unlimited reconnection attempts (A1)
   transports: ["websocket", "polling"],
   withCredentials: true
 });
@@ -19,10 +21,18 @@ export const socket = io(SOCKET_URL, {
 // Connection event listeners
 socket.on("connect", () => {
   useSocketStore.getState().setSocketStatus("connected");
-  // Intentionally minimal — no sensitive info logged in production
   if (import.meta.env.DEV) {
     console.log("✅ Socket connected:", socket.id);
   }
+
+  // A1: Room Registry pattern - Re-emit all desired rooms on reconnection
+  const rooms = useSocketStore.getState().desiredRooms;
+  Object.values(rooms).forEach(({ event, payload }) => {
+    if (import.meta.env.DEV) {
+      console.log(`[SOCKET] Re-joining room event: ${event}`, payload);
+    }
+    socket.emit(event, payload);
+  });
 });
 
 socket.on("connect_error", (error) => {
@@ -39,11 +49,34 @@ socket.on("disconnect", (reason) => {
   }
 });
 
+// A2: stale token on reconnect_attempt
+socket.on("reconnect_attempt", () => {
+  const token = localStorage.getItem("token") || useAuthStore.getState().token;
+  if (token) {
+    socket.auth = { token };
+  }
+});
+
 // 🔒 SECURITY: Handle server-side auth errors from room joins
-socket.on("error", (err) => {
+socket.on("error", async (err) => {
   useSocketStore.getState().setSocketStatus("error");
   if (import.meta.env.DEV) {
     console.warn("🔒 Socket error:", err?.message);
+  }
+
+  // A2: Re-auth / token refresh on AUTH_REQUIRED error event
+  if (err?.code === 'AUTH_REQUIRED') {
+    try {
+      const { refreshAccessToken } = await import("./api");
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        socket.auth = { token: newToken };
+        // Disconnect and reconnect with new credentials
+        socket.disconnect().connect();
+      }
+    } catch (refreshErr) {
+      console.error("[SOCKET] Failed to refresh token for socket re-auth:", refreshErr);
+    }
   }
 });
 

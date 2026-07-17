@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../../components/layout/Layout";
 import { useAuthStore } from "../../store/authStore";
 import { useFacilityStore } from "../../store/facilityStore";
+import { useSocketStore } from "../../store/socketStore";
 import { FACILITY_TYPES, formatTokenNumber } from "../../utils/facilityTypeConfig";
 import api, { fetchAnalyticsStatsApi, fetchQueueApi, nextPatientApi, markPatientCompletedApi, fetchCompletedCountApi, pausePatientApi, resumePatientApi } from "../../services/api";
 import { socket } from "../../services/socket";
@@ -66,13 +67,14 @@ export default function Dashboard() {
     }
   }, [facilityId]);
   const queryClient = useQueryClient();
+  const lastSeenVersionRef = useRef(null);
 
   // ✅ TanStack Query for caching and automatic state synchronization
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['dashboard', facilityId, facilityType, selectedBranch],
     queryFn: async () => {
       if (!facilityId) return null;
-      const [queueData, pausedData, statsData, completedCount, facilityRes] = await Promise.all([
+      const [waitingRes, pausedRes, statsData, completedCount, facilityRes] = await Promise.all([
         fetchQueueApi('waiting', facilityType),
         fetchQueueApi('paused', facilityType),
         fetchAnalyticsStatsApi(facilityType),
@@ -80,20 +82,21 @@ export default function Dashboard() {
         api.get('/facility/me')
       ]);
 
-      const inProgress = await fetchQueueApi('in-progress', facilityType);
+      const inProgressRes = await fetchQueueApi('in-progress', facilityType);
 
       return {
-        queue: queueData || [],
-        pausedQueue: pausedData || [],
+        queue: waitingRes?.queue || [],
+        pausedQueue: pausedRes?.queue || [],
         stats: {
-          waiting: queueData?.length || 0,
+          waiting: waitingRes?.queue?.length || 0,
           avgWait: statsData?.efficiency || statsData?.avgWaitTime || 7,
           aiPredictedWait: statsData?.aiPredictedWait || 10,
           confidence: statsData?.confidence || 'medium',
           completed: completedCount || 0
         },
-        currentPatient: inProgress?.[0] || null,
-        showWizard: facilityRes.data && facilityRes.data.data && !facilityRes.data.data.onboardingCompleted
+        currentPatient: inProgressRes?.queue?.[0] || null,
+        showWizard: facilityRes.data && facilityRes.data.data && !facilityRes.data.data.onboardingCompleted,
+        version: waitingRes?.version || 1
       };
     },
     enabled: !!facilityId,
@@ -107,6 +110,9 @@ export default function Dashboard() {
       setCurrentPatient(dashboardData.currentPatient);
       setStats(dashboardData.stats);
       queueRef.current = dashboardData.queue;
+      if (dashboardData.version !== undefined) {
+        lastSeenVersionRef.current = dashboardData.version;
+      }
       if (dashboardData.showWizard) {
         setShowWizard(true);
       }
@@ -120,13 +126,30 @@ export default function Dashboard() {
   useEffect(() => {
     if (!facilityId) return;
 
-    // 🔒 LP-01 Fix: Join branch-specific socket room so server only sends data for this branch.
+    // A1: Room Registry pattern - Register desired room in socket store
+    const socketStore = useSocketStore.getState();
+    socketStore.registerRoom('dashboard', 'join_facility_branch', { facilityId, facilityType, branchId: selectedBranch || null });
+
+    // Join room
     socket.emit("join_facility_branch", { facilityId, facilityType, branchId: selectedBranch || null });
     setLiveIndicator(socket.connected);
 
     const handleQueueUpdate = (data) => {
       if (data.facilityId !== facilityId || data.facilityType !== facilityType) return;
       setLiveIndicator(true);
+
+      // A3: check stateVersion gap
+      const incomingVersion = data.version;
+      const lastSeenVersion = lastSeenVersionRef.current;
+
+      if (incomingVersion !== undefined && lastSeenVersion !== null) {
+        if (incomingVersion <= lastSeenVersion) {
+          // Ignore duplicate/out-of-order event
+          return;
+        }
+        
+        lastSeenVersionRef.current = incomingVersion;
+      }
 
       // Invalidate queries so TanStack Query refetches the queue lists and stats automatically!
       queryClient.invalidateQueries({ queryKey: ['dashboard', facilityId, facilityType, selectedBranch] });
@@ -158,6 +181,8 @@ export default function Dashboard() {
     socket.on("connect", handleConnect);
 
     return () => {
+      // A1: Deregister room from socket store on unmount
+      useSocketStore.getState().deregisterRoom('dashboard');
       socket.off("queue_update", handleQueueUpdate);
       socket.off("disconnect", handleDisconnect);
       socket.off("connect", handleConnect);

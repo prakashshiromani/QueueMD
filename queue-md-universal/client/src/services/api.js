@@ -85,6 +85,19 @@ api.interceptors.response.use(
 // Note: Isolation (facilityId, facilityType) is handled implicitly 
 // by the backend decoding the injected JWT Auth Headers! No manual payload needed!
 
+export const refreshAccessToken = async () => {
+  try {
+    const { data } = await axios.post(`${api.defaults.baseURL || '/api'}/auth/refresh`, {}, { withCredentials: true });
+    if (data.success && data.accessToken) {
+      useAuthStore.getState().setToken(data.accessToken);
+      return data.accessToken;
+    }
+  } catch (err) {
+    console.error("Token refresh failed:", err);
+  }
+  return null;
+};
+
 export const searchPatientsApi = async (query) => {
   const response = await api.get(`/patients/search?q=${query}`);
   return response.data.data;
@@ -119,7 +132,7 @@ export const fetchQueueApi = async (status = 'waiting', facilityType = null) => 
   if (selectedBranch) params.branchId = selectedBranch;
 
   const response = await api.get('/queue', { params });
-  return response.data.queue; // Returns the array of patients
+  return { queue: response.data.queue || [], version: response.data.version || 1 };
 };
 
 // ✅ 3. Next Patient (Calls the oldest waiting patient)

@@ -5,11 +5,21 @@ const { getIO, getRoomHash } = require("./index");
 // patient's specific branch room (full PII data).
 // This eliminates the client-side filtering loophole where raw PII was
 // broadcast to all browsers in the facility regardless of branch.
-const emitQueueUpdate = (facilityId, facilityType, data) => {
+const emitQueueUpdate = async (facilityId, facilityType, data) => {
   try {
     const io = getIO();
     const patient = data.patient;
-    const branchId = patient?.branchId ? String(patient.branchId) : null;
+    const branchId = patient?.branchId ? String(patient.branchId) : 'global';
+
+    // A3: stateVersion support - Increment and fetch naya version from Redis
+    let version = 1;
+    try {
+      const { connection: redis } = require("../config/redis");
+      const redisKey = `queue_ver:${facilityId}:${facilityType}:${branchId}`;
+      version = await redis.incr(redisKey);
+    } catch (redisErr) {
+      console.error(`[REDIS] Version increment error: ${redisErr.message}`);
+    }
 
     // 1. Emit SANITIZED data to the global facility room
     //    (used for "All Branches" view — no PII exposed)
@@ -19,6 +29,7 @@ const emitQueueUpdate = (facilityId, facilityType, data) => {
       stats: data.stats,
       facilityId: String(facilityId).trim(),
       facilityType: String(facilityType).trim(),
+      version,
       // Only non-PII fields go to the global room
       patient: patient ? {
         _id: patient._id,
@@ -32,12 +43,13 @@ const emitQueueUpdate = (facilityId, facilityType, data) => {
 
     // 2. Emit FULL patient data (with PII) ONLY to the specific branch room
     //    This is safe because only staff who selected that branch are in this room
-    if (branchId) {
+    if (branchId && branchId !== 'global') {
       const branchRoom = getRoomHash(facilityId, facilityType, branchId);
       io.to(branchRoom).emit("queue_update", {
         ...data,
         facilityId: String(facilityId).trim(),
-        facilityType: String(facilityType).trim()
+        facilityType: String(facilityType).trim(),
+        version
       });
     }
   } catch (err) {

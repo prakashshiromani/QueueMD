@@ -55,7 +55,7 @@ const initSocket = (server) => {
     // Legacy join_facility event kept for backward compatibility
     socket.on("join_facility", ({ facilityId, facilityType }) => {
       if (!socket.isAuthenticated || !socket.user) {
-        return socket.emit("error", { message: "Authentication required to join facility room" });
+        return socket.emit("error", { message: "Authentication required to join facility room", code: 'AUTH_REQUIRED' });
       }
       // Verify user actually belongs to this facility (prevent cross-tenant spying)
       if (String(socket.user.facilityId) !== String(facilityId)) {
@@ -71,7 +71,7 @@ const initSocket = (server) => {
     // Server emits full PII only to the branch room; global room gets sanitized data only.
     socket.on("join_facility_branch", ({ facilityId, facilityType, branchId }) => {
       if (!socket.isAuthenticated || !socket.user) {
-        return socket.emit("error", { message: "Authentication required to join facility room" });
+        return socket.emit("error", { message: "Authentication required to join facility room", code: 'AUTH_REQUIRED' });
       }
       if (String(socket.user.facilityId) !== String(facilityId)) {
         return socket.emit("error", { message: "Unauthorized: You cannot join another facility's room" });
@@ -91,7 +91,7 @@ const initSocket = (server) => {
     // 🔒 SECURITY: Notification Room with Auth Check (VULN-04)
     socket.on("join_notifications", ({ facilityId }) => {
       if (!socket.isAuthenticated || !socket.user) {
-        return socket.emit("error", { message: "Authentication required to receive notifications" });
+        return socket.emit("error", { message: "Authentication required to receive notifications", code: 'AUTH_REQUIRED' });
       }
       if (String(socket.user.facilityId) !== String(facilityId)) {
         return socket.emit("error", { message: "Unauthorized: You cannot join another facility's notification room" });
